@@ -24,6 +24,7 @@ def buildConfigurations = [
     ['OS':'Windows_NT', 'Architechure':'x64', 'Configuration':'Release'],
     ['OS':'Ubuntu16.04', 'Architechure':'x64', 'Configuration':'Release'],
     ['OS':'CentOS7.1', 'Architechure':'x64', 'Configuration':'Release'],
+    ['OS':'OSX10.12', 'Architechure':'x64', 'Configuration':'Release'],
 ]
 
 def testConfigurations = [

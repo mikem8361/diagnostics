@@ -64,7 +64,7 @@ extern HMODULE g_hInstance;
 extern void TraceError(PCSTR format, ...);
 
 static HostRuntimeFlavor g_hostRuntimeFlavor = HostRuntimeFlavor::NetCore;
-static bool g_hostingInitialized = false;
+bool g_hostingInitialized = false;
 static LPCSTR g_hostRuntimeDirectory = nullptr;
 
 struct FileFind
@@ -567,8 +567,8 @@ static HRESULT InitializeNetCoreHost()
     // Trust The SOS managed and dependent assemblies from the sos directory
     std::string tpaList;
     const char* directory = sosModuleDirectory.c_str();
-    AddFileToTpaList(directory, "System.Reflection.Metadata.dll", tpaList);
-    AddFileToTpaList(directory, "System.Collections.Immutable.dll", tpaList);
+    //AddFileToTpaList(directory, "System.Reflection.Metadata.dll", tpaList);
+    //AddFileToTpaList(directory, "System.Collections.Immutable.dll", tpaList);
     AddFileToTpaList(directory, "Microsoft.FileFormats.dll", tpaList);
     AddFileToTpaList(directory, "Microsoft.SymbolStore.dll", tpaList);
 

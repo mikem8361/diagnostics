@@ -1,0 +1,68 @@
+<Configuration>
+  <Import ConfigFile="Debugger.Tests.Common.txt" />
+
+  <RepoRootDir>..\..\..\..\..</RepoRootDir>
+  <RootBinDir>$(RepoRootDir)\artifacts</RootBinDir>
+  <InstallDir>$(RootBinDir)\bin\Windows_NT.$(TargetArchitecture).$(TargetConfiguration)</InstallDir>
+  <SOSPath>$(InstallDir)\sos.dll</SOSPath>
+  <TestAssetPath>$(TestAssets)\Windows\NetCore\$(TargetArchitecture)\Debug</TestAssetPath>
+
+  <!-- Run tests on Windows x64 and x86 -->
+  <RunTestsWindows>true</RunTestsWindows>
+  <RunTestsWindows Condition="'$(TargetArchitecture)' == 'arm'">false</RunTestsWindows>
+  <RunTestsWindows Condition="'$(TargetArchitecture)' == 'arm64'">false</RunTestsWindows>
+
+  <Options Condition="'$(RunTestsWindows)' == 'true'">
+
+    <!-- Can currently only have one TestDbgEng test -->
+    <Option>
+      <Options>
+        <Option>
+          <TestDbgEng>true</TestDbgEng>
+        </Option>
+        <Option>
+        </Option>
+      </Options>
+      <DumpFile>$(TestAssetPath)\5.0.0\DualRuntimes\SOS.DualRuntimes.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssetPath)\5.0.0\DualRuntimes\SOS.DualRuntimes.Heap.xml</TestDataFile>
+    </Option>
+
+    <!-- Windows x64 and x86 testing -->
+    <Option>
+      <DumpFile>$(TestAssetPath)\3.1.10\SymbolTestApp\SOS.StackAndOtherTests.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssetPath)\3.1.10\SymbolTestApp\SOS.StackAndOtherTests.Heap.xml</TestDataFile>
+    </Option>
+    <Option>
+      <DumpFile>$(TestAssetPath)\5.0.0\SymbolTestApp\SOS.StackAndOtherTests.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssetPath)\5.0.0\SymbolTestApp\SOS.StackAndOtherTests.Heap.xml</TestDataFile>
+    </Option>
+
+    <!-- Cross-OS Linux x64 testing -->
+    <Option Condition="'$(TargetArchitecture)' == 'x64'">
+      <DumpFile>$(TestAssets)\Linux\x64\Debug\3.1.10\SymbolTestApp\SOS.StackAndOtherTests.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssets)\Linux\x64\Debug\3.1.10\SymbolTestApp\SOS.StackAndOtherTests.Heap.xml</TestDataFile>
+    </Option>
+    <Option Condition="'$(TargetArchitecture)' == 'x64'">
+      <DumpFile>$(TestAssets)\Linux\x64\Debug\5.0.0\SymbolTestApp\SOS.StackAndOtherTests.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssets)\Linux\x64\Debug\5.0.0\SymbolTestApp\SOS.StackAndOtherTests.Heap.xml</TestDataFile>
+    </Option>
+    <Option Condition="'$(TargetArchitecture)' == 'x64'">
+      <DumpFile>$(TestAssets)\Linux\x64\Debug\5.0.0\LineNums\SOS.LineNums.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssets)\Linux\x64\Debug\5.0.0\LineNums\SOS.LineNums.Heap.xml</TestDataFile>
+    </Option>
+
+    <!-- Cross-OS Linux arm64 testing -->
+    <Option Condition="'$(TargetArchitecture)' == 'x64'">
+      <DumpFile>$(TestAssets)\Linux\arm64\Debug\3.1.10\SymbolTestApp\SOS.StackAndOtherTests.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssets)\Linux\arm64\Debug\3.1.10\SymbolTestApp\SOS.StackAndOtherTests.Heap.xml</TestDataFile>
+    </Option>
+    <Option Condition="'$(TargetArchitecture)' == 'x64'">
+      <DumpFile>$(TestAssets)\Linux\arm64\Debug\5.0.0\SymbolTestApp\SOS.StackAndOtherTests.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssets)\Linux\arm64\Debug\5.0.0\SymbolTestApp\SOS.StackAndOtherTests.Heap.xml</TestDataFile>
+    </Option>
+    <Option Condition="'$(TargetArchitecture)' == 'x64'">
+      <DumpFile>$(TestAssets)\Linux\arm64\Debug\5.0.0\LineNums\SOS.LineNums.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssets)\Linux\arm64\Debug\5.0.0\LineNums\SOS.LineNums.Heap.xml</TestDataFile>
+    </Option>
+  </Options>
+</Configuration>

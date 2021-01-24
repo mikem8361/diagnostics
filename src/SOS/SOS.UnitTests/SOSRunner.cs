@@ -67,6 +67,8 @@ public class SOSRunner : IDisposable
     public class TestInformation
     {
         private string _testName;
+        private string _debuggeeDumpOutputRootDir;
+        private string _debuggeeDumpInputRootDir;
 
         public TestConfiguration TestConfiguration { get; set; }
 
@@ -91,6 +93,18 @@ public class SOSRunner : IDisposable
         public bool DumpDiagnostics { get; set; } = true;
 
         public string DumpNameSuffix { get; set; }
+
+        public string DebuggeeDumpOutputRootDir
+        {
+            get { return _debuggeeDumpOutputRootDir ?? TestConfiguration.DebuggeeDumpOutputRootDir(); }
+            set { _debuggeeDumpOutputRootDir = value; }
+        }
+
+        public string DebuggeeDumpInputRootDir
+        {
+            get { return _debuggeeDumpInputRootDir ?? TestConfiguration.DebuggeeDumpInputRootDir(); }
+            set { _debuggeeDumpInputRootDir = value; }
+        }
 
         public bool IsValid()
         {
@@ -142,7 +156,7 @@ public class SOSRunner : IDisposable
         TestConfiguration config = information.TestConfiguration;
         DumpGenerator dumpGeneration = information.DumpGenerator;
 
-        Directory.CreateDirectory(config.DebuggeeDumpOutputRootDir());
+        Directory.CreateDirectory(information.DebuggeeDumpOutputRootDir);
 
         if (dumpGeneration == DumpGenerator.CreateDump)
         {
@@ -972,8 +986,7 @@ public class SOSRunner : IDisposable
 
     public static string GenerateDumpFileName(TestInformation information, string debuggeeName, DebuggerAction action)
     {
-        TestConfiguration config = information.TestConfiguration;
-        string dumpRoot = action == DebuggerAction.GenerateDump ? config.DebuggeeDumpOutputRootDir() : config.DebuggeeDumpInputRootDir();
+        string dumpRoot = action == DebuggerAction.GenerateDump ? information.DebuggeeDumpOutputRootDir : information.DebuggeeDumpInputRootDir;
         if (!string.IsNullOrEmpty(dumpRoot)) {
             var sb = new StringBuilder();
             sb.Append(information.TestName);

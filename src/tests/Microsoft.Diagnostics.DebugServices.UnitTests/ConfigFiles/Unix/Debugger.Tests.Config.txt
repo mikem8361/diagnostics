@@ -1,0 +1,56 @@
+<Configuration>
+  <Import ConfigFile="Debugger.Tests.Common.txt" />
+
+  <RepoRootDir>../../../../..</RepoRootDir>
+  <RootBinDir>$(RepoRootDir)/artifacts</RootBinDir>
+  <InstallDir>$(RootBinDir)/bin/$(OS).$(TargetArchitecture).$(TargetConfiguration)</InstallDir>
+  <TestAssets>$(RepoRootDir)/../dumps/TestAssets</TestAssets>
+  <TestAssetPath>$(TestAssets)/$(OS)/$(TargetArchitecture)/Debug</TestAssetPath>
+
+  <Options>
+    <Option Condition="'$(OS)' == 'Linux'">
+      <SOSPath>$(InstallDir)/libsosplugin.so</SOSPath>
+    </Option>
+    <Option Condition="'$(OS)' == 'OSX'">
+      <SOSPath>$(InstallDir)/libsosplugin.dylib</SOSPath>
+    </Option>
+  </Options>
+
+  <!-- Run tests on Linux x64 and arm64 -->
+  <RunTestsLinux>false</RunTestsLinux>
+  <RunTestsLinux Condition="'$(OS)' == 'Linux'">true</RunTestsLinux>
+  <RunTestsLinux Condition="'$(TargetArchitecture)' == 'arm'">false</RunTestsLinux>
+
+  <Options Condition="'$(RunTestsLinux)' == 'true'">
+    <Option>
+      <DumpFile>$(TestAssetPath)/3.1.10/SymbolTestApp/SOS.StackAndOtherTests.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssetPath)/3.1.10/SymbolTestApp/SOS.StackAndOtherTests.Heap.xml</TestDataFile>
+    </Option>
+    <Option>
+      <DumpFile>$(TestAssetPath)/5.0.0/SymbolTestApp/SOS.StackAndOtherTests.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssetPath)/5.0.0/SymbolTestApp/SOS.StackAndOtherTests.Heap.xml</TestDataFile>
+    </Option>
+    <Option>
+      <DumpFile>$(TestAssetPath)/5.0.0/LineNums/SOS.LineNums.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssetPath)/5.0.0/LineNums/SOS.LineNums.Heap.xml</TestDataFile>
+    </Option>
+  </Options>
+
+  <!-- Run tests on OSX x64 -->
+  <RunTestsOSX>false</RunTestsOSX>
+  <RunTestsOSX Condition="'$(OS)' == 'OSX'">true</RunTestsOSX>
+  <RunTestsOSX Condition="'$(TargetArchitecture)' == 'arm'">false</RunTestsOSX>
+  <RunTestsOSX Condition="'$(TargetArchitecture)' == 'arm64'">false</RunTestsOSX>
+  <RuntimeVersion>6.0.0-alpha.1.21059.3</RuntimeVersion>
+
+  <Options Condition="'$(RunTestsOSX)' == 'true'">
+    <Option>
+      <DumpFile>$(TestAssetPath)/$(RuntimeVersion)/SymbolTestApp/SOS.StackAndOtherTests.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssetPath)/$(RuntimeVersion)/SymbolTestApp/SOS.StackAndOtherTests.Heap.xml</TestDataFile>
+    </Option>
+    <Option>
+      <DumpFile>$(TestAssetPath)/$(RuntimeVersion)/LineNums/SOS.LineNums.Heap.dmp</DumpFile>
+      <TestDataFile>$(TestAssetPath)/$(RuntimeVersion)/LineNums/SOS.LineNums.Heap.xml</TestDataFile>
+    </Option>
+  </Options>
+</Configuration>

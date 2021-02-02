@@ -110,6 +110,31 @@ namespace Microsoft.Diagnostics.NETCore.Client
             }
         }
 
+        public void ApplyHotReloadUpdate(string modulePath, ReadOnlySpan<byte> metadataDelta, ReadOnlySpan<byte> ilDelta)
+        {
+            if (string.IsNullOrEmpty(modulePath))
+                throw new ArgumentNullException($"{nameof(modulePath)} required");
+
+            byte[] payload = SerializeHotReloadUpdate(modulePath, metadataDelta, ilDelta);
+
+            IpcMessage message = new IpcMessage(DiagnosticsServerCommandSet.HotReload, (byte)HotReloadCommandId.ApplyUpdate, payload);
+            IpcMessage response = IpcClient.SendMessage(_endpoint, message);
+            switch ((DiagnosticsServerResponseId)response.Header.CommandId)
+            {
+                case DiagnosticsServerResponseId.Error:
+                    uint hr = BitConverter.ToUInt32(response.Payload, 0);
+                    if (hr == (uint)DiagnosticsIpcError.UnknownCommand)
+                    {
+                        throw new UnsupportedCommandException($"Unsupported operating system: {RuntimeInformation.OSDescription}");
+                    }
+                    throw new ServerErrorException($"ApplyHostReloadUpdate failed (HRESULT: 0x{hr:X8})");
+                case DiagnosticsServerResponseId.OK:
+                    return;
+                default:
+                    throw new ServerErrorException($"ApplyHostReloadUpdate failed - server responded with unknown command");
+            }
+        }
+
         /// <summary>
         /// Attach a profiler.
         /// </summary>
@@ -261,6 +286,24 @@ namespace Microsoft.Diagnostics.NETCore.Client
                 writer.WriteString(dumpName);
                 writer.Write((uint)dumpType);
                 writer.Write((uint)(diagnostics ? 1 : 0));
+
+                writer.Flush();
+                return stream.ToArray();
+            }
+        }
+
+        private static byte[] SerializeHotReloadUpdate(string modulePath, ReadOnlySpan<byte> metadataDelta, ReadOnlySpan<byte> ilDelta)
+        {
+            using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
+            {
+                writer.WriteString(modulePath);
+
+                writer.Write(metadataDelta.Length);
+                writer.Write(metadataDelta.ToArray());
+
+                writer.Write(ilDelta.Length);
+                writer.Write(ilDelta.ToArray());
 
                 writer.Flush();
                 return stream.ToArray();

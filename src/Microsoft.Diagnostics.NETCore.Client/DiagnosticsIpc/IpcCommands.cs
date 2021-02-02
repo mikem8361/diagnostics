@@ -14,6 +14,7 @@ namespace Microsoft.Diagnostics.NETCore.Client
         EventPipe      = 0x02,
         Profiler       = 0x03,
         Process        = 0x04,
+        HotReload      = 0x05,
 
         Server         = 0xFF,
     }
@@ -46,6 +47,11 @@ namespace Microsoft.Diagnostics.NETCore.Client
     internal enum DumpCommandId : byte
     {
         GenerateCoreDump = 0x01,
+    }
+
+    internal enum HotReloadCommandId : byte
+    {
+        ApplyUpdate = 0x01,
     }
 
     internal enum ProfilerCommandId : byte

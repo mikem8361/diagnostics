@@ -300,9 +300,9 @@ namespace Microsoft.Diagnostics.NETCore.Client
                 writer.WriteString(modulePath);
 
                 writer.Write(metadataDelta.Length);
-                writer.Write(metadataDelta.ToArray());
-
                 writer.Write(ilDelta.Length);
+
+                writer.Write(metadataDelta.ToArray());
                 writer.Write(ilDelta.ToArray());
 
                 writer.Flush();

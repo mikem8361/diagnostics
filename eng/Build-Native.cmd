@@ -9,6 +9,29 @@ echo %__MsgPrefix%Starting Build at %TIME%
 set __ThisScriptFull="%~f0"
 set __ThisScriptDir="%~dp0"
 
+set DevEnvDir=
+set VSINSTALLDIR=
+set VS150COMNTOOLS=
+set VS160COMNTOOLS=
+set VS170COMNTOOLS=
+call "%__ThisScriptDir%"\native\init-vs-env.cmd
+if NOT '%ERRORLEVEL%' == '0' goto ExitWithError
+
+if defined VS170COMNTOOLS (
+    set "__VSToolsRoot=%VS170COMNTOOLS%"
+    set "__VCToolsRoot=%VS170COMNTOOLS%\..\..\VC\Auxiliary\Build"
+    set __VSVersion=vs2022
+)
+if defined VS160COMNTOOLS (
+    set "__VSToolsRoot=%VS160COMNTOOLS%"
+    set "__VCToolsRoot=%VS160COMNTOOLS%\..\..\VC\Auxiliary\Build"
+    set __VSVersion=vs2019
+) else if defined VS150COMNTOOLS (
+    set "__VSToolsRoot=%VS150COMNTOOLS%"
+    set "__VCToolsRoot=%VS150COMNTOOLS%\..\..\VC\Auxiliary\Build"
+    set __VSVersion=vs2017
+)
+
 :: Set the default arguments for build
 
 set __TargetArch=x64

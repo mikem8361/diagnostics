@@ -13,7 +13,7 @@
 
     <DotNetUseShippingVersions>true</DotNetUseShippingVersions>
     <AutoGenerateAssemblyVersion>true</AutoGenerateAssemblyVersion>
-
+    <UsingToolVSSDK>true</UsingToolVSSDK>
     <!--
       Embed the cDAC native binary into the diagnostics-tool packages on preview branches.
       Release/servicing branches (PreReleaseVersionLabel != 'preview') keep the legacy

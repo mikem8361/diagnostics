@@ -12,6 +12,7 @@
     <IncludeSymbols>true</IncludeSymbols>
     <IsShipping>true</IsShipping>
     <IsShippingPackage>false</IsShippingPackage>
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>

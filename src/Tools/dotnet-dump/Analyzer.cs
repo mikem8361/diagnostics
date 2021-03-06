@@ -52,10 +52,8 @@ namespace Microsoft.Diagnostics.Tools.Dump
                 return clrRuntime != null ? new ClrMDHelper(clrRuntime) : null;
             });
 
-            _commandService.AddCommands(new Assembly[] { typeof(Analyzer).Assembly });
             _commandService.AddCommands(new Assembly[] { typeof(ClrMDHelper).Assembly });
             _commandService.AddCommands(new Assembly[] { typeof(SOSHost).Assembly });
-            _commandService.AddCommands(typeof(HelpCommand), (services) => new HelpCommand(_commandService, services));
             _commandService.AddCommands(typeof(ExitCommand), (services) => new ExitCommand(_consoleProvider.Stop));
         }
 

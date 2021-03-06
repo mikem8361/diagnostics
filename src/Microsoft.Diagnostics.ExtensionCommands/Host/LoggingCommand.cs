@@ -5,6 +5,8 @@
 using Microsoft.Diagnostics.DebugServices;
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.Security;
 
 namespace Microsoft.Diagnostics.ExtensionCommands
 {
@@ -14,6 +16,9 @@ namespace Microsoft.Diagnostics.ExtensionCommands
         [Option(Name = "enable", Help = "Enable internal logging.")]
         public bool Enable { get; set; }
 
+        [Option(Name = "logfile", Help = "Log file name.")]
+        public string LogFile { get; set; }
+
         [Option(Name = "disable", Help = "Disable internal logging.")]
         public bool Disable { get; set; }
 
@@ -21,52 +26,107 @@ namespace Microsoft.Diagnostics.ExtensionCommands
 
         public override void Invoke()
         {
-            if (Enable) {
-                EnableLogging();
+            if (Enable || LogFile is not null) {
+                EnableLogging(LogFile);
             }
             else if (Disable) {
                 DisableLogging();
             }
-            WriteLine("Logging is {0}", Trace.Listeners[ListenerName] != null ? "enabled" : "disabled");
-        }
-
-        public static void Initialize()
-        {
-            if (Environment.GetEnvironmentVariable("DOTNET_ENABLED_SOS_LOGGING") == "1")
+            TraceListener listener = Trace.Listeners[ListenerName];
+            WriteLine("Logging is {0}", listener != null ? "enabled" : "disabled");
+            if (listener is LoggingListener loggingListener && loggingListener.LogFile != null)
             {
-                EnableLogging();
+                WriteLine(loggingListener.LogFile);
             }
         }
 
-        public static void EnableLogging()
+        public static void Initialize(string logfile = null)
         {
-            if (Trace.Listeners[ListenerName] == null)
+            try
             {
-                Trace.Listeners.Add(new LoggingListener());
+                if (string.IsNullOrWhiteSpace(logfile))
+                {
+                    logfile = Environment.GetEnvironmentVariable("DOTNET_ENABLED_SOS_LOGGING");
+                }
+                if (!string.IsNullOrWhiteSpace(logfile))
+                {
+                    if (logfile == "1")
+                    {
+                        EnableLogging();
+                    }
+                    else
+                    {
+                        EnableLogging(logfile);
+                    }
+                }
+            }
+            catch (Exception ex) when ( ex is IOException || ex is NotSupportedException || ex is SecurityException || ex is UnauthorizedAccessException)
+            {
+            }
+        }
+
+        public static void EnableLogging(string logfile = null)
+        {
+            if (Trace.Listeners[ListenerName] is null)
+            {
+                Trace.Listeners.Add(new LoggingListener(logfile));
                 Trace.AutoFlush = true;
             }
         }
 
         public static void DisableLogging()
         {
+            Trace.Listeners[ListenerName]?.Close();
             Trace.Listeners.Remove(ListenerName);
         }
 
         class LoggingListener : TraceListener
         {
-            internal LoggingListener()
+            private readonly StreamWriter _writer;
+
+            internal readonly string LogFile;
+
+            internal LoggingListener(string logfile)
                 : base(ListenerName)
             {
+                LogFile = logfile;
+
+                Stream stream = null;
+                try
+                {
+                    if (logfile is not null)
+                    {
+                        stream = new FileStream(logfile, FileMode.Create, FileAccess.ReadWrite, FileShare.ReadWrite);
+                    }
+                }
+                finally
+                {
+                    if (stream is null)
+                    {
+                        stream = System.Console.OpenStandardOutput();
+                    }
+                    _writer = new StreamWriter(stream) {
+                        AutoFlush = true
+                    };
+                }
+            }
+
+            public override void Close()
+            {
+                _writer.Flush();
+                _writer.BaseStream.Flush();
+                _writer.BaseStream.Close();
+                base.Close();
             }
 
             public override void Write(string message)
             {
-                System.Console.Write(message);
+                _writer.Write(message);
             }
 
             public override void WriteLine(string message)
             {
-                System.Console.WriteLine(message);
+                _writer.WriteLine(message);
             }
         }
     }

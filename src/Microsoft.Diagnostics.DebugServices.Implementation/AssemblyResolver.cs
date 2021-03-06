@@ -7,7 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 
-namespace SOS.Extensions
+namespace Microsoft.Diagnostics.DebugServices.Implementation
 {
     /// <summary>
     /// Used to enable app-local assembly unification.
@@ -39,24 +39,26 @@ namespace SOS.Extensions
 
             // Look next to requesting assembly
             assemblyPath = args.RequestingAssembly?.Location;
-            if (!String.IsNullOrEmpty(assemblyPath))
+            if (!string.IsNullOrEmpty(assemblyPath))
             {
                 probingPath = Path.Combine(Path.GetDirectoryName(assemblyPath), fileName);
-                Debug.WriteLine($"Considering {probingPath} based on RequestingAssembly");
-                if (Probe(probingPath, referenceName.Version, out assembly)) {
-                    Debug.WriteLine($"Matched {probingPath} based on RequestingAssembly");
+                Trace.TraceInformation($"Considering {probingPath} based on RequestingAssembly");
+                if (Probe(probingPath, referenceName.Version, out assembly)) 
+                {
+                    Trace.TraceInformation($"Matched {probingPath} based on RequestingAssembly");
                     return assembly;
                 }
             }
 
             // Look next to the executing assembly
             assemblyPath = Assembly.GetExecutingAssembly().Location;
-            if (!String.IsNullOrEmpty(assemblyPath))
+            if (!string.IsNullOrEmpty(assemblyPath))
             {
                 probingPath = Path.Combine(Path.GetDirectoryName(assemblyPath), fileName);
-                Debug.WriteLine($"Considering {probingPath} based on ExecutingAssembly");
-                if (Probe(probingPath, referenceName.Version, out assembly)) {
-                    Debug.WriteLine($"Matched {probingPath} based on ExecutingAssembly");
+                Trace.TraceInformation($"Considering {probingPath} based on ExecutingAssembly");
+                if (Probe(probingPath, referenceName.Version, out assembly)) 
+                {
+                    Trace.TraceInformation($"Matched {probingPath} based on ExecutingAssembly");
                     return assembly;
                 }
             }
@@ -77,7 +79,8 @@ namespace SOS.Extensions
             if (File.Exists(filePath))
             {
                 AssemblyName name = AssemblyName.GetAssemblyName(filePath);
-                if (name.Version >= minimumVersion) {
+                if (name.Version >= minimumVersion) 
+                {
                     assembly = Assembly.LoadFile(filePath);
                     return true;
                 }

@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <RepoRootDir>$(MSBuildThisFileDirectory)..\..</RepoRootDir>
+    <OutputPath>$(RepoRootDir)\artifacts\bin\VS\$(Configuration)\</OutputPath>
+    <BaseIntermediateOutputPath>$(RepoRootDir)\artifacts\obj\VS\$(Configuration)\</BaseIntermediateOutputPath>
+  </PropertyGroup>
+</Project>

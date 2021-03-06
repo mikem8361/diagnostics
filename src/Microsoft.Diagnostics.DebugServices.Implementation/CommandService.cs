@@ -412,9 +412,17 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                     else
                     { 
                         Type propertyType = property.Property.PropertyType;
-                        object service = services.GetService(propertyType);
-                        if (service != null) {
-                            value = service;
+                        if (propertyType == typeof(IServiceProvider))
+                        {
+                            value = services;
+                        }
+                        else
+                        {
+                            object service = services.GetService(propertyType);
+                            if (service != null)
+                            {
+                                value = service;
+                            }
                         }
                     }
 
@@ -469,10 +477,16 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                 for (int i = 0; i < parameters.Length; i++)
                 {
                     Type parameterType = parameters[i].ParameterType;
-
-                    // The parameter will passed as null to allow for "optional" services. The invoked 
-                    // method needs to check for possible null parameters.
-                    arguments[i] = services.GetService(parameterType);
+                    if (parameterType == typeof(IServiceProvider))
+                    {
+                        arguments[i] = services;
+                    }
+                    else
+                    {
+                        // The parameter will passed as null to allow for "optional" services. The invoked 
+                        // method needs to check for possible null parameters.
+                        arguments[i] = services.GetService(parameterType);
+                    }
                 }
                 return arguments;
             }

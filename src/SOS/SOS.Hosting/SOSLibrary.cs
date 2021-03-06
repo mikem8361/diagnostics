@@ -71,8 +71,9 @@ namespace SOS.Hosting
         {
             _contextService = host.Services.GetService<IContextService>();
 
-            string rid = InstallHelper.GetRid();
-            SOSPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), rid);
+            //string rid = InstallHelper.GetRid();
+            //SOSPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), rid);
+            SOSPath = @"c:\ssd\diagnostics2\artifacts\bin\Windows_NT.x64.Debug";
 
             _hostWrapper = new HostWrapper(host, () => GetSOSHost()?.TargetWrapper);
         }

@@ -74,19 +74,27 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         {
             if (_threadContext == null)
             {
-                _threadContext = _threadService.GetThreadContext(this);
+                _threadContext = new byte[_threadService.ContextSize];
+                if (!GetThreadContextInner(_threadService.ContextFlags, _threadContext)) 
+                {
+                    throw new DiagnosticsException();
+                }
             }
             return _threadContext;
         }
+
+        protected virtual bool GetThreadContextInner(uint contextFlags, byte[] context) => _threadService.GetThreadContext(ThreadId, contextFlags, context);
 
         public ulong GetThreadTeb()
         {
             if (!_teb.HasValue)
             {
-                _teb = _threadService.GetThreadTeb(this);
+                _teb = GetThreadTebInner();
             }
             return _teb.Value;
         }
+
+        protected virtual ulong GetThreadTebInner() => _threadService.GetThreadTeb(ThreadId);
 
         #endregion
 

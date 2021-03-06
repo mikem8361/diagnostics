@@ -1,0 +1,48 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+ Licensed to the .NET Foundation under one or more agreements.
+ The .NET Foundation licenses this file to you under the MIT license.
+ See the LICENSE file in the project root for more information.
+-->
+
+<!--
+This file is used to describe the SOS Concord component. This file is run through vsdconfigtool.exe as part 
+of the build, which generates Microsoft.Diagnostics.SOSConcord.vsdconfig. The .vsdconfig is a binary version 
+of this file which is deployed along with Microsoft.Diagnostics.SOSConcord.dll. The .vsdconfig is then read 
+by he component loading system at runtime.
+
+For more information about this file, see https://github.com/Microsoft/ConcordExtensibilitySamples/wiki/Component-discovery-and-configuration
+-->
+
+<Configuration xmlns="http://schemas.microsoft.com/vstudio/vsdconfig/2008">
+
+  <!--TODO: If you copy the sample, ensure to regenerate the GUID in this file. This
+  can be done with the 'Create GUID' tool ('Tools->Create GUID' in Visual Sudio or 
+  guidgen.exe from the command line).-->
+    
+  <DefineGuid Name="guidSOSConcordComponentId" Value="144350B5-17AC-486F-B269-68126EED4C52"/>
+  <DefineGuid Name="guidSOSConcordCustomMessageId" Value="F190196A-8701-44E9-ACD5-606B005A471F"/>
+        
+  <ManagedComponent
+    ComponentId="guidSOSConcordComponentId"
+    ComponentLevel="65500"
+    AssemblyName="Microsoft.Diagnostics.SOSConcord">
+    <!--NOTE: For more information on ComponentLevel, see https://github.com/Microsoft/ConcordExtensibilitySamples/wiki/Component-Levels-->
+    <Class Name="Microsoft.Diagnostics.SOSConcord.SOSConcordService">
+      <Implements>
+        <InterfaceGroup>
+          <Filter>
+	        <SourceId RequiredValue="guidSOSConcordComponentId"/>
+          </Filter>
+          <Interface Name="IDkmCustomMessageForwardReceiver"/>
+        </InterfaceGroup>
+        <InterfaceGroup>
+          <NoFilter />
+          <Interface Name="IDkmProcessCreateNotification"/>
+          <Interface Name="IDkmProcessExitNotification"/>
+          <Interface Name="IDkmProcessContinueNotification"/>
+        </InterfaceGroup>
+      </Implements>
+    </Class>
+  </ManagedComponent>
+</Configuration>

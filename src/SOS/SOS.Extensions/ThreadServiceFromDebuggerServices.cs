@@ -24,9 +24,9 @@ namespace SOS.Extensions
             _debuggerServices = debuggerServices;
         }
 
-        protected override bool GetThreadContext(uint threadId, uint contextFlags, uint contextSize, byte[] context)
+        protected override bool GetThreadContext(uint threadId, uint contextFlags, byte[] context)
         {
-            return _debuggerServices.GetThreadContext(threadId, contextFlags, contextSize, context) == HResult.S_OK;
+            return _debuggerServices.GetThreadContext(threadId, contextFlags, context) == HResult.S_OK;
         }
 
         protected override IEnumerable<IThread> GetThreadsInner()

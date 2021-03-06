@@ -12,6 +12,9 @@
         "$(MicrosoftNETCoreApp70Version)",
         "$(MicrosoftNETCoreApp80Version)"
       ]
+    },
+    "vs": {
+      "version": "17.0"
     }
   },
   "msbuild-sdks": {

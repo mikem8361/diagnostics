@@ -1,0 +1,30 @@
+<!-- Copyright (c)  Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <RootNamespace>Microsoft.Diagnostics.SOSConcord</RootNamespace>
+    <AssemblyName>Microsoft.Diagnostics.SOSConcord</AssemblyName>
+    <Description>VS SOS concord-base host</Description>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>Latest</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <VsdConfigXmlFiles Include="$(MSBuildThisFileDirectory)Microsoft.Diagnostics.SOSConcord.vsdconfigxml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="$(MicrosoftVisualStudioSDK2022Version)" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VisualStudio.Debugger.Engine" Version="$(MicrosoftVisualStudioDebuggerEngine2022Version)" PrivateAssets="all" />
+    <!--Reference the VSDConfigTool package. This brings build tools used to compile the .vsdconfigxml file into a .vsdconfig file -->
+    <PackageReference Include="Microsoft.VSSDK.Debugger.VSDConfigTool" Version="$(MicrosoftVSSDKDebuggerVSDConfigTool2022Version)" PrivateAssets="all" />
+
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.DebugServices.Implementation\Microsoft.Diagnostics.DebugServices.Implementation.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.DebugServices\Microsoft.Diagnostics.DebugServices.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.ExtensionCommands\Microsoft.Diagnostics.ExtensionCommands.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\SOS\SOS.Hosting\SOS.Hosting.csproj" />
+  </ItemGroup>
+</Project>

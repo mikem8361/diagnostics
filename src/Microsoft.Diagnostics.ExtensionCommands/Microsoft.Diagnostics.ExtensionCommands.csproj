@@ -12,6 +12,7 @@
     <IncludeSymbols>true</IncludeSymbols>
     <IsShipping>true</IsShipping>
     <IsShippingPackage>false</IsShippingPackage>
+    <LangVersion>preview</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -20,6 +21,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Microsoft.Diagnostics.DebugServices\Microsoft.Diagnostics.DebugServices.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\Microsoft.Diagnostics.DebugServices\Microsoft.Diagnostics.DebugServices.csproj" />
   </ItemGroup>
 </Project>

@@ -25,11 +25,11 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             _threadReader = (IThreadReader)dataReader;
         }
 
-        protected override bool GetThreadContext(uint threadId, uint contextFlags, uint contextSize, byte[] context)
+        protected internal override bool GetThreadContext(uint threadId, uint contextFlags, byte[] context)
         {
             try
             {
-                return _dataReader.GetThreadContext(threadId, contextFlags, new Span<byte>(context, 0, unchecked((int)contextSize)));
+                return _dataReader.GetThreadContext(threadId, contextFlags, new Span<byte>(context));
             }
             catch (ClrDiagnosticsException ex)
             {
@@ -43,7 +43,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             return _threadReader.EnumerateOSThreadIds().Select((uint id, int index) => new Thread(this, index, id)).Cast<IThread>();
         }
 
-        protected override ulong GetThreadTeb(uint threadId)
+        protected internal override ulong GetThreadTeb(uint threadId)
         {
             return _threadReader.GetThreadTeb(threadId);
         }

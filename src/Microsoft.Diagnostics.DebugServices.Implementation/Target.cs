@@ -24,7 +24,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
 
         public Target(IHost host, int id, string dumpPath)
         {
-            Trace.TraceInformation($"Creating target #{Id}");
+            Trace.TraceInformation($"Creating target #{id}");
             Host = host;
             Id = id;
             _dumpPath = dumpPath;

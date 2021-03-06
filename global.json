@@ -8,6 +8,9 @@
       "dotnet/x86": [
         "$(MicrosoftNETCoreApp80Version)"
       ]
+    },
+    "vs": {
+      "version": "17.0"
     }
   },
   "msbuild-sdks": {

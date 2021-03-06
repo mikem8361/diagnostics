@@ -37,10 +37,11 @@ namespace Microsoft.Diagnostics.Tools.Dump
 
             _serviceProvider = new ServiceProvider();
             _consoleService = new ConsoleService();
-            _fileLoggingConsoleService  = new FileLoggingConsoleService(_consoleService);
+            _fileLoggingConsoleService = new FileLoggingConsoleService(_consoleService);
             _commandService = new CommandService();
             _symbolService = new SymbolService(this);
             _contextService = new ContextService(this);
+
             DiagnosticLoggingService.Instance.SetConsole(_fileLoggingConsoleService, _fileLoggingConsoleService);
 
             _serviceProvider.AddService<IHost>(this);
@@ -60,7 +61,6 @@ namespace Microsoft.Diagnostics.Tools.Dump
             _commandService.AddCommands(new Assembly[] { typeof(Analyzer).Assembly });
             _commandService.AddCommands(new Assembly[] { typeof(ClrMDHelper).Assembly });
             _commandService.AddCommands(new Assembly[] { typeof(SOSHost).Assembly });
-            _commandService.AddCommands(typeof(HelpCommand), (services) => new HelpCommand(_commandService, services));
             _commandService.AddCommands(typeof(ExitCommand), (services) => new ExitCommand(_consoleService.Stop));
             _commandService.AddCommands(typeof(SOSCommand), (services) => new SOSCommand(_commandService, services));
         }

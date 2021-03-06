@@ -1,0 +1,80 @@
+﻿<!-- Copyright (c)  Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0. -->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>Microsoft.Diagnostics.SOSPackage</AssemblyName>
+    <RootNamespace>Microsoft.Diagnostics.SOSPackage</RootNamespace>
+    <Description>VS SOS package and host</Description>
+    <LangVersion>9.0</LangVersion>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Ngen>false</Ngen>
+
+    <!-- VSIX -->
+    <IsShippingVsix>true</IsShippingVsix>
+    <GeneratePkgDefFile>true</GeneratePkgDefFile>
+    <IncludeAssemblyInVSIXContainer>true</IncludeAssemblyInVSIXContainer>
+    <ExtensionInstallationRoot>CommonExtensions</ExtensionInstallationRoot>
+    <ExtensionInstallationFolder>Microsoft\SOS</ExtensionInstallationFolder>    
+    <SetupProductArch>Neutral</SetupProductArch>
+    <TargetVsixContainerName>Microsoft.Diagnostics.SOSPackage.2019.vsix</TargetVsixContainerName>
+    <MicrosoftVSSDKBuildToolsVersion>$(MicrosoftVSSDKBuildTools2019Version)</MicrosoftVSSDKBuildToolsVersion>
+
+    <!-- VS repo insertion -->
+    <VisualStudioInsertionComponent>Microsoft.Diagnostics.SOSPackage</VisualStudioInsertionComponent>
+    
+    <!-- NuGet -->
+    <IsPackable>true</IsPackable>
+
+    <!-- Debugging -->
+    <StartAction>Program</StartAction>
+    <StartProgram>C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\Common7\IDE\devenv.exe</StartProgram>
+    <StartArguments>/rootsuffix Exp</StartArguments>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)..\SOSPackage.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="source.extension.vsixmanifest">
+      <SubType>Designer</SubType>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <VSCTCompile Include="$(MSBuildThisFileDirectory)..\SOSPackage.vsct">
+      <ResourceName>Menus.ctmenu</ResourceName>
+    </VSCTCompile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.VisualStudio.SDK" Version="$(MicrosoftVisualStudioSDK2019Version)" ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.VisualStudio.Debugger.Engine" Version="$(MicrosoftVisualStudioDebuggerEngine2019Version)" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.SOSConcord\2019\Microsoft.Diagnostics.SOSConcord.2019.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <NativeSosBinaries Include="$(ArtifactsBinDir)\Windows_NT.x64.$(Configuration)\sos.dll" TargetRid="win-x64" />
+    <NativeSosBinaries Include="$(ArtifactsBinDir)\Windows_NT.x64.$(Configuration)\Microsoft.DiaSymReader.Native.amd64.dll" TargetRid="win-x64" />
+
+    <!--
+    <NativeSosBinaries Include="$(ArtifactsBinDir)\Windows_NT.x86.$(Configuration)\sos.dll" TargetRid="win-x86" />
+    <NativeSosBinaries Include="$(ArtifactsBinDir)\Windows_NT.x86.$(Configuration)\Microsoft.DiaSymReader.Native.x86.dll" TargetRid="win-x86" />
+      
+    <NativeSosBinaries Include="$(ArtifactsBinDir)\Windows_NT.arm.$(Configuration)\sos.dll" TargetRid="win-arm" />
+    <NativeSosBinaries Include="$(ArtifactsBinDir)\Windows_NT.arm.$(Configuration)\Microsoft.DiaSymReader.Native.arm.dll" TargetRid="win-arm" />
+    
+    <NativeSosBinaries Include="$(ArtifactsBinDir)\Windows_NT.arm64.$(Configuration)\sos.dll" TargetRid="win-arm64" />
+    <NativeSosBinaries Include="$(ArtifactsBinDir)\Windows_NT.arm64.$(Configuration)\Microsoft.DiaSymReader.Native.arm64.dll" TargetRid="win-arm64" />
+    -->
+  </ItemGroup>
+
+  <ItemGroup>
+    <VSIXSourceItem Include="@(NativeSosBinaries)">
+      <VSIXSubPath>%(TargetRid)</VSIXSubPath>
+    </VSIXSourceItem>
+  </ItemGroup>
+</Project>

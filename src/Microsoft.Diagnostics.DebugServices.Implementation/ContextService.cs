@@ -57,7 +57,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// <exception cref="DiagnosticsException">invalid target id</exception>
         public void SetCurrentTarget(int targetId)
         {
-            ITarget target = Host.EnumerateTargets().FirstOrDefault((target) => target.Id == targetId);
+            ITarget target = Host.EnumerateTargets().SingleOrDefault((target) => target.Id == targetId);
             if (target is null) {
                 throw new DiagnosticsException($"Invalid target id {targetId}");
             }
@@ -88,7 +88,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// <exception cref="DiagnosticsException">invalid runtime id</exception>
         public void SetCurrentRuntime(int runtimeId)
         {
-            IRuntime runtime = RuntimeService?.EnumerateRuntimes().FirstOrDefault((runtime) => runtime.Id == runtimeId);
+            IRuntime runtime = RuntimeService?.EnumerateRuntimes().SingleOrDefault((runtime) => runtime.Id == runtimeId);
             if (runtime is null) {
                 throw new DiagnosticsException($"Invalid runtime id {runtimeId}");
             }

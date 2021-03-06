@@ -412,9 +412,17 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                     else
                     { 
                         Type propertyType = property.Property.PropertyType;
-                        object service = services.GetService(propertyType);
-                        if (service != null) {
-                            value = service;
+                        if (propertyType == typeof(IServiceProvider))
+                        {
+                            value = services;
+                        }
+                        else
+                        {
+                            object service = services.GetService(propertyType);
+                            if (service != null)
+                            {
+                                value = service;
+                            }
                         }
                     }
 

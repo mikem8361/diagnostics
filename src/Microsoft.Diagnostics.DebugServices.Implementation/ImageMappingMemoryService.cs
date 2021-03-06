@@ -15,7 +15,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
     /// <summary>
     /// Memory service wrapper that maps and fixes up PE module on read memory errors.
     /// </summary>
-    internal class ImageMappingMemoryService : IMemoryService
+    public class ImageMappingMemoryService : IMemoryService
     {
         private readonly IMemoryService _memoryService;
         private readonly IModuleService _moduleService;
@@ -29,7 +29,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// </summary>
         /// <param name="target">target instance</param>
         /// <param name="memoryService">memory service to wrap</param>
-        internal ImageMappingMemoryService(ITarget target, IMemoryService memoryService)
+        public ImageMappingMemoryService(ITarget target, IMemoryService memoryService)
         {
             _memoryService = memoryService;
             _moduleService = target.Services.GetService<IModuleService>();

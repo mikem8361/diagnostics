@@ -5,6 +5,7 @@
     <VersionPrefix>6.0.0</VersionPrefix>
     <DotNetUseShippingVersions>true</DotNetUseShippingVersions>
     <AutoGenerateAssemblyVersion>true</AutoGenerateAssemblyVersion>
+    <UsingToolVSSDK>true</UsingToolVSSDK>
     <!--
       Our nightly tools are stable versioned but go to a non-stable feed.
       Arcade usually disallows this, but we use such a versioning scheme by design.

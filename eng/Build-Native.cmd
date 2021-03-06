@@ -9,6 +9,11 @@ echo %__MsgPrefix%Starting Build at %TIME%
 set __ThisScriptFull="%~f0"
 set __ThisScriptDir="%~dp0"
 
+set DevEnvDir=
+set VSINSTALLDIR=
+set VS150COMNTOOLS=
+set VS160COMNTOOLS=
+set VS170COMNTOOLS=
 call "%__ThisScriptDir%"\native\init-vs-env.cmd
 if NOT '%ERRORLEVEL%' == '0' goto ExitWithError
 

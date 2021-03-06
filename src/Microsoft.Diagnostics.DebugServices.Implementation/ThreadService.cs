@@ -18,8 +18,8 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
     public abstract class ThreadService : IThreadService
     {
         internal protected readonly ITarget Target;
-        private readonly int _contextSize;
-        private readonly uint _contextFlags;
+        internal protected readonly int ContextSize;
+        internal protected readonly uint ContextFlags;
         private readonly Dictionary<string, RegisterInfo> _lookupByName;
         private readonly Dictionary<int, RegisterInfo> _lookupByIndex;
         private Dictionary<uint, IThread> _threads;
@@ -38,26 +38,26 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             {
                 case Architecture.X64:
                     // Dumps generated with newer dbgeng have bigger context buffers and clrmd requires the context size to at least be that size.
-                    _contextSize = target.OperatingSystem == OSPlatform.Windows ? 0x700 : AMD64Context.Size;
-                    _contextFlags = AMD64Context.ContextControl | AMD64Context.ContextInteger | AMD64Context.ContextSegments | AMD64Context.ContextFloatingPoint;
+                    ContextSize = target.Host.HostType != HostType.Vs && target.OperatingSystem == OSPlatform.Windows ? 0x700 : AMD64Context.Size;
+                    ContextFlags = AMD64Context.ContextControl | AMD64Context.ContextInteger | AMD64Context.ContextSegments | AMD64Context.ContextFloatingPoint;
                     contextType = typeof(AMD64Context);
                     break;
 
                 case Architecture.X86:
-                    _contextSize = X86Context.Size;
-                    _contextFlags = X86Context.ContextControl | X86Context.ContextInteger | X86Context.ContextSegments | X86Context.ContextFloatingPoint;
+                    ContextSize = X86Context.Size;
+                    ContextFlags = X86Context.ContextControl | X86Context.ContextInteger | X86Context.ContextSegments | X86Context.ContextFloatingPoint;
                     contextType = typeof(X86Context);
                     break;
 
                 case Architecture.Arm64:
-                    _contextSize = Arm64Context.Size;
-                    _contextFlags = Arm64Context.ContextControl | Arm64Context.ContextInteger | Arm64Context.ContextFloatingPoint;
+                    ContextSize = Arm64Context.Size;
+                    ContextFlags = Arm64Context.ContextControl | Arm64Context.ContextInteger | Arm64Context.ContextFloatingPoint;
                     contextType = typeof(Arm64Context);
                     break;
 
                 case Architecture.Arm:
-                    _contextSize = ArmContext.Size;
-                    _contextFlags = ArmContext.ContextControl | ArmContext.ContextInteger | ArmContext.ContextFloatingPoint;
+                    ContextSize = ArmContext.Size;
+                    ContextFlags = ArmContext.ContextControl | ArmContext.ContextInteger | ArmContext.ContextFloatingPoint;
                     contextType = typeof(ArmContext);
                     break;
 
@@ -198,30 +198,6 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         #endregion 
 
         /// <summary>
-        /// Get the thread context
-        /// </summary>
-        /// <param name="thread">thread instance</param>
-        /// <returns>context array</returns>
-        internal byte[] GetThreadContext(Thread thread)
-        {
-            var threadContext = new byte[_contextSize];
-            if (!GetThreadContext(thread.ThreadId, _contextFlags, (uint)_contextSize, threadContext)) {
-                throw new DiagnosticsException();
-            }
-            return threadContext;
-        }
-
-        /// <summary>
-        /// Get the thread TEB
-        /// </summary>
-        /// <param name="thread">thread instance</param>
-        /// <returns>TEB</returns>
-        internal ulong GetThreadTeb(Thread thread)
-        {
-            return GetThreadTeb(thread.ThreadId);
-        }
-
-        /// <summary>
         /// Get/create the thread dictionary.
         /// </summary>
         private Dictionary<uint, IThread> GetThreads()
@@ -242,17 +218,16 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// </summary>
         /// <param name="threadId">OS thread id</param>
         /// <param name="contextFlags">Windows context flags</param>
-        /// <param name="contextSize">Context size</param>
         /// <param name="context">Context buffer</param>
         /// <returns>true succeeded, false failed</returns>
         /// <exception cref="DiagnosticsException">invalid thread id</exception>
-        protected abstract bool GetThreadContext(uint threadId, uint contextFlags, uint contextSize, byte[] context);
+        internal protected abstract bool GetThreadContext(uint threadId, uint contextFlags, byte[] context);
 
         /// <summary>
         /// Returns the Windows TEB pointer for the thread
         /// </summary>
         /// <param name="threadId">OS thread id</param>
-        /// <returns>TEB pointer or 0</returns>
-        protected abstract ulong GetThreadTeb(uint threadId);
+        /// <returns>TEB pointer or 0 if not implemented or thread id not found</returns>
+        internal protected abstract ulong GetThreadTeb(uint threadId);
     }
 }

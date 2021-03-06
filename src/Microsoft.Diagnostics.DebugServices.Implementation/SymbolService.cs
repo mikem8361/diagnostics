@@ -61,7 +61,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// The default symbol cache path:
         /// 
         /// * dbgeng on Windows uses the dbgeng symbol cache path: %PROGRAMDATA%\dbg\sym
-        /// * dotnet-dump on Windows uses the VS symbol cache path: %TEMPDIR%\SymbolCache
+        /// * VS or dotnet-dump on Windows uses the VS symbol cache path: %TEMPDIR%\SymbolCache
         /// * dotnet-dump/lldb on Linux/MacOS uses: $HOME/.dotnet/symbolcache
         /// </summary>
         public string DefaultSymbolCache
@@ -75,8 +75,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                         _defaultSymbolCache = _host.HostType switch
                         {
                             HostType.DbgEng => Path.Combine(Environment.GetEnvironmentVariable("PROGRAMDATA"), "dbg", "sym"),
-                            HostType.DotnetDump => Path.Combine(Path.GetTempPath(), "SymbolCache"),
-                            _ => throw new NotSupportedException($"Host type not supported {_host.HostType}"),
+                            _ => Path.Combine(Path.GetTempPath(), "SymbolCache"),
                         };
                     }
                     else

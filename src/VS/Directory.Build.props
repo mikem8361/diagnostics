@@ -1,0 +1,16 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props"/>
+  <PropertyGroup>
+    <RepoRootDir>$(MSBuildThisFileDirectory)..\..</RepoRootDir>
+
+    <MicrosoftVSSDKBuildTools2019Version>16.9.1050</MicrosoftVSSDKBuildTools2019Version>
+    <MicrosoftVisualStudioSDK2019Version>16.10.31321.278</MicrosoftVisualStudioSDK2019Version>
+    <MicrosoftVSSDKDebuggerVSDConfigTool2019Version>16.10.1051404</MicrosoftVSSDKDebuggerVSDConfigTool2019Version>
+    <MicrosoftVisualStudioDebuggerEngine2019Version>16.10.1051404</MicrosoftVisualStudioDebuggerEngine2019Version>
+
+    <MicrosoftVSSDKBuildTools2022Version>17.3.2088</MicrosoftVSSDKBuildTools2022Version>
+    <MicrosoftVisualStudioSDK2022Version>17.0.32112.339</MicrosoftVisualStudioSDK2022Version>
+    <MicrosoftVSSDKDebuggerVSDConfigTool2022Version>17.0.2012801</MicrosoftVSSDKDebuggerVSDConfigTool2022Version>
+    <MicrosoftVisualStudioDebuggerEngine2022Version>17.0.2012801</MicrosoftVisualStudioDebuggerEngine2022Version>
+  </PropertyGroup>
+</Project>

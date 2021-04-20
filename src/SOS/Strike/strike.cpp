@@ -16813,21 +16813,18 @@ DECLARE_API(runtimes)
 //
 DECLARE_API(logging)
 {
-    INIT_API_NOEE();
-
     IHostServices* hostServices = GetHostServices();
     if (hostServices != nullptr)
     {
         std::string command("logging ");
         command.append(args);
-        Status = hostServices->DispatchCommand(command.c_str());
+        return hostServices->DispatchCommand(command.c_str());
     }
     else 
     {
         ExtErr("Command not loaded\n");
     }
-
-    return Status;
+    return S_OK;
 }
 
 //
@@ -16835,8 +16832,6 @@ DECLARE_API(logging)
 //
 DECLARE_API(ext)
 {
-    INIT_API_NOEE();
-
     IHostServices* hostServices = GetHostServices();
     if (hostServices != nullptr)
     {
@@ -16845,15 +16840,14 @@ DECLARE_API(ext)
         // GetHostServices() like soshelp, logging, sosstatus, setsymbolserver and ext.
         if (args != nullptr && strlen(args) > 0)
         {
-            Status = hostServices->DispatchCommand(args);
+            return hostServices->DispatchCommand(args);
         }
     }
     else 
     {
         ExtErr("Command not loaded\n");
     }
-
-    return Status;
+    return S_OK;
 }
 
 void PrintHelp (__in_z LPCSTR pszCmdName)

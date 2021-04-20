@@ -10,6 +10,7 @@
 #include "debuggerservices.h"
 #include "remotememoryservice.h"
 #include "extensions.h"
+#include "arrayholder.h"
 
 #define VER_PLATFORM_UNIX 10 
 
@@ -30,6 +31,7 @@ private:
     PDEBUG_SYSTEM_OBJECTS m_system;
     PDEBUG_ADVANCED       m_advanced;
     IMachine*             m_targetMachine;
+    int                   m_skipSymPathNotification;
 
 public:
     DbgEngServices(IDebugClient* client);
@@ -48,6 +50,8 @@ public:
         PULONG originalThreadId);
 
     void InitializeSymbolStoreFromSymPath();
+
+    bool GetSymbolPath(ArrayHolder<char>& symbolPath);
 
     //----------------------------------------------------------------------------
     // IUnknown

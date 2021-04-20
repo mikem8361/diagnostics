@@ -19,7 +19,8 @@ DbgEngServices::DbgEngServices(IDebugClient* client) :
     m_symbols(nullptr),
     m_system(nullptr),
     m_advanced(nullptr),
-    m_targetMachine(nullptr)
+    m_targetMachine(nullptr),
+    m_skipSymPathNotification(0)
 {
     client->AddRef();
 }
@@ -433,11 +434,27 @@ DbgEngServices::GetOffsetBySymbol(
     if (FAILED(hr)) {
         return hr;
     }
+    ArrayHolder<char> symbolPath = nullptr;
+    if (exportOnly)
+    {
+        m_skipSymPathNotification++;
+        GetSymbolPath(symbolPath);
+        m_symbols->SetSymbolPath("");
+    }
     std::string symbolName;
     symbolName.append(moduleName);
     symbolName.append("!");
     symbolName.append(name);
-    return m_symbols->GetOffsetByName(symbolName.c_str(), offset);
+    hr = m_symbols->GetOffsetByName(symbolName.c_str(), offset);
+    if (exportOnly)
+    {
+        if (symbolPath != nullptr)
+        {
+            m_symbols->SetSymbolPath(symbolPath);
+        }
+        m_skipSymPathNotification--;
+    }
+    return hr;
 }
 
 //----------------------------------------------------------------------------
@@ -528,7 +545,7 @@ HRESULT DbgEngServices::ChangeSymbolState(
     ULONG Flags,
     ULONG64 Argument)
 {
-    if (Flags == DEBUG_CSS_PATHS)
+    if (Flags == DEBUG_CSS_PATHS && m_skipSymPathNotification == 0)
     {
         InitializeSymbolStoreFromSymPath();
     }
@@ -665,22 +682,35 @@ DbgEngServices::InitializeSymbolStoreFromSymPath()
     ISymbolService* symbolService = GetSymbolService();
     if (symbolService != nullptr)
     {
-        ULONG cchLength = 0;
-        if (SUCCEEDED(m_symbols->GetSymbolPath(nullptr, 0, &cchLength)))
+        ArrayHolder<char> symbolPath = nullptr;
+        if (GetSymbolPath(symbolPath))
         {
-            ArrayHolder<char> symbolPath = new char[cchLength];
-            if (SUCCEEDED(m_symbols->GetSymbolPath(symbolPath, cchLength, nullptr)))
+            if (strlen(symbolPath) > 0)
             {
-                if (strlen(symbolPath) > 0)
-                {
-                    symbolService->DisableSymbolStore();
+                symbolService->DisableSymbolStore();
 
-                    if (!symbolService->ParseSymbolPath(symbolPath))
-                    {
-                        m_control->Output(DEBUG_OUTPUT_ERROR, "Windows symbol path parsing FAILED %s\n", symbolPath.GetPtr());
-                    }
+                if (!symbolService->ParseSymbolPath(symbolPath))
+                {
+                    m_control->Output(DEBUG_OUTPUT_ERROR, "Windows symbol path parsing FAILED %s\n", symbolPath.GetPtr());
                 }
             }
         }
     }
+}
+
+bool
+DbgEngServices::GetSymbolPath(ArrayHolder<char>& symbolPath)
+{
+    ULONG cchLength = 0;
+    if (FAILED(m_symbols->GetSymbolPath(nullptr, 0, &cchLength)))
+    {
+        return false;
+    }
+    symbolPath = new char[cchLength];
+    if (FAILED(m_symbols->GetSymbolPath(symbolPath, cchLength, nullptr)))
+    {
+        symbolPath = nullptr;
+        return false;
+    }
+    return true;
 }

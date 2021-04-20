@@ -2234,6 +2234,7 @@ HRESULT
 LLDBServices::GetOffsetBySymbol(
     ULONG moduleIndex,
     PCSTR name,
+    BOOL exportOnly,
     PULONG64 offset)
 {
     HRESULT hr = S_OK;

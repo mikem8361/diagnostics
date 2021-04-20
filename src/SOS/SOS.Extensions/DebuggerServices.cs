@@ -313,14 +313,14 @@ namespace SOS
             return hr;
         }
 
-        public HResult GetOffsetBySymbol(int moduleIndex, string symbol, out ulong address)
+        public HResult GetOffsetBySymbol(int moduleIndex, string symbol, bool exportOnly, out ulong address)
         {
             if (symbol == null) throw new ArgumentNullException(nameof(symbol));
 
             byte[] symbolBytes = Encoding.ASCII.GetBytes(symbol + "\0");
             fixed (byte* symbolPtr = symbolBytes)
             {
-                return VTable.GetOffsetBySymbol(Self, moduleIndex, symbolPtr, out address);
+                return VTable.GetOffsetBySymbol(Self, moduleIndex, symbolPtr, exportOnly, out address);
             }
         }
     }
@@ -349,6 +349,6 @@ namespace SOS
         public readonly delegate* unmanaged[Stdcall]<IntPtr, uint, uint, byte*, HResult> VirtualUnwind;
         public readonly delegate* unmanaged[Stdcall]<IntPtr, byte*, uint, out uint, HResult> GetSymbolPath;
         public readonly delegate* unmanaged[Stdcall]<IntPtr, int, ulong, byte*, int, out uint, out ulong, HResult> GetSymbolByOffset;
-        public readonly delegate* unmanaged[Stdcall]<IntPtr, int, byte*, out ulong, HResult> GetOffsetBySymbol;
+        public readonly delegate* unmanaged[Stdcall]<IntPtr, int, byte*, bool, out ulong, HResult> GetOffsetBySymbol;
     }
 }

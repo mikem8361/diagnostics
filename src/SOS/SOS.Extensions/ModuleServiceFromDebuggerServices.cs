@@ -112,16 +112,25 @@ namespace SOS.Extensions
 
             #endregion
 
-            #region IExportSymbols/IModuleSymbols
+            #region IExportSymbols
 
-            public bool TryGetSymbolName(ulong address, out string symbol, out ulong displacement)
+            bool IExportSymbols.TryGetSymbolAddress(string name, out ulong address)
             {
-                return _moduleService._debuggerServices.GetSymbolByOffset(ModuleIndex, address, out symbol, out displacement) == HResult.S_OK;
+                return _moduleService._debuggerServices.GetOffsetBySymbol(ModuleIndex, name, exportOnly:true, out address);
             }
 
-            public bool TryGetSymbolAddress(string name, out ulong address)
+            #endregion
+
+            #region IModuleSymbols
+
+            bool IModuleSymbols.TryGetSymbolName(ulong address, out string symbol, out ulong displacement)
             {
-                return _moduleService._debuggerServices.GetOffsetBySymbol(ModuleIndex, name, out address) == HResult.S_OK;
+                return _moduleService._debuggerServices.GetSymbolByOffset(ModuleIndex, address, out symbol, out displacement);
+            }
+
+            bool IModuleSymbols.TryGetSymbolAddress(string name, out ulong address)
+            {
+                return _moduleService._debuggerServices.GetOffsetBySymbol(ModuleIndex, name, exportOnly:false, out address);
             }
 
             #endregion

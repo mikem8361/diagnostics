@@ -420,6 +420,7 @@ HRESULT
 DbgEngServices::GetOffsetBySymbol(
     ULONG moduleIndex,
     PCSTR name,
+    BOOL exportOnly,
     PULONG64 offset)
 {
     ULONG cch = 0;

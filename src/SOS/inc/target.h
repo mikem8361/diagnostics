@@ -32,6 +32,12 @@ public:
     };
 
     /// <summary>
+    /// Returns the target id
+    /// </summary>
+    /// <returns>The id unique to a target instance</returns>
+    virtual ULONG32 STDMETHODCALLTYPE GetTargetId() = 0;
+
+    /// <summary>
     /// Returns the OperatingSystem for the target
     /// </summary>
     /// <returns>target operating system</returns>

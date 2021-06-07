@@ -9,6 +9,7 @@
 #include <string>
 
 Target* Target::s_target = nullptr;
+ULONG32 Target::s_idFactory = 0;
 
 //----------------------------------------------------------------------------
 // Target
@@ -16,6 +17,7 @@ Target* Target::s_target = nullptr;
 
 Target::Target() :
     m_ref(1),
+    m_id(s_idFactory++),
     m_tmpPath(nullptr),
 #ifndef FEATURE_PAL
     m_desktop(nullptr),
@@ -215,6 +217,11 @@ ULONG Target::Release()
 //----------------------------------------------------------------------------
 // ITarget
 //----------------------------------------------------------------------------
+
+ULONG32 Target::GetTargetId()
+{
+    return m_id;
+}
 
 #define VER_PLATFORM_UNIX 10 
 

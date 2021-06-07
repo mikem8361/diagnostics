@@ -37,6 +37,7 @@ namespace SOS.Hosting
 
             VTableBuilder builder = AddInterface(IID_ITarget, validate: false);
 
+            builder.AddMethod(new GetTargetIdDelegate(GetTargetId));
             builder.AddMethod(new GetOperatingSystemDelegate(GetOperatingSystem));
             builder.AddMethod(new GetTempDirectoryDelegate(GetTempDirectory));
             builder.AddMethod(new GetRuntimeDelegate(GetRuntime));
@@ -55,6 +56,12 @@ namespace SOS.Hosting
                 wrapper.Release();
             }
             _wrappers.Clear();
+        }
+
+        private int GetTargetId(
+            IntPtr self)
+        {
+            return _target.Id;
         }
 
         private OperatingSystem GetOperatingSystem(
@@ -105,6 +112,10 @@ namespace SOS.Hosting
         }
 
         #region ITarget delegates
+
+        [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+        private delegate int GetTargetIdDelegate(
+            [In] IntPtr self);
 
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]
         private delegate OperatingSystem GetOperatingSystemDelegate(

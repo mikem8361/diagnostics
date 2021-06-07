@@ -16,6 +16,7 @@ class Target : public ITarget
 {
 private:
     LONG m_ref;
+    ULONG32 m_id;
     LPCSTR m_tmpPath;
 #ifndef FEATURE_PAL
     Runtime* m_desktop;
@@ -23,6 +24,7 @@ private:
     Runtime* m_netcore;
 
     static Target* s_target;
+    static ULONG32 s_idFactory;
 
 #ifndef FEATURE_PAL
     bool SwitchRuntimeInstance(bool desktop);
@@ -77,6 +79,8 @@ public:
     //----------------------------------------------------------------------------
     // ITarget
     //----------------------------------------------------------------------------
+
+    ULONG32 STDMETHODCALLTYPE GetTargetId();
 
     OperatingSystem STDMETHODCALLTYPE GetOperatingSystem();
 

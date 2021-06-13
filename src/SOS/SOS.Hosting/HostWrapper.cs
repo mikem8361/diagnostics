@@ -131,7 +131,7 @@ namespace SOS.Hosting
         /// <returns>S_OK</returns>
         private HResult GetCurrentTarget(IntPtr self, out IntPtr targetWrapper)
         {
-            ITarget target = _contextService.Services.GetService<ITarget>();
+            ITarget target = _contextService.GetCurrentTarget();
             TargetWrapper wrapper = target?.Services.GetService<TargetWrapper>();
             if (wrapper == null)
             {

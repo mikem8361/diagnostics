@@ -23,8 +23,8 @@ namespace SOS.Hosting
         // For ClrMD's magic hand shake
         private const ulong MagicCallbackConstant = 0x43;
 
-        private readonly IServiceProvider _services;
         private readonly IRuntime _runtime;
+        private readonly IContextService _contextService;
         private readonly ISymbolService _symbolService;
         private readonly IMemoryService _memoryService;
         private readonly IThreadService _threadService;
@@ -39,8 +39,8 @@ namespace SOS.Hosting
         {
             Debug.Assert(services != null);
             Debug.Assert(runtime != null);
-            _services = services;
             _runtime = runtime;
+            _contextService = services.GetService<IContextService>();
             _symbolService = services.GetService<ISymbolService>();
             _memoryService = services.GetService<IMemoryService>();
             _threadService = services.GetService<IThreadService>();
@@ -199,7 +199,7 @@ namespace SOS.Hosting
             IntPtr self,
             out uint threadId)
         {
-            uint? id = _services.GetService<IThread>()?.ThreadId;
+            uint? id = _contextService.GetCurrentThread()?.ThreadId;
             if (id.HasValue)
             {
                 threadId = id.Value;

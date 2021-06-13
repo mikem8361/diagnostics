@@ -27,12 +27,14 @@ namespace SOS.Hosting
         public static readonly Guid IID_ITarget = new Guid("B4640016-6CA0-468E-BA2C-1FFF28DE7B72");
 
         private readonly IServiceProvider _services;
+        private readonly IContextService _contextService;
         private readonly ITarget _target;
         private readonly Dictionary<IRuntime, RuntimeWrapper> _wrappers = new Dictionary<IRuntime, RuntimeWrapper>();
 
         public TargetWrapper(IServiceProvider services)
         {
             _services = services;
+            _contextService = services.GetService<IContextService>();
             _target = services.GetService<ITarget>() ?? throw new DiagnosticsException("No target");
 
             VTableBuilder builder = AddInterface(IID_ITarget, validate: false);
@@ -92,7 +94,7 @@ namespace SOS.Hosting
             if (ppRuntime == null) {
                 return HResult.E_INVALIDARG;
             }
-            IRuntime runtime = _services.GetService<IRuntime>();
+            IRuntime runtime = _contextService.GetCurrentRuntime();
             if (runtime == null) {
                 return HResult.E_NOINTERFACE;
             }

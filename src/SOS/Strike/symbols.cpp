@@ -163,7 +163,11 @@ static void SymbolFileCallback(void* param, const char* moduleFileName, const ch
 //
 static void LoadNativeSymbolsCallback(void* param, const char* moduleFilePath, ULONG64 moduleAddress, int moduleSize)
 {
-    GetSymbolService()->LoadNativeSymbols(SymbolFileCallback, param, IRuntime::Core, moduleFilePath, moduleAddress, moduleSize);
+    ITarget* target = GetTarget();
+    if (target != nullptr)
+    {
+        GetSymbolService()->LoadNativeSymbols(SymbolFileCallback, param, IRuntime::Core, moduleFilePath, target->GetTargetId(), moduleAddress, moduleSize);
+    }
 }
 
 /**********************************************************************\
@@ -591,8 +595,14 @@ HRESULT SymbolReader::LoadSymbolsForPortablePDB(__in_z WCHAR* pModuleName, ___in
     HRESULT Status = S_OK;
     IfFailRet(InitializeSymbolService());
 
+    ITarget* target = GetTarget();
+    if (target == nullptr)
+    {
+        return E_FAIL;
+    }
+
     m_symbolReaderHandle = GetSymbolService()->LoadSymbolsForModule(
-        pModuleName, isFileLayout, peAddress, (int)peSize, inMemoryPdbAddress, (int)inMemoryPdbSize);
+        pModuleName, isFileLayout, target->GetTargetId(), peAddress, (int)peSize, inMemoryPdbAddress, (int)inMemoryPdbSize);
 
     if (m_symbolReaderHandle == 0)
     {

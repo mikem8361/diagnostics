@@ -32,7 +32,6 @@ namespace SOS.Hosting
         private const string SOSInitialize = "SOSInitializeByHost";
         private const string SOSUninitialize = "SOSUninitializeByHost";
 
-        private readonly IContextService _contextService;
         private readonly HostWrapper _hostWrapper;
         private IntPtr _sosLibrary = IntPtr.Zero;
 
@@ -68,13 +67,11 @@ namespace SOS.Hosting
         /// <param name="target">target instance</param>
         private SOSLibrary(IHost host)
         {
-            _contextService = host.Services.GetService<IContextService>();
-
             string rid = InstallHelper.GetRid();
             SOSPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), rid);
 
             _hostWrapper = new HostWrapper(host);
-            _hostWrapper.AddServiceWrapper(SymbolServiceWrapper.IID_ISymbolService, () => new SymbolServiceWrapper(host, () => GetSOSHost()?.MemoryService));
+            _hostWrapper.AddServiceWrapper(SymbolServiceWrapper.IID_ISymbolService, () => new SymbolServiceWrapper(host));
         }
 
         /// <summary>
@@ -170,7 +167,5 @@ namespace SOS.Hosting
                 Trace.TraceError($"SOS command FAILED 0x{result:X8}");
             }
         }
-
-        private SOSHost GetSOSHost() => _contextService.Services.GetService<SOSHost>();
     }
 }

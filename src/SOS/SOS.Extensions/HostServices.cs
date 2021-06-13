@@ -45,7 +45,6 @@ namespace SOS.Extensions
         private ContextServiceFromDebuggerServices _contextService;
         private int _targetIdFactory;
         private ITarget _target;
-        private IMemoryService _memoryService;
 
         /// <summary>
         /// Enable the assembly resolver to get the right versions in the same directory as this assembly.
@@ -107,7 +106,7 @@ namespace SOS.Extensions
 
             _hostWrapper = new HostWrapper(this);
             _hostWrapper.AddServiceWrapper(IID_IHostServices, this);
-            _hostWrapper.AddServiceWrapper(SymbolServiceWrapper.IID_ISymbolService, () => new SymbolServiceWrapper(this, () => _memoryService));
+            _hostWrapper.AddServiceWrapper(SymbolServiceWrapper.IID_ISymbolService, () => new SymbolServiceWrapper(this));
 
             VTableBuilder builder = AddInterface(IID_IHostServices, validate: false);
             builder.AddMethod(new GetHostDelegate(GetHost));
@@ -150,7 +149,6 @@ namespace SOS.Extensions
             if (target == _target)
             {
                 _target = null;
-                _memoryService = null;
                 _contextService.ClearCurrentTarget();
                 if (target is IDisposable disposable) {
                     disposable.Dispose();
@@ -255,7 +253,6 @@ namespace SOS.Extensions
                 target.ServiceProvider.AddServiceFactory<TargetWrapper>(() => new TargetWrapper(_contextService.Services));
                 _contextService.SetCurrentTarget(target);
                 _target = target;
-                _memoryService = _contextService.Services.GetService<IMemoryService>();
             }
             catch (Exception ex)
             {

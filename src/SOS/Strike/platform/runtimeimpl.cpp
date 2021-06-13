@@ -627,6 +627,7 @@ void Runtime::LoadRuntimeModules()
                 this,
                 GetRuntimeConfiguration(),
                 m_name,
+                m_target->GetTargetId(),
                 m_address,
                 (int)m_size);
         }

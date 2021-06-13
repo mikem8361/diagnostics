@@ -47,6 +47,7 @@ public:
         void*,
         int, 
         const char*,
+        int,
         ULONG64,
         int) = 0;
 
@@ -62,6 +63,7 @@ public:
     virtual PVOID STDMETHODCALLTYPE LoadSymbolsForModule(
         LPCWSTR,
         BOOL,
+        int,
         ULONG64,
         int,
         ULONG64,

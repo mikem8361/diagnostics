@@ -73,14 +73,13 @@ namespace SOS.Hosting
 
         public static readonly Guid IID_ISymbolService = new Guid("7EE88D46-F8B3-4645-AD3E-01FE7D4F70F1");
 
-        private readonly Func<IMemoryService> _getMemoryService;
+        private readonly IHost _host;
         private readonly ISymbolService _symbolService;
 
-        public SymbolServiceWrapper(IHost host, Func<IMemoryService> getMemoryService)
+        public SymbolServiceWrapper(IHost host)
         {
             Debug.Assert(host != null);
-            Debug.Assert(getMemoryService != null);
-            _getMemoryService = getMemoryService;
+            _host = host;
             _symbolService = host.Services.GetService<ISymbolService>();
             Debug.Assert(_symbolService != null);
 
@@ -184,6 +183,7 @@ namespace SOS.Hosting
         /// <param name="parameter">callback parameter</param>
         /// <param name="config">Target configuration: Windows, Linux or OSX</param>
         /// <param name="moduleFilePath">module path</param>
+        /// <param name="targetId">target id of the address</param>
         /// <param name="address">module base address</param>
         /// <param name="size">module size</param>
         /// <param name="readMemory">read memory callback delegate</param>
@@ -193,6 +193,7 @@ namespace SOS.Hosting
             IntPtr parameter,
             RuntimeConfiguration config,
             string moduleFilePath,
+            int targetId,
             ulong address,
             uint size)
         {
@@ -200,7 +201,7 @@ namespace SOS.Hosting
             {
                 try
                 {
-                    Stream stream = MemoryService.CreateMemoryStream(address, size);
+                    Stream stream = GetMemoryService(targetId).CreateMemoryStream(address, size);
                     KeyGenerator generator = null;
                     if (config == RuntimeConfiguration.UnixCore)
                     {
@@ -339,6 +340,7 @@ namespace SOS.Hosting
             IntPtr self,
             string assemblyPath,
             bool isFileLayout,
+            int targetId,
             ulong loadedPeAddress,
             uint loadedPeSize, 
             ulong inMemoryPdbAddress,
@@ -349,12 +351,12 @@ namespace SOS.Hosting
                 Stream peStream = null;
                 if (loadedPeAddress != 0)
                 {
-                    peStream = MemoryService.CreateMemoryStream(loadedPeAddress, loadedPeSize);
+                    peStream = GetMemoryService(targetId).CreateMemoryStream(loadedPeAddress, loadedPeSize);
                 }
                 Stream pdbStream = null;
                 if (inMemoryPdbAddress != 0)
                 {
-                    pdbStream = MemoryService.CreateMemoryStream(inMemoryPdbAddress, inMemoryPdbSize);
+                    pdbStream = GetMemoryService(targetId).CreateMemoryStream(inMemoryPdbAddress, inMemoryPdbSize);
                 }
                 OpenedReader openedReader = GetReader(assemblyPath, isFileLayout, peStream, pdbStream);
                 if (openedReader != null)
@@ -918,6 +920,17 @@ namespace SOS.Hosting
         }
 
         /// <summary>
+        /// Return the memory service for the targetId
+        /// </summary>
+        /// <param name="targetId"></param>
+        /// <returns></returns>
+        IMemoryService GetMemoryService(int targetId)
+        {
+            ITarget target = _host.EnumerateTargets().FirstOrDefault((t) => t.Id == targetId) ?? throw new DiagnosticsException("SymbolServiceWrapper: no current target");
+            return target.Services.GetService<IMemoryService>();
+        }
+
+        /// <summary>
         /// Attempt to open a file stream.
         /// </summary>
         /// <param name="path">file path</param>
@@ -951,8 +964,6 @@ namespace SOS.Hosting
             }
             return pathName.Substring(pos + 1);
         }
-
-        private IMemoryService MemoryService => _getMemoryService() ?? throw new DiagnosticsException("SymbolServiceWrapper: no current target");
 
         #region Symbol service delegates
 
@@ -992,6 +1003,7 @@ namespace SOS.Hosting
             [In] IntPtr parameter,
             [In] RuntimeConfiguration config,
             [In] string moduleFilePath,
+            [In] int targetId,
             [In] ulong address,
             [In] uint size);
 
@@ -1011,6 +1023,7 @@ namespace SOS.Hosting
             [In] IntPtr self,
             [In, MarshalAs(UnmanagedType.LPWStr)] string assemblyPath,
             [In] bool isFileLayout,
+            [In] int targetId,
             [In] ulong loadedPeAddress,
             [In] uint loadedPeSize,
             [In] ulong inMemoryPdbAddress,

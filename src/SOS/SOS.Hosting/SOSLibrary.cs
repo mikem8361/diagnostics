@@ -73,7 +73,7 @@ namespace SOS.Hosting
             string rid = InstallHelper.GetRid();
             SOSPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), rid);
 
-            _hostWrapper = new HostWrapper(host, () => GetSOSHost()?.TargetWrapper);
+            _hostWrapper = new HostWrapper(host);
             _hostWrapper.AddServiceWrapper(SymbolServiceWrapper.IID_ISymbolService, () => new SymbolServiceWrapper(host, () => GetSOSHost()?.MemoryService));
         }
 

@@ -16,16 +16,16 @@ namespace SOS.Hosting
         private static readonly Guid IID_IHost = new Guid("E0CD8534-A88B-40D7-91BA-1B4C925761E9");
 
         private readonly IHost _host;
-        private readonly Func<TargetWrapper> _getTarget;
+        private readonly IContextService _contextService;
         private readonly Dictionary<Guid, Func<COMCallableIUnknown>> _factories = new Dictionary<Guid, Func<COMCallableIUnknown>>();
         private readonly Dictionary<Guid, COMCallableIUnknown> _wrappers = new Dictionary<Guid, COMCallableIUnknown>();
 
         public IntPtr IHost { get; }
 
-        public HostWrapper(IHost host, Func<TargetWrapper> getTarget)
+        public HostWrapper(IHost host)
         {
             _host = host;
-            _getTarget = getTarget;
+            _contextService = host.Services.GetService<IContextService>();
 
             VTableBuilder builder = AddInterface(IID_IHost, validate: false);
             builder.AddMethod(new GetHostTypeDelegate(GetHostType));
@@ -131,7 +131,8 @@ namespace SOS.Hosting
         /// <returns>S_OK</returns>
         private HResult GetCurrentTarget(IntPtr self, out IntPtr targetWrapper)
         {
-            TargetWrapper wrapper = _getTarget();
+            ITarget target = _contextService.Services.GetService<ITarget>();
+            TargetWrapper wrapper = target?.Services.GetService<TargetWrapper>();
             if (wrapper == null)
             {
                 targetWrapper = IntPtr.Zero;

@@ -27,7 +27,6 @@ namespace SOS.Hosting
 
         internal readonly IServiceProvider Services;
         internal readonly ITarget Target;
-        internal readonly TargetWrapper TargetWrapper;
         internal readonly IConsoleService ConsoleService;
         internal readonly IModuleService ModuleService;
         internal readonly IThreadService ThreadService;
@@ -46,7 +45,6 @@ namespace SOS.Hosting
         {
             Services = services;
             Target = services.GetService<ITarget>() ?? throw new DiagnosticsException("No target");
-            TargetWrapper = new TargetWrapper(services);
             Target.DisposeOnDestroy(this);
             ConsoleService = services.GetService<IConsoleService>();
             ModuleService = services.GetService<IModuleService>();
@@ -73,7 +71,6 @@ namespace SOS.Hosting
             if (!_disposed)
             {
                 _disposed = true;
-                TargetWrapper.Release();
                 COMHelper.Release(_interface);
             }
         }

@@ -97,6 +97,7 @@ namespace Microsoft.Diagnostics.Tools.Dump
                 _contextService.SetCurrentTarget(_target);
 
                 _target.ServiceProvider.AddServiceFactory<SOSHost>(() => new SOSHost(_contextService.Services));
+                _target.ServiceProvider.AddServiceFactory<TargetWrapper>(() => new TargetWrapper(_contextService.Services));
 
                 // Automatically enable symbol server support
                 _symbolService.AddSymbolServer(msdl: true, symweb: false, symbolServerPath: null, authToken: null, timeoutInMinutes: 0);

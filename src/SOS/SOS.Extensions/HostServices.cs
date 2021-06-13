@@ -45,7 +45,6 @@ namespace SOS.Extensions
         private ContextServiceFromDebuggerServices _contextService;
         private int _targetIdFactory;
         private ITarget _target;
-        private TargetWrapper _targetWrapper;
         private IMemoryService _memoryService;
 
         /// <summary>
@@ -106,7 +105,7 @@ namespace SOS.Extensions
             _serviceProvider.AddService<ICommandService>(_commandProcessor);
             _serviceProvider.AddService<ISymbolService>(_symbolService);
 
-            _hostWrapper = new HostWrapper(this, () => _targetWrapper);
+            _hostWrapper = new HostWrapper(this);
             _hostWrapper.AddServiceWrapper(IID_IHostServices, this);
             _hostWrapper.AddServiceWrapper(SymbolServiceWrapper.IID_ISymbolService, () => new SymbolServiceWrapper(this, () => _memoryService));
 
@@ -152,11 +151,6 @@ namespace SOS.Extensions
             {
                 _target = null;
                 _memoryService = null;
-                if (_targetWrapper != null)
-                {
-                    _targetWrapper.Release();
-                    _targetWrapper = null;
-                }
                 _contextService.ClearCurrentTarget();
                 if (target is IDisposable disposable) {
                     disposable.Dispose();
@@ -257,9 +251,10 @@ namespace SOS.Extensions
             }
             try
             {
-                _target = new TargetFromDebuggerServices(DebuggerServices, this, _targetIdFactory++);
-                _contextService.SetCurrentTarget(_target);
-                _targetWrapper = new TargetWrapper(_contextService.Services);
+                var target = new TargetFromDebuggerServices(DebuggerServices, this, _targetIdFactory++);
+                target.ServiceProvider.AddServiceFactory<TargetWrapper>(() => new TargetWrapper(_contextService.Services));
+                _contextService.SetCurrentTarget(target);
+                _target = target;
                 _memoryService = _contextService.Services.GetService<IMemoryService>();
             }
             catch (Exception ex)

@@ -13,7 +13,8 @@ namespace Microsoft.Diagnostics.DebugServices
         Context,
         Module,
         Thread,
-        Runtime
+        Runtime,
+        Max
     }
 
     /// <summary>

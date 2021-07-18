@@ -27,12 +27,12 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
     }
 
     /// <summary>
-    /// Service injector class to set properties, fields and methods marked 
+    /// Service manager class to set properties, fields and methods marked 
     /// with the ServiceAttribute that match the provided services. Tracks 
     /// any unresolved service requests and injects them when the service
     /// is registered.
     /// </summary>
-    public class ServiceInjector
+    public class ServiceManager
     {
         private delegate bool CallbackFunc(object instance);
 
@@ -44,14 +44,40 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
 
         private readonly IServiceProvider _provider;
         private readonly Dictionary<Type, List<Callsite>> _callsites;
+        private readonly Dictionary<Type, Func<object>>[] _factories;
 
         /// <summary>
-        /// Create a service injector instance
+        /// Create a service manager instance
         /// </summary>
-        public ServiceInjector(IServiceProvider serviceProvider)
+        public ServiceManager()
         {
-            _provider = serviceProvider;
+            _provider = null;
             _callsites = new Dictionary<Type, List<Callsite>>();
+            _factories = new Dictionary<Type, Func<object>>[(int)ServiceScope.Max];
+        }
+
+        /// <summary>
+        /// Add service factory for the specific scope.
+        /// </summary>
+        /// <typeparam name="T">service type</typeparam>
+        /// <param name="scope">global, per-target, per-runtime, etc. service type</param>
+        /// <param name="factory">function to create service instance</param>
+        public void AddServiceFactory<T>(ServiceScope scope, Func<object> factory)
+        {
+            if (scope >= ServiceScope.Max) throw new ArgumentOutOfRangeException(nameof(scope));
+            _factories[(int)scope].Add(typeof(T), factory ?? throw new ArgumentNullException(nameof(factory)));
+        }
+
+        /// <summary>
+        /// Creates a new service provider instance with all the registered factories for the given scope.
+        /// </summary>
+        /// <param name="scope">global, per-target, per-runtime, etc. service type</param>
+        /// <param name="parents">any other service providers to chain</param>
+        /// <returns></returns>
+        public IServiceProvider CreateServiceProvider(ServiceScope scope, Func<IServiceProvider>[] parents = null)
+        {
+            if (scope >= ServiceScope.Max) throw new ArgumentOutOfRangeException(nameof(scope));
+            return new ServiceProvider(parents, _factories[(int)scope]);
         }
 
         /// <summary>
@@ -314,22 +340,6 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                 arguments[i] = provider.GetService(parameters[i].ParameterType);
             }
             return arguments;
-        }
-    }
-
-    /// <summary>
-    /// A set of helpers operating on various collection types.
-    /// </summary>
-    public static class DictionaryExtensions 
-    {
-        public static TValue GetAddValue<TKey, TValue>(this IDictionary<TKey, TValue> dictionary, TKey key, Func<TValue> callback)
-        {
-            if (dictionary.TryGetValue(key, out TValue existingValue)) {
-                return existingValue;
-            }
-            TValue newValue = callback();
-            dictionary.Add(key, newValue);
-            return newValue;
         }
     }
 }

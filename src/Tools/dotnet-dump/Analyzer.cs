@@ -22,6 +22,7 @@ namespace Microsoft.Diagnostics.Tools.Dump
 {
     public class Analyzer : IHost
     {
+        private readonly ServiceManager _serviceManager;
         private readonly ServiceProvider _serviceProvider;
         private readonly ConsoleProvider _consoleProvider;
         private readonly CommandProcessor _commandProcessor;
@@ -34,6 +35,7 @@ namespace Microsoft.Diagnostics.Tools.Dump
         {
             LoggingCommand.Initialize();
 
+            _serviceManager = new ServiceManager();
             _serviceProvider = new ServiceProvider();
             _consoleProvider = new ConsoleProvider();
             _commandProcessor = new CommandProcessor();

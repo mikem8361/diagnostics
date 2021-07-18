@@ -17,7 +17,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// Create a service provider instance
         /// </summary>
         public ServiceProvider()
-            : this(Array.Empty<Func<IServiceProvider>>())
+            : this(null, null)
         {
         }
 
@@ -31,13 +31,23 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         }
 
         /// <summary>
-        /// Create a service provider with parent provider and service factories
+        /// Create a service provider with parent providers
         /// </summary>
         /// <param name="parents">an array of functions to return the next provider to search if service isn't found in this instance</param>
         public ServiceProvider(Func<IServiceProvider>[] parents) 
+            : this(parents, null)
         {
-            _parents = parents;
-            _factories = new Dictionary<Type, Func<object>>();
+        }
+
+        /// <summary>
+        /// Create a service provider with parent provider and service factories
+        /// </summary>
+        /// <param name="parents">an array of functions to return the next provider to search if service isn't found in this instance</param>
+        /// <param name="factories">service factories to initialize provider</param>
+        public ServiceProvider(Func<IServiceProvider>[] parents, Dictionary<Type, Func<object>> factories) 
+        {
+            _parents = parents ?? Array.Empty<Func<IServiceProvider>>();
+            _factories = factories ?? new Dictionary<Type, Func<object>>();
             _services = new Dictionary<Type, object>();
         }
 

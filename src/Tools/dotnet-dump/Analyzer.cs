@@ -22,8 +22,8 @@ namespace Microsoft.Diagnostics.Tools.Dump
 {
     public class Analyzer : IHost
     {
-        private readonly ServiceManager _serviceManager;
         private readonly ServiceProvider _serviceProvider;
+        private readonly ServiceManager _serviceManager;
         private readonly ConsoleProvider _consoleProvider;
         private readonly CommandProcessor _commandProcessor;
         private readonly SymbolService _symbolService;
@@ -35,8 +35,8 @@ namespace Microsoft.Diagnostics.Tools.Dump
         {
             LoggingCommand.Initialize();
 
-            _serviceManager = new ServiceManager();
             _serviceProvider = new ServiceProvider();
+            _serviceManager = new ServiceManager(_serviceProvider);
             _consoleProvider = new ConsoleProvider();
             _commandProcessor = new CommandProcessor();
             _symbolService = new SymbolService(this);
@@ -50,6 +50,15 @@ namespace Microsoft.Diagnostics.Tools.Dump
             _serviceProvider.AddServiceFactory<SOSLibrary>(() => SOSLibrary.Create(this));
 
             _contextService.ServiceProvider.AddServiceFactory<ClrMDHelper>(() => {
+                ClrRuntime clrRuntime = _contextService.Services.GetService<ClrRuntime>();
+                return clrRuntime != null ? new ClrMDHelper(clrRuntime) : null;
+            });
+
+            _serviceManager.AddServiceFactory<SOSLibrary>(ServiceScope.Global, () => SOSLibrary.Create(this));
+            _serviceManager.AddServiceFactory<SOSHost>(ServiceScope.Target, () => new SOSHost(_contextService.Services));
+            _serviceManager.AddServiceFactory<TargetWrapper>(ServiceScope.Target, () => new TargetWrapper(_contextService.Services));
+
+            _serviceManager.AddServiceFactory<ClrMDHelper>(ServiceScope.Runtime, () => {
                 ClrRuntime clrRuntime = _contextService.Services.GetService<ClrRuntime>();
                 return clrRuntime != null ? new ClrMDHelper(clrRuntime) : null;
             });

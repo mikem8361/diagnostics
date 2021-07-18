@@ -42,18 +42,27 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             public CallbackFunc Callback;
         }
 
-        private readonly IServiceProvider _provider;
+        private readonly ServiceProvider _globalProvider;
         private readonly Dictionary<Type, List<Callsite>> _callsites;
         private readonly Dictionary<Type, Func<object>>[] _factories;
+        private readonly List<ServiceProvider>[] _serviceProviders;
 
         /// <summary>
         /// Create a service manager instance
         /// </summary>
-        public ServiceManager()
+        /// <param name="globalProvider">global service provider</param>
+        public ServiceManager(ServiceProvider globalProvider)
         {
-            _provider = null;
+            _globalProvider = globalProvider;
             _callsites = new Dictionary<Type, List<Callsite>>();
             _factories = new Dictionary<Type, Func<object>>[(int)ServiceScope.Max];
+            _serviceProviders = new List<ServiceProvider>[(int)ServiceScope.Max];
+            for (int i = 0; i < (int)ServiceScope.Max; i++)
+            {
+                _factories[i] = new Dictionary<Type, Func<object>>();
+                _serviceProviders[i] = new List<ServiceProvider>();
+            }
+            _serviceProviders[(int)ServiceScope.Global].Add(globalProvider);
         }
 
         /// <summary>
@@ -64,8 +73,12 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// <param name="factory">function to create service instance</param>
         public void AddServiceFactory<T>(ServiceScope scope, Func<object> factory)
         {
-            if (scope >= ServiceScope.Max) throw new ArgumentOutOfRangeException(nameof(scope));
             _factories[(int)scope].Add(typeof(T), factory ?? throw new ArgumentNullException(nameof(factory)));
+
+            foreach (ServiceProvider serviceProvider in _serviceProviders[(int)scope])
+            {
+                serviceProvider.AddServiceFactory<T>(factory);
+            }
         }
 
         /// <summary>
@@ -76,8 +89,13 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// <returns></returns>
         public IServiceProvider CreateServiceProvider(ServiceScope scope, Func<IServiceProvider>[] parents = null)
         {
-            if (scope >= ServiceScope.Max) throw new ArgumentOutOfRangeException(nameof(scope));
-            return new ServiceProvider(parents, _factories[(int)scope]);
+            if (scope == ServiceScope.Global)
+            {
+                return _globalProvider;
+            }
+            var serviceProvider = new ServiceProvider(parents, _factories[(int)scope]);
+            _serviceProviders[(int)scope].Add(serviceProvider);
+            return serviceProvider;
         }
 
         /// <summary>
@@ -117,7 +135,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// <returns>object instance</returns>
         public object CreateInstance(Type type, bool bind = false, params object[] parameters)
         {
-            var provider = new ServiceProvider(_provider);
+            var provider = new ServiceProvider(_globalProvider);
             foreach (object parameter in parameters) {
                 // Add all the base types except object or value type
                 for (Type parameterType = parameter.GetType(); parameterType != null; parameterType = parameterType.BaseType) {
@@ -143,10 +161,10 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         {
             Contract.Requires(instance != null);
 
-            Dictionary<Type, List<Callsite>> callsites = BuildCallsites(instance, provider ?? _provider);
+            Dictionary<Type, List<Callsite>> callsites = BuildCallsites(instance, provider ?? _globalProvider);
 
             foreach (KeyValuePair<Type, List<Callsite>> entry in callsites) {
-                object service = (provider ?? _provider).GetService(entry.Key);
+                object service = (provider ?? _globalProvider).GetService(entry.Key);
                 if (service != null) {
                     foreach (Callsite callsite in entry.Value) {
                         bool collected = callsite.Callback(service); 

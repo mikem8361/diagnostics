@@ -32,7 +32,6 @@ SET_DEFAULT_DEBUG_CHANNEL(PAL); // some headers have code with asserts, so do th
 #include "pal/misc.h"
 #include "pal/environ.h"
 #include "pal/utils.h"
-#include "pal/locale.h"
 #include "pal/init.h"
 #include "pal/stackstring.hpp"
 

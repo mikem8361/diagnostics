@@ -157,19 +157,10 @@ else(WIN32)
 
   if(CMAKE_SYSTEM_NAME STREQUAL Linux OR CMAKE_SYSTEM_NAME STREQUAL FreeBSD OR CMAKE_SYSTEM_NAME STREQUAL NetBSD)
       set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Xlinker -Bsymbolic -Xlinker -Bsymbolic-functions")
-
-      # These options are used to force every object to be included even if it's unused.
-      set(START_WHOLE_ARCHIVE -Wl,--whole-archive)
-      set(END_WHOLE_ARCHIVE -Wl,--no-whole-archive)
-
       set(EXPORTS_LINKER_OPTION -Wl,--version-script=${EXPORTS_FILE})
   endif(CMAKE_SYSTEM_NAME STREQUAL Linux OR CMAKE_SYSTEM_NAME STREQUAL FreeBSD OR CMAKE_SYSTEM_NAME STREQUAL NetBSD)
 
   if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
-      # These options are used to force every object to be included even if it's unused.
-      set(START_WHOLE_ARCHIVE -force_load)
-      set(END_WHOLE_ARCHIVE )
-
       set(EXPORTS_LINKER_OPTION -Wl,-exported_symbols_list,${EXPORTS_FILE})
   endif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
 
@@ -178,10 +169,8 @@ else(WIN32)
     corguids
     debugshim
     dbgutil
-    ${START_WHOLE_ARCHIVE} # force all PAL objects to be included so all exports are available
-    coreclrpal
-    ${END_WHOLE_ARCHIVE}
     palrt
+    coreclrpal
   )
 
 endif(WIN32)

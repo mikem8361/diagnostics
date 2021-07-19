@@ -60,17 +60,11 @@ namespace CorUnix
     public:
         CHAR *       strtokContext; // Context for strtok function
         WCHAR *      wcstokContext; // Context for wcstok function
-        struct PAL_tm localtimeBuffer; // Buffer for localtime function
-        CHAR         ctimeBuffer[ STR_TIME_SIZE ]; // Buffer for ctime function
-        CHAR         ECVTBuffer[ ECVT_MAX_BUFFER_SIZE ]; // Buffer for _ecvt function.
 
         CThreadCRTInfo() :
             strtokContext(NULL),
             wcstokContext(NULL)
         {
-            ZeroMemory(&localtimeBuffer, sizeof(localtimeBuffer));
-            ZeroMemory(ctimeBuffer, sizeof(ctimeBuffer));
-            ZeroMemory(ECVTBuffer, sizeof(ECVTBuffer));
         };
     };
 

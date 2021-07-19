@@ -265,7 +265,7 @@ LPCSTR Runtime::GetDacFilePath()
                     }
                 }
 #endif
-                m_dacFilePath = _strdup(dacModulePath.c_str());
+                m_dacFilePath = strdup(dacModulePath.c_str());
             }
         }
 
@@ -296,7 +296,7 @@ LPCSTR Runtime::GetDbiFilePath()
             if (access(dbiModulePath.c_str(), F_OK) == 0)
 #endif
             {
-                m_dbiFilePath = _strdup(dbiModulePath.c_str());
+                m_dbiFilePath = strdup(dbiModulePath.c_str());
             }
         }
 
@@ -375,7 +375,7 @@ void Runtime::SetRuntimeDirectory(LPCSTR runtimeModuleDirectory)
     }
     if (runtimeModuleDirectory != nullptr)
     {
-        m_runtimeDirectory = _strdup(runtimeModuleDirectory);
+        m_runtimeDirectory = strdup(runtimeModuleDirectory);
     }
 }
 
@@ -392,7 +392,7 @@ LPCSTR Runtime::GetRuntimeDirectory()
             return nullptr;
         }
         // Parse off the file name
-        char* runtimeDirectory = _strdup(m_name);
+        char* runtimeDirectory = strdup(m_name);
         char* lastSlash = strrchr(runtimeDirectory, GetTargetDirectorySeparatorW());
         if (lastSlash != nullptr)
         {

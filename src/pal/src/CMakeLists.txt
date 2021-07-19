@@ -114,12 +114,9 @@ set(ARCH_SOURCES
 set(SOURCES
   cruntime/file.cpp
   cruntime/filecrt.cpp
-  cruntime/lstr.cpp
   cruntime/malloc.cpp
   cruntime/math.cpp
-  cruntime/mbstring.cpp
   cruntime/misc.cpp
-  cruntime/misctls.cpp
   cruntime/path.cpp
   cruntime/printf.cpp
   cruntime/printfcpp.cpp
@@ -140,12 +137,11 @@ set(SOURCES
   loader/module.cpp
   loader/modulename.cpp
   locale/unicode.cpp
-  locale/unicode_data.cpp
+  locale/unicodedata.cpp
   locale/utf8.cpp
   map/common.cpp
   map/map.cpp
   map/virtual.cpp
-  memory/heap.cpp
   memory/local.cpp
   misc/cgroup.cpp
   misc/dbgmsg.cpp
@@ -154,7 +150,6 @@ set(SOURCES
   misc/errorstrings.cpp
   misc/fmtmessage.cpp
   misc/miscpalapi.cpp
-  misc/msgbox.cpp
   misc/strutil.cpp
   misc/sysinfo.cpp
   misc/time.cpp
@@ -219,19 +214,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL Darwin)
 endif(CMAKE_SYSTEM_NAME STREQUAL Darwin)
 
 if(CMAKE_SYSTEM_NAME STREQUAL FreeBSD)
-  find_library(INTL intl)
   target_link_libraries(coreclrpal
     pthread
     rt
-    ${INTL}
   )
 endif(CMAKE_SYSTEM_NAME STREQUAL FreeBSD)
 
 if(CMAKE_SYSTEM_NAME STREQUAL Linux)
-  if(CLR_CMAKE_PLATFORM_ALPINE_LINUX OR CLR_CMAKE_PLATFORM_ANDROID)
-    find_library(INTL intl)
-  endif()
-
   # On Android, we don't need to link with gcc_s, pthread and rt
   if(NOT CLR_CMAKE_PLATFORM_ANDROID)
     target_link_libraries(coreclrpal
@@ -258,7 +247,6 @@ if(CMAKE_SYSTEM_NAME STREQUAL Linux)
   if(CLR_MAKE_PLATFORM_ANDROID)
     find_library(ANDROID_SUPPORT NAMES android-support)
     find_library(ANDROID_GLOB NAMES android-glob)
-    find_library(INTL NAMES intl)
 
     if(ANDROID_SUPPORT STREQUAL ANDROID_SUPPORT-NOTFOUND)
       message(FATAL_ERROR "Cannot find android-support.")
@@ -267,30 +255,19 @@ if(CMAKE_SYSTEM_NAME STREQUAL Linux)
     if(ANDROID_GLOB STREQUAL ANDROID_GLOB-NOTFOUND)
       message(FATAL_ERROR "Cannot find android-glob.")
     endif()
-
-    if(INTL STREQUAL INTL-NOTFOUND)
-      message(FATAL_ERROR "Cannot find libintl.")
-    endif()
   endif()
 
   target_link_libraries(coreclrpal
     dl
   )
-
-  if(NOT INTL STREQUAL INTL-NOTFOUND)
-    target_link_libraries(coreclrpal ${INTL})
-  endif(NOT INTL STREQUAL INTL-NOTFOUND)
-
 endif(CMAKE_SYSTEM_NAME STREQUAL Linux)
 
 if(CMAKE_SYSTEM_NAME STREQUAL NetBSD)
   add_definitions(-D_KMEMUSER)
-  find_library(INTL intl)
   find_library(KVM kvm)
   target_link_libraries(coreclrpal
     pthread
     rt
-    ${INTL}
     ${KVM}
   )
 endif(CMAKE_SYSTEM_NAME STREQUAL NetBSD)

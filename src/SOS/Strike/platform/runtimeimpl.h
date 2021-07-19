@@ -142,14 +142,14 @@ private:
     void SetDacFilePath(LPCSTR dacFilePath)
     { 
         if (m_dacFilePath == nullptr && dacFilePath != nullptr) {
-            m_dacFilePath = _strdup(dacFilePath);
+            m_dacFilePath = strdup(dacFilePath);
         }
     }
 
     void SetDbiFilePath(LPCSTR dbiFilePath) 
     { 
         if (m_dbiFilePath == nullptr && dbiFilePath != nullptr) {
-            m_dbiFilePath = _strdup(dbiFilePath);
+            m_dbiFilePath = strdup(dbiFilePath);
         }
     }
 

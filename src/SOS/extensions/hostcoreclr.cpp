@@ -485,7 +485,7 @@ static HRESULT GetHostRuntime(std::string& coreClrPath, std::string& hostRuntime
         }
 
         // Save away the runtime version we are going to use to host the SOS managed code
-        g_hostRuntimeDirectory = _strdup(hostRuntimeDirectory.c_str());
+        g_hostRuntimeDirectory = strdup(hostRuntimeDirectory.c_str());
     }
     hostRuntimeDirectory.assign(g_hostRuntimeDirectory);
     coreClrPath.assign(g_hostRuntimeDirectory);
@@ -667,7 +667,7 @@ bool SetHostRuntimeDirectory(LPCSTR hostRuntimeDirectory)
         {
             return false;
         }
-        hostRuntimeDirectory = _strdup(fullPath.c_str());
+        hostRuntimeDirectory = strdup(fullPath.c_str());
     }
     if (g_hostRuntimeDirectory != nullptr)
     {

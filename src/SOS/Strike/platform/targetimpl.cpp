@@ -264,7 +264,7 @@ LPCSTR Target::GetTempDirectory()
         strcat_s(tmpPath, MAX_LONGPATH, DIRECTORY_SEPARATOR_STR_A);
 
         CreateDirectoryA(tmpPath, NULL);
-        m_tmpPath = _strdup(tmpPath);
+        m_tmpPath = strdup(tmpPath);
     }
     return m_tmpPath;
 }

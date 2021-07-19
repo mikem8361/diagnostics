@@ -96,17 +96,20 @@ extern "C" {
 #else
 #define PALIMPORT   __declspec(dllimport)
 #endif
+#define DLLEXPORT __declspec(dllexport)
 #define PAL_NORETURN __declspec(noreturn)
 
 #else
 
 #define PALIMPORT
+#define DLLEXPORT __attribute__((visibility("default")))
 #define PAL_NORETURN    __attribute__((noreturn))
 
 #endif
 
-#define PALAPI      __cdecl
-#define PALAPIV     __cdecl
+#define PALAPI             DLLEXPORT __cdecl
+#define PALAPI_NOEXPORT    __cdecl
+#define PALAPIV            __cdecl
 
 ////////////////////////////////////////////////////////////////////////
 // Type attribute stuff
@@ -584,19 +587,10 @@ typedef LONG_PTR LPARAM;
 #define _PTRDIFF_T
 #endif
 
-#ifdef PAL_STDCPP_COMPAT
-
-#ifdef BIT64
-typedef unsigned long int uintptr_t;
-#else // !BIT64
-typedef unsigned int uintptr_t;
-#endif // !BIT64
-
 typedef char16_t WCHAR;
 
-#else // PAL_STDCPP_COMPAT
+#ifndef PAL_STDCPP_COMPAT
 
-typedef wchar_t WCHAR;
 #if defined(__linux__) 
 #ifdef BIT64
 typedef long int intptr_t;
@@ -610,10 +604,10 @@ typedef INT_PTR intptr_t;
 typedef UINT_PTR uintptr_t;
 #endif
 
-#endif // PAL_STDCPP_COMPAT
-
 #define _INTPTR_T_DEFINED
 #define _UINTPTR_T_DEFINED
+
+#endif // PAL_STDCPP_COMPAT
 
 typedef DWORD LCID;
 typedef PDWORD PLCID;
@@ -703,13 +697,6 @@ typedef struct _FILETIME {
 
 /* Code Page Default Values */
 #define CP_ACP          0   /* default to ANSI code page */
-#define CP_OEMCP        1   /* default to OEM code page */
-#define CP_MACCP        2   /* default to MAC code page */
-#define CP_THREAD_ACP   3   /* current thread's ANSI code page */
-#define CP_WINUNICODE   1200
-#define CP_UNICODE      1200 /* Unicode */
-#define CP_UNICODESWAP  1201 /* Unicode Big-Endian */
-#define CP_UTF7     65000   /* UTF-7 translation */
 #define CP_UTF8     65001   /* UTF-8 translation */
 
 typedef PVOID PSID;

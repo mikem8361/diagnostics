@@ -42,7 +42,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             public CallbackFunc Callback;
         }
 
-        private readonly ServiceProvider _globalProvider;
+        private readonly ServiceProvider _provider;
         private readonly Dictionary<Type, List<Callsite>> _callsites;
         private readonly Dictionary<Type, Func<object>>[] _factories;
         private readonly List<ServiceProvider>[] _serviceProviders;
@@ -50,10 +50,9 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// <summary>
         /// Create a service manager instance
         /// </summary>
-        /// <param name="globalProvider">global service provider</param>
-        public ServiceManager(ServiceProvider globalProvider)
+        public ServiceManager()
         {
-            _globalProvider = globalProvider;
+            _provider = null;
             _callsites = new Dictionary<Type, List<Callsite>>();
             _factories = new Dictionary<Type, Func<object>>[(int)ServiceScope.Max];
             _serviceProviders = new List<ServiceProvider>[(int)ServiceScope.Max];
@@ -62,7 +61,6 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                 _factories[i] = new Dictionary<Type, Func<object>>();
                 _serviceProviders[i] = new List<ServiceProvider>();
             }
-            _serviceProviders[(int)ServiceScope.Global].Add(globalProvider);
         }
 
         /// <summary>
@@ -87,12 +85,8 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// <param name="scope">global, per-target, per-runtime, etc. service type</param>
         /// <param name="parents">any other service providers to chain</param>
         /// <returns></returns>
-        public IServiceProvider CreateServiceProvider(ServiceScope scope, Func<IServiceProvider>[] parents = null)
+        public ServiceProvider CreateServiceProvider(ServiceScope scope, Func<IServiceProvider>[] parents = null)
         {
-            if (scope == ServiceScope.Global)
-            {
-                return _globalProvider;
-            }
             var serviceProvider = new ServiceProvider(parents, _factories[(int)scope]);
             _serviceProviders[(int)scope].Add(serviceProvider);
             return serviceProvider;
@@ -135,7 +129,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// <returns>object instance</returns>
         public object CreateInstance(Type type, bool bind = false, params object[] parameters)
         {
-            var provider = new ServiceProvider(_globalProvider);
+            var provider = new ServiceProvider(_provider);
             foreach (object parameter in parameters) {
                 // Add all the base types except object or value type
                 for (Type parameterType = parameter.GetType(); parameterType != null; parameterType = parameterType.BaseType) {
@@ -161,10 +155,10 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         {
             Contract.Requires(instance != null);
 
-            Dictionary<Type, List<Callsite>> callsites = BuildCallsites(instance, provider ?? _globalProvider);
+            Dictionary<Type, List<Callsite>> callsites = BuildCallsites(instance, provider ?? _provider);
 
             foreach (KeyValuePair<Type, List<Callsite>> entry in callsites) {
-                object service = (provider ?? _globalProvider).GetService(entry.Key);
+                object service = (provider ?? _provider).GetService(entry.Key);
                 if (service != null) {
                     foreach (Callsite callsite in entry.Value) {
                         bool collected = callsite.Callback(service); 

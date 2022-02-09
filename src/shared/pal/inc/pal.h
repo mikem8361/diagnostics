@@ -366,7 +366,8 @@ PALIMPORT
 int
 PALAPI
 PAL_InitializeDLL();
-typedef VOID (*PPAL_STARTUP_CALLBACK)(
+
+typedef bool (*PPAL_STARTUP_CALLBACK)(
     char *modulePath,
     HMODULE hModule,
     PVOID parameter);

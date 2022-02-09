@@ -1500,19 +1500,20 @@ public:
 
         for (ProcessModules *entry = listHead; entry != NULL; entry = entry->Next)
         {
-            if (IsCoreClrModule(entry->Name))
-            {
-                PAL_CPP_TRY
-                {
-                    TRACE("InvokeStartupCallback executing callback %p %s\n", entry->BaseAddress, entry->Name);
-                    m_callback(entry->Name, entry->BaseAddress, m_parameter);
-                }
-                PAL_CPP_CATCH_ALL
-                {
-                }
-                PAL_CPP_ENDTRY
+            bool found = false;
 
-                // Currently only the first coreclr module in a process is supported
+            PAL_CPP_TRY
+            {
+                TRACE("InvokeStartupCallback executing callback %p %s\n", entry->BaseAddress, entry->Name);
+                found = m_callback(entry->Name, entry->BaseAddress, m_parameter);
+            }
+            PAL_CPP_CATCH_ALL
+            {
+            }
+            PAL_CPP_ENDTRY
+
+            if (found)
+            {
                 break;
             }
         }

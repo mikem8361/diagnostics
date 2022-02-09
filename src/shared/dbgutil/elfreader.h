@@ -32,6 +32,7 @@ typedef struct {
 class ElfReader
 {
 private:
+    bool m_isFileLayout;
     void* m_gnuHashTableAddr;               // DT_GNU_HASH
     void* m_stringTableAddr;                // DT_STRTAB
     int m_stringTableSize;                  // DT_STRSIZ
@@ -42,7 +43,7 @@ private:
     void* m_chainsAddress;
 
 public:
-    ElfReader();
+    ElfReader(bool isFileLayout);
     virtual ~ElfReader();
 #ifdef HOST_UNIX
     bool EnumerateElfInfo(ElfW(Phdr)* phdrAddr, int phnum);
@@ -65,6 +66,6 @@ private:
     virtual void VisitModule(uint64_t baseAddress, std::string& moduleName) { };
     virtual void VisitProgramHeader(uint64_t loadbias, uint64_t baseAddress, ElfW(Phdr)* phdr) { };
     virtual bool ReadMemory(void* address, void* buffer, size_t size) = 0;
-    virtual void Trace(const char* format, ...) { };
-    virtual void TraceVerbose(const char* format, ...) { };
+    virtual void Trace(const char* format, ...);
+    virtual void TraceVerbose(const char* format, ...);
 };

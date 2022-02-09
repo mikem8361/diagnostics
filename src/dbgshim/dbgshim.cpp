@@ -14,7 +14,7 @@
 #include <tlhelp32.h>
 #include <cor.h>
 #include <sstring.h>
-#ifndef TARGET_UNIX
+#ifdef TARGET_WINDOWS
 #include <securityutil.h>
 #endif
 
@@ -25,12 +25,13 @@
 #include <dbgenginemetrics.h>
 #include <arrayholder.h>
 
-#ifndef TARGET_UNIX
+#ifdef TARGET_WINDOWS
 #define PSAPI_VERSION 2
 #include <psapi.h>
 #endif
 
 #include "dbgshim.h"
+#include "debugshim.h"
 
 /*
 
@@ -172,7 +173,7 @@ CloseResumeHandle(
 #ifdef TARGET_UNIX
 
 static
-void
+bool
 RuntimeStartupHandler(
     char *pszModulePath,
     HMODULE hModule,
@@ -185,14 +186,48 @@ DWORD
 StartupHelperThread(
     LPVOID p);
 
-static
-HRESULT
-GetContinueStartupEvent(
-    DWORD debuggeePID,
-    LPCWSTR szTelestoFullPath,
-    _Out_ HANDLE *phContinueStartupEvent);
-
 #endif // TARGET_UNIX
+
+struct ClrRuntimeInfo
+{
+    WCHAR ModulePath[MAX_LONGPATH];
+    HMODULE ModuleHandle;
+    HANDLE ContinueStartupEvent;
+    CLR_ENGINE_METRICS EngineMetrics;
+    ClrInfo ClrInfo;
+
+    ClrRuntimeInfo()
+    {
+        ModulePath[0] = W('\0');
+        ModuleHandle = NULL;
+        ContinueStartupEvent = INVALID_HANDLE_VALUE;
+
+        EngineMetrics.cbSize = sizeof(EngineMetrics);
+        EngineMetrics.dwDbiVersion = CorDebugLatestVersion;
+        EngineMetrics.phContinueStartupEvent = NULL;
+    }
+};
+
+HRESULT
+GetRuntime(
+    DWORD debuggeePID,
+    ClrRuntimeInfo& clrRuntimeInfo);
+
+void
+GetTargetCLRMetrics(
+    LPCWSTR wszModulePath,
+    CLR_ENGINE_METRICS *pEngineMetricsOut,
+    ClrInfo* pClrInfoOut = NULL,
+    DWORD *pdwRVAContinueStartupEvent = NULL);
+
+void
+AppendDbiDllName(
+    SString & szFullDbiPath);
+
+bool
+CheckDbiAndRuntimeVersion(
+    SString & szFullDbiPath,
+    SString & szFullCoreClrPath);
 
 // Functions that we'll look for in the loaded Mscordbi module.
 typedef HRESULT (STDAPICALLTYPE *FPCoreCLRCreateCordbObject)(
@@ -208,48 +243,94 @@ typedef HRESULT (STDAPICALLTYPE *FPCoreCLRCreateCordbObjectEx)(
     HMODULE hmodTargetCLR,
     IUnknown **ppCordb);
 
-HRESULT CreateCoreDbgWithSandboxSupport(
-    HMODULE hCLRModule, HMODULE hDBIModule, DWORD processId, LPCWSTR lpApplicationGroupId, int iDebuggerVersion, IUnknown **ppCordb)
-{
-    FPCoreCLRCreateCordbObjectEx fpCreate =
-        (FPCoreCLRCreateCordbObjectEx)GetProcAddress(hDBIModule, "CoreCLRCreateCordbObjectEx");
-    if (fpCreate == NULL)
-    {
-        return CORDBG_E_INCOMPATIBLE_PROTOCOL;
-    }
-
-    return fpCreate(iDebuggerVersion, processId, lpApplicationGroupId, hCLRModule, ppCordb);
-}
-
-HRESULT CreateCoreDbgWithoutSandboxSupport(
-    HMODULE hCLRModule, HMODULE hDBIModule, DWORD processId, int iDebuggerVersion, IUnknown **ppCordb)
-{
-    FPCoreCLRCreateCordbObject fpCreate =
-        (FPCoreCLRCreateCordbObject)GetProcAddress(hDBIModule, "CoreCLRCreateCordbObject");
-    if (fpCreate == NULL)
-    {
-        return CORDBG_E_INCOMPATIBLE_PROTOCOL;
-    }
-
-    return fpCreate(iDebuggerVersion, processId, hCLRModule, ppCordb);
-}
+typedef HRESULT (STDAPICALLTYPE *FPCoreCLRCreateCordbObject3)(
+    int iDebuggerVersion,
+    DWORD pid,
+    LPCWSTR lpApplicationGroupId,
+    LPCWSTR dacModulePath,
+    HMODULE hmodTargetCLR,
+    IUnknown **ppCordb);
 
 HRESULT CreateCoreDbg(
-    HMODULE hCLRModule, HMODULE hDBIModule, DWORD processId, LPCWSTR lpApplicationGroupId, int iDebuggerVersion, IUnknown **ppCordb)
+    HMODULE hCLRModule,
+    DWORD processId,
+    SString& dbiModulePath,
+    SString& dacModulePath,
+    LPCWSTR lpApplicationGroupId,
+    int iDebuggerVersion,
+    IUnknown **ppCordb)
 {
+    HMODULE hDbi = NULL;
     HRESULT hr = S_OK;
 
-    if (lpApplicationGroupId != NULL)
+    hDbi = LoadLibraryW(dbiModulePath);
+    if (hDbi != NULL)
     {
-        hr = CreateCoreDbgWithSandboxSupport(hCLRModule, hDBIModule, processId, lpApplicationGroupId, iDebuggerVersion, ppCordb);
+        FPCoreCLRCreateCordbObject3 fpCreate3 = (FPCoreCLRCreateCordbObject3)GetProcAddress(hDbi, "CoreCLRCreateCordbObject3");
+        if (fpCreate3 != NULL)
+        {
+            hr = fpCreate3(iDebuggerVersion, processId, lpApplicationGroupId, dacModulePath.IsEmpty() ? NULL : (LPCWSTR)dacModulePath, hCLRModule, ppCordb);
+        }
+        else
+        {
+            if (lpApplicationGroupId != NULL)
+            {
+                FPCoreCLRCreateCordbObjectEx fpCreateEx = (FPCoreCLRCreateCordbObjectEx)GetProcAddress(hDbi, "CoreCLRCreateCordbObjectEx");
+                if (fpCreateEx != NULL)
+                {
+                    hr = fpCreateEx(iDebuggerVersion, processId, lpApplicationGroupId, hCLRModule, ppCordb);
+                }
+                else
+                {
+                    hr = CORDBG_E_INCOMPATIBLE_PROTOCOL;
+                }
+            }
+            else
+            {
+                FPCoreCLRCreateCordbObject fpCreate = (FPCoreCLRCreateCordbObject)GetProcAddress(hDbi, "CoreCLRCreateCordbObject");
+                if (fpCreate != NULL)
+                {
+                    hr = fpCreate(iDebuggerVersion, processId, hCLRModule, ppCordb);
+                }
+                else
+                {
+                    hr = CORDBG_E_INCOMPATIBLE_PROTOCOL;
+                }
+            }
+        }
     }
     else
     {
-        hr = CreateCoreDbgWithoutSandboxSupport(hCLRModule, hDBIModule, processId, iDebuggerVersion, ppCordb);
+        hr = CORDBG_E_DEBUG_COMPONENT_MISSING;
+    }
+
+    if (FAILED(hr))
+    {
+        if (hDbi != NULL)
+        {
+            FreeLibrary(hDbi);
+        }
     }
 
     return hr;
 }
+
+#ifdef TARGET_UNIX
+
+static bool 
+IsCoreClrModule(const char* pModulePath)
+{
+    // Strip off everything up to and including the last slash in the path to get name
+    const char* pModuleName = pModulePath;
+    while (strchr(pModuleName, '/') != NULL)
+    {
+        pModuleName = strchr(pModuleName, '/');
+        pModuleName++; // pass the slash
+    }
+    return _stricmp(pModuleName, MAKEDLLNAME_A("coreclr")) == 0;
+}
+
+#endif // TARGET_UNIX
 
 //
 // Helper class for RegisterForRuntimeStartup
@@ -258,6 +339,7 @@ class RuntimeStartupHelper
 {
     LONG m_ref;
     DWORD m_processId;
+    ICLRDebuggingLibraryProvider* m_pLibraryProvider;
     PSTARTUP_CALLBACK m_callback;
     PVOID m_parameter;
 #ifdef TARGET_UNIX
@@ -271,9 +353,11 @@ class RuntimeStartupHelper
 #endif // TARGET_UNIX
 
 public:
-    RuntimeStartupHelper(DWORD dwProcessId, PSTARTUP_CALLBACK pfnCallback, PVOID parameter) :
+    
+    RuntimeStartupHelper(DWORD dwProcessId, ICLRDebuggingLibraryProvider* pLibraryProvider, PSTARTUP_CALLBACK pfnCallback, PVOID parameter) :
         m_ref(1),
         m_processId(dwProcessId),
+        m_pLibraryProvider(pLibraryProvider),
         m_callback(pfnCallback),
         m_parameter(parameter),
 #ifdef TARGET_UNIX
@@ -286,10 +370,18 @@ public:
         m_threadHandle(NULL)
 #endif // TARGET_UNIX
     {
+        if (pLibraryProvider != NULL)
+        {
+            pLibraryProvider->AddRef();
+        }
     }
 
     ~RuntimeStartupHelper()
     {
+        if (m_pLibraryProvider != NULL)
+        {
+            m_pLibraryProvider->Release();
+        }
 #ifdef TARGET_UNIX
         if (m_applicationGroupId != NULL)
         {
@@ -351,11 +443,11 @@ public:
         PAL_UnregisterForRuntimeStartup(m_unregisterToken);
     }
 
-    void InvokeStartupCallback(char *pszModulePath, HMODULE hModule)
+    bool InvokeStartupCallback(char *pszModulePath, HMODULE hModule)
     {
         IUnknown *pCordb = NULL;
-        HMODULE hMod = NULL;
         HRESULT hr = S_OK;
+        ClrInfo clrInfo;
 
         // If either of these are NULL, there was an error from the PAL
         // callback. GetLastError returns the error code from the PAL.
@@ -365,29 +457,48 @@ public:
             goto exit;
         }
 
+        // Now check if this is the coreclr module or a single-file app module
+        if (!IsCoreClrModule(pszModulePath))
+        {
+            EX_TRY
+            {
+                SString runtimeModulePath;
+                runtimeModulePath.SetASCII(pszModulePath);
+                GetTargetCLRMetrics(runtimeModulePath, NULL, &clrInfo, NULL); // throws
+            }
+            EX_CATCH_HRESULT(hr);
+            if (FAILED(hr))
+            { 
+                return false;
+            }
+        }
+
         PAL_CPP_TRY
         {
-            char dbiPath[MAX_LONGPATH];
-
-            char *pszLast = strrchr(pszModulePath, DIRECTORY_SEPARATOR_CHAR_A);
-            if (pszLast == NULL)
+            SString dbiModulePath;
+            SString dacModulePath;
+            if (m_pLibraryProvider != NULL && clrInfo.IsValid())
             {
-                _ASSERT(!"InvokeStartupCallback: can find separator in coreclr path\n");
-                hr = E_INVALIDARG;
-                goto exit;
+                hr = CLRDebuggingImpl::ProvideLibraries(clrInfo, m_pLibraryProvider, dbiModulePath, dacModulePath);
+                if (FAILED(hr))
+                {
+                    goto exit;
+                }
+            }
+            else
+            {
+                char *pszLast = strrchr(pszModulePath, DIRECTORY_SEPARATOR_CHAR_A);
+                if (pszLast == NULL)
+                {
+                    _ASSERT(!"InvokeStartupCallback: can find separator in coreclr path\n");
+                    hr = E_INVALIDARG;
+                    goto exit;
+                }
+                dbiModulePath.SetASCII(pszModulePath, pszLast - pszModulePath);
+                dbiModulePath.AppendASCII(DIRECTORY_SEPARATOR_STR_A MAKEDLLNAME_A("mscordbi"));
             }
 
-            strncpy_s(dbiPath, ARRAY_SIZE(dbiPath), pszModulePath, pszLast - pszModulePath);
-            strcat_s(dbiPath, ARRAY_SIZE(dbiPath), DIRECTORY_SEPARATOR_STR_A MAKEDLLNAME_A("mscordbi"));
-
-            hMod = LoadLibraryA(dbiPath);
-            if (hMod == NULL)
-            {
-                hr = CORDBG_E_DEBUG_COMPONENT_MISSING;
-                goto exit;
-            }
-
-            HRESULT hr = CreateCoreDbg(hModule, hMod, m_processId, m_applicationGroupId, CorDebugVersion_2_0, &pCordb);
+            HRESULT hr = CreateCoreDbg(hModule, m_processId, dbiModulePath, dacModulePath, m_applicationGroupId, CorDebugVersion_2_0, &pCordb);
             _ASSERTE((pCordb == NULL) == FAILED(hr));
             if (FAILED(hr))
             {
@@ -408,14 +519,11 @@ public:
         {
             _ASSERTE(pCordb == NULL);
 
-            if (hMod != NULL)
-            {
-                FreeLibrary(hMod);
-            }
-
             // Invoke the callback on error
             m_callback(NULL, m_parameter, hr);
         }
+
+        return true;
     }
 
 #else // TARGET_UNIX
@@ -450,51 +558,32 @@ public:
         return hr;
     }
 
-    bool AreAllHandlesValid(HANDLE *handleArray, DWORD arrayLength)
-    {
-        for (int i = 0; i < (int)arrayLength; i++)
-        {
-            HANDLE h = handleArray[i];
-            if (h == INVALID_HANDLE_VALUE)
-            {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    HRESULT InternalEnumerateCLRs(HANDLE** ppHandleArray, _In_reads_(*pdwArrayLength) LPWSTR** ppStringArray, DWORD* pdwArrayLength)
+    HRESULT InternalGetRuntime(ClrRuntimeInfo& clrRuntimeInfo)
     {
         int numTries = 0;
         HRESULT hr;
 
         while (numTries < 25)
         {
-            hr = EnumerateCLRs(m_processId, ppHandleArray, ppStringArray, pdwArrayLength);
+            hr = GetRuntime(m_processId, clrRuntimeInfo);
 
             // EnumerateCLRs uses the OS API CreateToolhelp32Snapshot which can return ERROR_BAD_LENGTH or
             // ERROR_PARTIAL_COPY. If we get either of those, we try wait 1/10th of a second try again (that
             // is the recommendation of the OS API owners).
             if ((hr != HRESULT_FROM_WIN32(ERROR_PARTIAL_COPY)) && (hr != HRESULT_FROM_WIN32(ERROR_BAD_LENGTH)))
             {
-                // Just return any other error or if no handles were found (which means the coreclr module wasn't found yet).
-                if (FAILED(hr) || *ppHandleArray == NULL || *pdwArrayLength <= 0)
+                // Just return any other error or if no runtimes were found (which means the coreclr module wasn't found yet).
+                if (FAILED(hr) || hr == S_FALSE)
                 {
                     return hr;
                 }
-                // If EnumerateCLRs succeeded but any of the handles are INVALID_HANDLE_VALUE, then sleep and retry
-                // also. This fixes a race condition where dbgshim catches the coreclr module just being loaded but
-                // before g_hContinueStartupEvent has been initialized.
-                if (AreAllHandlesValid(*ppHandleArray, *pdwArrayLength))
+                // If GetRuntime succeeded but the handle is INVALID_HANDLE_VALUE, then sleep and retry also. This fixes a 
+                // race condition where dbgshim catches the coreclr module just being loaded but before g_hContinueStartupEvent
+                // has been initialized.
+                if (clrRuntimeInfo.ContinueStartupEvent != INVALID_HANDLE_VALUE)
                 {
                     return hr;
                 }
-                // Clean up memory allocated in EnumerateCLRs since this path it succeeded
-                CloseCLREnumeration(*ppHandleArray, *ppStringArray, *pdwArrayLength);
-
-                *ppHandleArray = NULL;
-                *ppStringArray = NULL;
-                *pdwArrayLength = 0;
             }
 
             // Sleep and retry enumerating the runtimes
@@ -513,35 +602,19 @@ public:
         return hr;
     }
 
-    void WakeRuntimes(HANDLE *handleArray, DWORD arrayLength)
-    {
-        if (handleArray != NULL)
-        {
-            for (int i = 0; i < (int)arrayLength; i++)
-            {
-                HANDLE h = handleArray[i];
-                if (h != NULL && h != INVALID_HANDLE_VALUE)
-                {
-                    SetEvent(h);
-                }
-            }
-        }
-    }
-
     void Unregister()
     {
         m_canceled = true;
 
-        HANDLE *handleArray = NULL;
-        LPWSTR *stringArray = NULL;
-        DWORD arrayLength = 0;
-
-        // Wake up runtime(s)
-        HRESULT hr = EnumerateCLRs(m_processId, &handleArray, &stringArray, &arrayLength);
+        // Wake up runtime
+        ClrRuntimeInfo clrRuntimeInfo;
+        HRESULT hr = GetRuntime(m_processId, clrRuntimeInfo);
         if (SUCCEEDED(hr))
         {
-            WakeRuntimes(handleArray, arrayLength);
-            CloseCLREnumeration(handleArray, stringArray, arrayLength);
+            if (clrRuntimeInfo.ContinueStartupEvent != NULL && clrRuntimeInfo.ContinueStartupEvent != INVALID_HANDLE_VALUE)
+            {
+                SetEvent(clrRuntimeInfo.ContinueStartupEvent);
+            }
         }
 
         // Wake up worker thread
@@ -557,45 +630,66 @@ public:
 
     HRESULT InvokeStartupCallback(bool *pCoreClrExists)
     {
-        HANDLE *handleArray = NULL;
-        LPWSTR *stringArray = NULL;
-        DWORD arrayLength = 0;
+        ClrRuntimeInfo clrRuntimeInfo;
         HRESULT hr = S_OK;
 
         PAL_CPP_TRY
         {
             IUnknown *pCordb = NULL;
-            WCHAR verStr[MAX_LONGPATH];
-            DWORD verLen;
 
             *pCoreClrExists = FALSE;
 
-            hr = InternalEnumerateCLRs(&handleArray, &stringArray, &arrayLength);
+            hr = InternalGetRuntime(clrRuntimeInfo);
             if (FAILED(hr))
             {
                 goto exit;
             }
 
-            for (int i = 0; i < (int)arrayLength; i++)
+            // S_FALSE means there are no runtimes and no falures
+            if (hr == S_OK)
             {
                 *pCoreClrExists = TRUE;
 
-                hr = CreateVersionStringFromModule(m_processId, stringArray[i], verStr, ARRAY_SIZE(verStr), &verLen);
-                if (FAILED(hr))
+                SString dbiModulePath;
+                SString dacModulePath;
+                if (m_pLibraryProvider != NULL && clrRuntimeInfo.ClrInfo.IsValid())
                 {
-                    goto exit;
+                    hr = CLRDebuggingImpl::ProvideLibraries(clrRuntimeInfo.ClrInfo, m_pLibraryProvider, dbiModulePath, dacModulePath);
+                    if (FAILED(hr))
+                    {
+                        goto exit;
+                    }
+                }
+                else 
+                {
+                    WCHAR * pLast = wcsrchr(clrRuntimeInfo.ModulePath, DIRECTORY_SEPARATOR_CHAR_W);
+                    if (pLast == NULL)
+                    {
+                        hr = E_FAIL;
+                        goto exit;
+                    }
+                    dbiModulePath.Set(clrRuntimeInfo.ModulePath, (COUNT_T)(pLast - clrRuntimeInfo.ModulePath));
+                    AppendDbiDllName(dbiModulePath);
+
+                    if (!CheckDbiAndRuntimeVersion(dbiModulePath, SString(clrRuntimeInfo.ModulePath)))
+                    {
+                        hr = CORDBG_E_INCOMPATIBLE_PROTOCOL;
+                        goto exit;
+                    }
                 }
 
-                hr = CreateDebuggingInterfaceFromVersion(verStr, &pCordb);
+                hr = CreateCoreDbg(clrRuntimeInfo.ModuleHandle, m_processId, dbiModulePath, dacModulePath, NULL, clrRuntimeInfo.EngineMetrics.dwDbiVersion, &pCordb);
+                _ASSERTE((pCordb == NULL) == FAILED(hr));
                 if (FAILED(hr))
                 {
                     goto exit;
                 }
 
                 m_callback(pCordb, m_parameter, S_OK);
-
-                // Currently only the first coreclr module in a process is supported
-                break;
+            }
+            else
+            {
+                hr = S_OK;
             }
         }
         PAL_CPP_CATCH_ALL
@@ -608,10 +702,12 @@ public:
     exit:
         if (*pCoreClrExists)
         {
-            // Wake up all the runtimes
-            WakeRuntimes(handleArray, arrayLength);
+            // Wake up the runtime
+            if (clrRuntimeInfo.ContinueStartupEvent != NULL && clrRuntimeInfo.ContinueStartupEvent != INVALID_HANDLE_VALUE)
+            {
+                SetEvent(clrRuntimeInfo.ContinueStartupEvent);
+            }
         }
-        CloseCLREnumeration(handleArray, stringArray, arrayLength);
 
         return hr;
     }
@@ -621,7 +717,7 @@ public:
         bool coreclrExists = false;
 
         HRESULT hr = InvokeStartupCallback(&coreclrExists);
-        // The retry logic in InternalEnumerateCLRs failed if ERROR_TIMEOUT was returned.
+        // The retry logic in InternalGetRuntime failed if ERROR_TIMEOUT was returned.
         if (SUCCEEDED(hr) || (hr == HRESULT_FROM_WIN32(ERROR_TIMEOUT)))
         {
             if (!coreclrExists && !m_canceled)
@@ -661,11 +757,11 @@ public:
 #ifdef TARGET_UNIX
 
 static
-void
+bool
 RuntimeStartupHandler(char *pszModulePath, HMODULE hModule, PVOID parameter)
 {
     RuntimeStartupHelper *helper = (RuntimeStartupHelper *)parameter;
-    helper->InvokeStartupCallback(pszModulePath, hModule);
+    return helper->InvokeStartupCallback(pszModulePath, hModule);
 }
 
 #else // TARGET_UNIX
@@ -702,8 +798,9 @@ RegisterForRuntimeStartup(
     _In_ PVOID parameter,
     _Out_ PVOID *ppUnregisterToken)
 {
-    return RegisterForRuntimeStartupEx(dwProcessId, NULL, pfnCallback, parameter, ppUnregisterToken);
+    return RegisterForRuntimeStartup3(dwProcessId, NULL, NULL, pfnCallback, parameter, ppUnregisterToken);
 }
+
 //-----------------------------------------------------------------------------
 // Public API.
 //
@@ -744,6 +841,51 @@ RegisterForRuntimeStartupEx(
     _In_ PVOID parameter,
     _Out_ PVOID *ppUnregisterToken)
 {
+    return RegisterForRuntimeStartup3(dwProcessId, lpApplicationGroupId, NULL, pfnCallback, parameter, ppUnregisterToken);
+}
+
+//-----------------------------------------------------------------------------
+// Public API.
+//
+// RegisterForRuntimeStartup3 -- executes the callback when the coreclr runtime
+//      starts in the specified process. The callback is passed the proper ICorDebug
+//      instance for the version of the runtime or an error if something fails. This
+//      API works for launch and attach (and even the attach scenario if the runtime
+//      hasn't been loaded yet) equally on both xplat and Windows. The callback is
+//      always called on a separate thread. This API returns immediately.
+//
+//      The callback is invoked when the coreclr runtime module is loaded during early
+//      initialization. The runtime is blocked during initialization until the callback
+//      returns.
+//
+//      If the runtime is already loaded in the process (as in the normal attach case),
+//      the callback is executed and the runtime is not blocked.
+//
+//      The callback is always invoked on a separate thread and this API returns immediately.
+//
+//      Only the first coreclr module instance found in the target process is currently
+//      supported.
+//
+// dwProcessId -- process id of the target process
+// lpApplicationGroupId - A string representing the application group ID of a sandboxed
+//                        process running in Mac. Pass NULL if the process is not
+//                        running in a sandbox and other platforms.
+// pLibraryProvider - a callback for locating DBI and DAC
+// pfnCallback -- invoked when coreclr runtime starts
+// parameter -- data to pass to callback
+// ppUnregisterToken -- pointer to put the UnregisterForRuntimeStartup token.
+//
+//-----------------------------------------------------------------------------
+DLLEXPORT
+HRESULT
+RegisterForRuntimeStartup3(
+    _In_ DWORD dwProcessId,
+    _In_ LPCWSTR lpApplicationGroupId,
+    _In_ ICLRDebuggingLibraryProvider* pLibraryProvider,
+    _In_ PSTARTUP_CALLBACK pfnCallback,
+    _In_ PVOID parameter,
+    _Out_ PVOID *ppUnregisterToken)
+{
     PUBLIC_CONTRACT;
 
     if (pfnCallback == NULL || ppUnregisterToken == NULL)
@@ -753,7 +895,7 @@ RegisterForRuntimeStartupEx(
 
     HRESULT hr = S_OK;
 
-    RuntimeStartupHelper *helper = new (nothrow) RuntimeStartupHelper(dwProcessId, pfnCallback, parameter);
+    RuntimeStartupHelper *helper = new (nothrow) RuntimeStartupHelper(dwProcessId, pLibraryProvider, pfnCallback, parameter);
     if (helper == NULL)
     {
         hr = E_OUTOFMEMORY;
@@ -832,7 +974,7 @@ GetStartupNotificationEvent(
     if (phStartupEvent == NULL)
         return E_INVALIDARG;
 
-#ifndef TARGET_UNIX
+#ifdef TARGET_WINDOWS
     HRESULT hr;
     DWORD currentSessionId = 0, debuggeeSessionId = 0;
     if (!ProcessIdToSessionId(GetCurrentProcessId(), &currentSessionId))
@@ -900,9 +1042,10 @@ GetStartupNotificationEvent(
 #else
     *phStartupEvent = NULL;
     return E_NOTIMPL;
-#endif // TARGET_UNIX
+#endif // TARGET_WINDOWS
 }
-// Refer to clr\src\mscoree\mscorwks_ntdef.src.
+
+// Refer to src\coreclr\dlls\mscoree\mscorwks_ntdef.src
 const WORD kOrdinalForMetrics = 2;
 
 //-----------------------------------------------------------------------------
@@ -911,8 +1054,9 @@ const WORD kOrdinalForMetrics = 2;
 // startup event for a coreclr.dll specified by its full path.
 //
 // Arguments:
-//   szTelestoFullPath - (in) full path of telesto
-//   pEngineMetricsOut - (out) filled in based on metrics from target telesto.
+//   wszModulePath - (in) full path of possible coreclr or single file module
+//   pEngineMetricsOut - (out; optional) filled in based on metrics from target runtime
+//   pClrInfoOut - (out; optional) filled in from the DotNetRuntimeInfo export for single-file apps
 //   pdwRVAContinueStartupEvent - (out; optional) return the RVA to the continue startup event
 //
 // Returns:
@@ -928,9 +1072,10 @@ const WORD kOrdinalForMetrics = 2;
 static
 void
 GetTargetCLRMetrics(
-    LPCWSTR szTelestoFullPath,
+    LPCWSTR wszModulePath,
     CLR_ENGINE_METRICS *pEngineMetricsOut,
-    DWORD *pdwRVAContinueStartupEvent = NULL)
+    ClrInfo* pClrInfoOut,
+    DWORD *pdwRVAContinueStartupEvent)
 {
     CONTRACTL
     {
@@ -938,13 +1083,12 @@ GetTargetCLRMetrics(
     }
     CONTRACTL_END;
 
-    CONSISTENCY_CHECK(szTelestoFullPath != NULL);
-    CONSISTENCY_CHECK(pEngineMetricsOut != NULL);
+    CONSISTENCY_CHECK(wszModulePath != NULL);
 
-#ifndef TARGET_UNIX
+#ifdef TARGET_WINDOWS
     HRESULT hr = S_OK;
 
-    HandleHolder hCoreClrFile = WszCreateFile(szTelestoFullPath,
+    HandleHolder hCoreClrFile = WszCreateFile(wszModulePath,
                                               GENERIC_READ,
                                               FILE_SHARE_READ,
                                               NULL,                 // default security descriptor
@@ -998,56 +1142,88 @@ GetTargetCLRMetrics(
     {
         ThrowHR(E_FAIL);
     }
-    IMAGE_DATA_DIRECTORY * pExportDirectoryEntry = pedecoder.GetDirectoryEntry(IMAGE_DIRECTORY_ENTRY_EXPORT);
 
-    // At this point we can safely read the IMAGE_DATA_DIRECTORY of the export directory.
-
-    if (!pedecoder.CheckDirectory(pExportDirectoryEntry))
+    // If we are looking for the DotNetRuntimeInfo export for a single-file app, do this before looking for
+    // engine metrics export ordinal for a faster out of the module search loop. There are plenty of other 
+    // native modules with the metrics ordinal #2.
+    if (pClrInfoOut != NULL)
     {
-        ThrowHR(E_FAIL);
-    }
-    IMAGE_EXPORT_DIRECTORY * pExportDir =
-        reinterpret_cast<IMAGE_EXPORT_DIRECTORY *>(pedecoder.GetDirectoryData(pExportDirectoryEntry));
-
-    // At this point we have checked that everything in the export directory is readable.
-
-    // Check to make sure the ordinal we have fits in the table in the export directory.
-    // The "base" here is like the starting index of the arrays in the export directory.
-    if ((pExportDir->Base > kOrdinalForMetrics) ||
-        (pExportDir->NumberOfFunctions < (kOrdinalForMetrics - pExportDir->Base)))
-    {
-        ThrowHR(E_FAIL);
-    }
-    DWORD dwRealIndex = kOrdinalForMetrics - pExportDir->Base;
-
-    // Check that we can read the RVA at the element (specified by the ordinal) in the export address table.
-    // Then read the RVA to the CLR_ENGINE_METRICS.
-    if (!pedecoder.CheckRva(pExportDir->AddressOfFunctions, (dwRealIndex + 1) * sizeof(DWORD)))
-    {
-        ThrowHR(E_FAIL);
-    }
-    DWORD rvaMetrics = *reinterpret_cast<DWORD *>(
-        pedecoder.GetRvaData(pExportDir->AddressOfFunctions + dwRealIndex * sizeof(DWORD)));
-
-    // Make sure we can safely read the CLR_ENGINE_METRICS at the RVA we have retrieved.
-    if (!pedecoder.CheckRva(rvaMetrics, sizeof(*pEngineMetricsOut)))
-    {
-        ThrowHR(E_FAIL);
+        PTR_VOID runtimeInfoExport = pedecoder.GetExport(RUNTIME_INFO_SIGNATURE);
+        if (runtimeInfoExport == NULL)
+        {
+            ThrowHR(E_FAIL);
+        }
+        RuntimeInfo* pRuntimeInfo = reinterpret_cast<RuntimeInfo*>(runtimeInfoExport);
+        if (strncmp(pRuntimeInfo->Signature, RUNTIME_INFO_SIGNATURE, sizeof(pRuntimeInfo->Signature)) != 0)
+        {
+            ThrowHR(E_FAIL);
+        }
+        if (pRuntimeInfo->DbiModuleIndex[0] < (sizeof(DWORD) + sizeof(DWORD)) || pRuntimeInfo->DacModuleIndex[0] < (sizeof(DWORD) + sizeof(DWORD)))
+        {
+            ThrowHR(E_FAIL);
+        }
+        pClrInfoOut->DbiTimeStamp = *((DWORD*)&pRuntimeInfo->DbiModuleIndex[1]);
+        pClrInfoOut->DbiSizeOfImage = *((DWORD*)&pRuntimeInfo->DbiModuleIndex[5]);
+        pClrInfoOut->DacTimeStamp = *((DWORD*)&pRuntimeInfo->DacModuleIndex[1]);
+        pClrInfoOut->DacSizeOfImage = *((DWORD*)&pRuntimeInfo->DacModuleIndex[5]);
     }
 
-    // Finally, copy the CLR_ENGINE_METRICS into the output buffer.
-    CLR_ENGINE_METRICS * pMetricsInFile = reinterpret_cast<CLR_ENGINE_METRICS *>(pedecoder.GetRvaData(rvaMetrics));
-    *pEngineMetricsOut = *pMetricsInFile;
-
-    // At this point, we have retrieved the CLR_ENGINE_METRICS from the target process and
-    // stored it in output buffer.
-    if (pEngineMetricsOut->cbSize != sizeof(*pEngineMetricsOut))
+    if (pEngineMetricsOut != NULL)
     {
-        ThrowHR(E_INVALIDARG);
+        IMAGE_DATA_DIRECTORY * pExportDirectoryEntry = pedecoder.GetDirectoryEntry(IMAGE_DIRECTORY_ENTRY_EXPORT);
+
+        // At this point we can safely read the IMAGE_DATA_DIRECTORY of the export directory.
+
+        if (!pedecoder.CheckDirectory(pExportDirectoryEntry))
+        {
+            ThrowHR(E_FAIL);
+        }
+
+        IMAGE_EXPORT_DIRECTORY * pExportDir =
+            reinterpret_cast<IMAGE_EXPORT_DIRECTORY *>(pedecoder.GetDirectoryData(pExportDirectoryEntry));
+
+        // At this point we have checked that everything in the export directory is readable.
+    
+        // Check to make sure the ordinal we have fits in the table in the export directory.
+        // The "base" here is like the starting index of the arrays in the export directory.
+        if ((pExportDir->Base > kOrdinalForMetrics) || 
+            (pExportDir->NumberOfFunctions < (kOrdinalForMetrics - pExportDir->Base)))
+        {
+            ThrowHR(E_FAIL);
+        }
+        DWORD dwRealIndex = kOrdinalForMetrics - pExportDir->Base;
+
+        // Check that we can read the RVA at the element (specified by the ordinal) in the export address table.
+        // Then read the RVA to the CLR_ENGINE_METRICS.
+        if (!pedecoder.CheckRva(pExportDir->AddressOfFunctions, (dwRealIndex + 1) * sizeof(DWORD)))
+        {
+            ThrowHR(E_FAIL);
+        }
+        DWORD rvaMetrics = *reinterpret_cast<DWORD *>(
+           pedecoder.GetRvaData(pExportDir->AddressOfFunctions + dwRealIndex * sizeof(DWORD)));
+
+        // Make sure we can safely read the CLR_ENGINE_METRICS at the RVA we have retrieved.
+        if (!pedecoder.CheckRva(rvaMetrics, sizeof(*pEngineMetricsOut)))
+        {
+            ThrowHR(E_FAIL);
+        }
+
+        // Finally, copy the CLR_ENGINE_METRICS into the output buffer.
+        CLR_ENGINE_METRICS * pMetricsInFile = reinterpret_cast<CLR_ENGINE_METRICS *>(pedecoder.GetRvaData(rvaMetrics));
+        *pEngineMetricsOut = *pMetricsInFile;
+
+        // At this point, we have retrieved the CLR_ENGINE_METRICS from the target process and
+        // stored it in output buffer.
+        if (pEngineMetricsOut->cbSize != sizeof(*pEngineMetricsOut))
+        {
+            ThrowHR(E_INVALIDARG);
+        }
     }
 
     if (pdwRVAContinueStartupEvent != NULL)
     {
+        _ASSERTE(pEngineMetricsOut != NULL);
+
         // Note that the pointer stored in the CLR_ENGINE_METRICS is assuming that the DLL is loaded at its
         // preferred base address.  We need to translate that to an RVA.
         if (((SIZE_T)pEngineMetricsOut->phContinueStartupEvent < (SIZE_T)pedecoder.GetPreferredBase()) ||
@@ -1073,20 +1249,44 @@ GetTargetCLRMetrics(
 
     // Holder will call FreeLibrary()
 #else
-    //TODO: So far on POSIX systems we only support one version of debugging interface
-    // in future we might want to detect it the same way we do it on Windows.
-    pEngineMetricsOut->cbSize = sizeof(*pEngineMetricsOut);
-    pEngineMetricsOut->dwDbiVersion = CorDebugLatestVersion;
-    pEngineMetricsOut->phContinueStartupEvent = NULL;
+    if (pClrInfoOut != NULL)
+    {
+        RuntimeInfo runtimeInfo;
+        if (!TryReadSymbolFromFile(wszModulePath, RUNTIME_INFO_SIGNATURE, (BYTE*)&runtimeInfo, sizeof(RuntimeInfo)))
+        {
+            ThrowHR(E_FAIL);
+        }
+        if (strcmp(runtimeInfo.Signature, RUNTIME_INFO_SIGNATURE) != 0)
+        {
+            ThrowHR(E_FAIL);
+        }
+        // The first byte is the number of bytes in the index
+        pClrInfoOut->DbiBuildIdSize = runtimeInfo.DbiModuleIndex[0];
+        memcpy_s(&pClrInfoOut->DbiBuildId, sizeof(pClrInfoOut->DbiBuildId), &(runtimeInfo.DbiModuleIndex[1]), pClrInfoOut->DbiBuildIdSize);
+
+        pClrInfoOut->DacBuildIdSize = runtimeInfo.DacModuleIndex[0];
+        memcpy_s(&pClrInfoOut->DacBuildId, sizeof(pClrInfoOut->DacBuildId), &(runtimeInfo.DacModuleIndex[1]), pClrInfoOut->DacBuildIdSize);
+    }
+
+    if (pEngineMetricsOut != NULL)
+    {
+        //TODO: So far on POSIX systems we only support one version of debugging interface
+        // in future we might want to detect it the same way we do it on Windows.
+        pEngineMetricsOut->cbSize = sizeof(*pEngineMetricsOut);
+        pEngineMetricsOut->dwDbiVersion = CorDebugLatestVersion;
+        pEngineMetricsOut->phContinueStartupEvent = NULL;
+    }
 
     if (pdwRVAContinueStartupEvent != NULL)
     {
         *pdwRVAContinueStartupEvent = NULL;
     }
-#endif // TARGET_UNIX
+#endif // TARGET_WINDOWS
 }
 
+//
 // Returns true iff the module represents CoreClr.
+//
 static
 bool
 IsCoreClr(
@@ -1106,44 +1306,9 @@ IsCoreClr(
     return _wcsicmp(pModuleName, MAKEDLLNAME_W(W("coreclr"))) == 0;
 }
 
-// Returns true iff the module sent is named CoreClr.dll and has the metrics expected in it's PE header.
-static
-bool
-IsCoreClrWithGoodHeader(
-    HANDLE hProcess,
-    HMODULE hModule)
-{
-    HRESULT hr = S_OK;
-
-    WCHAR modulePath[MAX_LONGPATH];
-    modulePath[0] = W('\0');
-    if(0 == GetModuleFileNameEx(hProcess, hModule, modulePath, MAX_LONGPATH))
-    {
-        return false;
-    }
-    else
-    {
-        modulePath[MAX_LONGPATH-1] = 0; // on older OS'es this doesn't get null terminated automatically on truncation
-    }
-
-    if (IsCoreClr(modulePath))
-    {
-        // We don't care about the particular error returned, only that
-        // what we tried wasn't a 'real' coreclr.dll.
-        EX_TRY
-        {
-            CLR_ENGINE_METRICS metricsStruct;
-            GetTargetCLRMetrics(modulePath, &metricsStruct); // throws
-
-            // If we got this far, then we think it's a good one.
-        }
-        EX_CATCH_HRESULT(hr);
-        return (hr == S_OK);
-    }
-
-    return false;
-}
-
+//
+// Enumerates all the modules in the process
+//
 static
 HRESULT
 EnumProcessModulesInternal(
@@ -1196,6 +1361,94 @@ EnumProcessModulesInternal(
     return S_OK;
 }
 
+//
+// Finds any coreclr or single-file app in the process
+//
+static
+HRESULT
+GetRuntime(
+    DWORD debuggeePID,
+    ClrRuntimeInfo& clrRuntimeInfo)
+{
+    HandleHolder hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, debuggeePID);
+    if (hProcess == NULL)
+    {
+        return E_FAIL;
+    }
+    // The modules in the array returned don't need to be closed
+    DWORD countModules;
+    ArrayHolder<HMODULE> modules = nullptr;
+    HRESULT hr = EnumProcessModulesInternal(hProcess, &countModules, &modules);
+    if (FAILED(hr))
+    {
+        return hr;
+    }
+
+    // This assumes we are only going to find one .NET runtime in the process. We do the module 
+    // enumeration only once because looking for single-file runtime info symbol is expensive.
+
+    for (DWORD i = 0; i < countModules; i++)
+    {
+        clrRuntimeInfo.ModulePath[0] = W('\0');
+        if (GetModuleFileNameEx(hProcess, modules[i], clrRuntimeInfo.ModulePath, MAX_LONGPATH) == 0)
+        {
+            continue;
+        }
+        else
+        {
+            clrRuntimeInfo.ModulePath[MAX_LONGPATH - 1] = 0; // on older OS'es this doesn't get null terminated automatically on truncation
+        }
+
+        DWORD rvaContinueStartupEvent = 0;
+        hr = S_OK;
+        EX_TRY
+        {
+            if (IsCoreClr(clrRuntimeInfo.ModulePath))
+            {
+                // Make sure it is a real coreclr.dll by getting the metrics.
+                GetTargetCLRMetrics(clrRuntimeInfo.ModulePath, &clrRuntimeInfo.EngineMetrics, NULL, &rvaContinueStartupEvent); // throws
+            }
+            else 
+            {
+                // Check if single-file app by looking for the DotNetRuntimeInfo export. We need to 
+                // get the metrics too because that is required to get the startup event.
+                GetTargetCLRMetrics(clrRuntimeInfo.ModulePath, &clrRuntimeInfo.EngineMetrics, &clrRuntimeInfo.ClrInfo, &rvaContinueStartupEvent); // throws
+            }
+        }
+        EX_CATCH_HRESULT(hr);
+
+        if (SUCCEEDED(hr))
+        {
+            clrRuntimeInfo.ModuleHandle = modules[i];
+#ifdef TARGET_WINDOWS
+            if (rvaContinueStartupEvent != 0)
+            {
+                HANDLE continueEvent = NULL;
+                SIZE_T nBytesRead;
+                if (ReadProcessMemory(hProcess, ((BYTE*)modules[i]) + rvaContinueStartupEvent, &continueEvent, sizeof(continueEvent), &nBytesRead))
+                {
+                    if (continueEvent != NULL && continueEvent != INVALID_HANDLE_VALUE)
+                    {
+                        if (DuplicateHandle(hProcess, continueEvent, GetCurrentProcess(), &continueEvent, EVENT_MODIFY_STATE, FALSE, 0))
+                        {
+                            clrRuntimeInfo.ContinueStartupEvent = continueEvent;
+                        }
+                    }
+                    else 
+                    {
+                        clrRuntimeInfo.ContinueStartupEvent = continueEvent;
+                    }
+                }
+            }
+#endif
+            return S_OK;
+        }
+    }
+
+    // Didn't find any runtimes and there were no failures
+    return S_FALSE;
+}
+
 //-----------------------------------------------------------------------------
 // Public API.
 //
@@ -1228,118 +1481,48 @@ EnumerateCLRs(
 
     // All out params must be non-NULL.
     if ((ppHandleArrayOut == NULL) || (ppStringArrayOut == NULL) || (pdwArrayLengthOut == NULL))
+    {
         return E_INVALIDARG;
+    }
 
-    HandleHolder hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, debuggeePID);
-    if (NULL == hProcess)
-        return E_FAIL;
+    *pdwArrayLengthOut = 0;
+    *ppHandleArrayOut = NULL;
+    *ppStringArrayOut = NULL;
 
-    // The modules in the array returned don't need to be closed
-    DWORD countModules;
-    ArrayHolder<HMODULE> modules = nullptr;
-    HRESULT hr = EnumProcessModulesInternal(hProcess, &countModules, &modules);
+    ClrRuntimeInfo clrRuntimeInfo;
+    HRESULT hr = GetRuntime(debuggeePID, clrRuntimeInfo);
     if (FAILED(hr))
     {
         return hr;
     }
 
-    //
-    // count the number of coreclr.dll entries
-    //
-    DWORD count = 0;
-    for(DWORD i = 0; i < countModules; i++)
+    // S_FALSE means there are no runtimes and no falures
+    if (hr == S_OK)
     {
-        if (IsCoreClrWithGoodHeader(hProcess, modules[i]))
+        // Allocate the buffers for one runtime
+        size_t cbEventArrayData     = sizeof(HANDLE);
+        size_t cbStringArrayData    = sizeof(LPWSTR);
+        size_t cbStringData         = sizeof(WCHAR) * MAX_LONGPATH;
+        size_t cbBuffer             = cbEventArrayData + cbStringArrayData + cbStringData;
+
+        BYTE* pOutBuffer = new (nothrow) BYTE[cbBuffer];
+        if (NULL == pOutBuffer)
         {
-            count++;
+            return E_OUTOFMEMORY;
         }
+        ZeroMemory(pOutBuffer, cbBuffer);
+
+        HANDLE* pEventArray = (HANDLE*) &pOutBuffer[0];
+        pEventArray[0] = clrRuntimeInfo.ContinueStartupEvent;
+
+        LPWSTR* pStringArray = (LPWSTR*) &pOutBuffer[cbEventArrayData];
+        pStringArray[0] = (WCHAR*) &pOutBuffer[cbEventArrayData + cbStringArrayData];
+        wcscpy_s(pStringArray[0], MAX_LONGPATH, clrRuntimeInfo.ModulePath);
+
+        *pdwArrayLengthOut = 1;
+        *ppHandleArrayOut = pEventArray;
+        *ppStringArrayOut = pStringArray;
     }
-
-    // If we didn't find anything, no point in continuing.
-    if (count == 0)
-    {
-        *ppHandleArrayOut = NULL;
-        *ppStringArrayOut = NULL;
-        *pdwArrayLengthOut = 0;
-
-        return S_OK;
-    }
-
-    size_t cbEventArrayData     = sizeof(HANDLE) * count;               // event array data
-    size_t cbStringArrayData    = sizeof(LPWSTR) * count;               // string array data
-    size_t cbStringData         = sizeof(WCHAR)  * count * MAX_LONGPATH;    // strings data
-    size_t cbBuffer             = cbEventArrayData + cbStringArrayData + cbStringData;
-
-    BYTE* pOutBuffer = new (nothrow) BYTE[cbBuffer];
-    if (NULL == pOutBuffer)
-        return E_OUTOFMEMORY;
-
-    ZeroMemory(pOutBuffer, cbBuffer);
-
-    HANDLE* pEventArray     = (HANDLE*) &pOutBuffer[0];
-    LPWSTR* pStringArray    = (LPWSTR*) &pOutBuffer[cbEventArrayData];
-    WCHAR*  pStringData     = (WCHAR*)  &pOutBuffer[cbEventArrayData + cbStringArrayData];
-    DWORD idx = 0;
-
-    // There's no guarantee that another coreclr hasn't loaded already anyhow,
-    // so if we get the corner case that the second time through we enumerate
-    // more coreclrs, just ignore the extras.
-    // This mismatch could happen when
-    // a) take module shapshot
-    // b) underlying file is opened for exclusive access/deleted/moved/ACL'd etc so we can't open it
-    // c) count is determined
-    // d) file is closed/copied/moved/ACL'd etc so we can find/open it again
-    // e) this loop runs
-    // Thus the loop checks idx < count
-
-    for(DWORD i = 0; i < countModules && idx < count; i++)
-    {
-        if (IsCoreClrWithGoodHeader(hProcess, modules[i]))
-        {
-            // fill in path
-            pStringArray[idx] = &pStringData[idx * MAX_LONGPATH];
-            GetModuleFileNameEx(hProcess, modules[i], pStringArray[idx], MAX_LONGPATH);
-
-#ifndef TARGET_UNIX
-            // fill in event handle -- if GetContinueStartupEvent fails, it will still return
-            // INVALID_HANDLE_VALUE in hContinueStartupEvent, which is what we want.  we don't
-            // want to bail out of the enumeration altogether if we can't get an event from
-            // one telesto.
-
-            HANDLE hContinueStartupEvent = INVALID_HANDLE_VALUE;
-            HRESULT hr = GetContinueStartupEvent(debuggeePID, pStringArray[idx], &hContinueStartupEvent);
-            pEventArray[idx] = hContinueStartupEvent;
-#else
-            pEventArray[idx] = NULL;
-#endif // TARGET_UNIX
-
-            idx++;
-        }
-    }
-
-    // Patch things up so CloseCLREnumeration() can still have it's
-    // pointer arithmatic checks succeed, and the user doesn't see a 'dead' entry.
-    // Specifically, it's expected that pEventArray and pStringArray point to the
-    // same contiguous chunk of memory so that pStringArray == pEventArray[*pdwArrayLengthOut].
-    // This is expected to be a very rare case.
-    if (idx < count)
-    {
-        // Move the string pointers back.
-        LPWSTR* pSATemp = (LPWSTR*)&pOutBuffer[sizeof(HANDLE)*idx];
-        for (DWORD i = 0; i < idx; i++)
-        {
-            pSATemp[i] = pStringArray[i];
-        }
-
-        // Fix up string array pointer.
-        pStringArray = (LPWSTR*)&pOutBuffer[sizeof(HANDLE)*idx];
-
-        // Strings themselves don't need moved.
-    }
-
-    *ppHandleArrayOut = pEventArray;
-    *ppStringArrayOut = pStringArray;
-    *pdwArrayLengthOut = idx;
 
     return S_OK;
 }
@@ -1372,7 +1555,7 @@ CloseCLREnumeration(
     if ((pHandleArray + dwArrayLength) != (HANDLE*)pStringArray)
         return E_INVALIDARG;
 
-#ifndef TARGET_UNIX
+#ifdef TARGET_WINDOWS
     for (DWORD i = 0; i < dwArrayLength; i++)
     {
         HANDLE hTemp = pHandleArray[i];
@@ -1382,7 +1565,7 @@ CloseCLREnumeration(
             CloseHandle(hTemp);
         }
     }
-#endif // TARGET_UNIX
+#endif // TARGET_WINDOWS
 
     delete[] pHandleArray;
     return S_OK;
@@ -1628,7 +1811,7 @@ GetDbiFilenameNextToRuntime(
     //
     HandleHolder hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pidDebuggee);
     WCHAR modulePath[MAX_LONGPATH];
-    if(0 == GetModuleFileNameEx(hProcess, hmodTargetCLR, modulePath, MAX_LONGPATH))
+    if (0 == GetModuleFileNameEx(hProcess, hmodTargetCLR, modulePath, MAX_LONGPATH))
     {
         ThrowHR(E_FAIL);
     }
@@ -1676,7 +1859,7 @@ CheckDbiAndRuntimeVersion(
     SString & szFullDbiPath,
     SString & szFullCoreClrPath)
 {
-#ifndef TARGET_UNIX
+#ifdef TARGET_WINDOWS
     DWORD dwDbiVersionMS = 0;
     DWORD dwDbiVersionLS = 0;
     DWORD dwCoreClrVersionMS = 0;
@@ -1697,7 +1880,33 @@ CheckDbiAndRuntimeVersion(
     }
 #else
     return true;
-#endif // TARGET_UNIX
+#endif // TARGET_WINDOWS
+}
+
+//-----------------------------------------------------------------------------
+// Public API.
+// Superceded by CreateDebuggingInterfaceFromVersionEx in SLv4.
+// Given a version string, create the matching mscordbi.dll for it.
+// Create a managed debugging interface for the specified version.
+//
+// Parameters:
+//    szDebuggeeVersion - the version of the debuggee. This will map to a version of mscordbi.dll
+//    ppCordb - the outparameter used to return the debugging interface object.
+//
+// Return:
+//  S_OK on success. *ppCordb will be non-null.
+//  CORDBG_E_INCOMPATIBLE_PROTOCOL - if the proper DBI is not available. This can be a very common error if
+//    the right debug pack is not installed.
+//  else Error. (*ppCordb will be null)
+//-----------------------------------------------------------------------------
+DLLEXPORT
+HRESULT
+CreateDebuggingInterfaceFromVersion(
+    _In_ LPCWSTR szDebuggeeVersion,
+    _Out_ IUnknown ** ppCordb
+)
+{
+    return CreateDebuggingInterfaceFromVersion3(CorDebugVersion_2_0, szDebuggeeVersion, NULL, NULL, ppCordb);
 }
 
 //-----------------------------------------------------------------------------
@@ -1723,7 +1932,7 @@ CreateDebuggingInterfaceFromVersionEx(
     _In_ LPCWSTR szDebuggeeVersion,
     _Out_ IUnknown ** ppCordb)
 {
-    return CreateDebuggingInterfaceFromVersion2(iDebuggerVersion, szDebuggeeVersion, NULL, ppCordb);
+    return CreateDebuggingInterfaceFromVersion3(iDebuggerVersion, szDebuggeeVersion, NULL, NULL, ppCordb);
 }
 
 //-----------------------------------------------------------------------------
@@ -1753,101 +1962,133 @@ CreateDebuggingInterfaceFromVersion2(
     _In_ LPCWSTR szApplicationGroupId,
     _Out_ IUnknown ** ppCordb)
 {
+    return CreateDebuggingInterfaceFromVersion3(iDebuggerVersion, szDebuggeeVersion, szApplicationGroupId, NULL, ppCordb);
+}
+
+//-----------------------------------------------------------------------------
+// Public API.
+// Given a version string, create the matching mscordbi.dll for it.
+// Create a managed debugging interface for the specified version.
+//
+// Parameters:
+//    iDebuggerVersion - the version of interface the debugger (eg, Cordbg) expects.
+//    szDebuggeeVersion - the version of the debuggee. This will map to a version of mscordbi.dll
+//    lpApplicationGroupId - a string representing the application group ID of a sandboxed
+//                           process running in Mac. Pass NULL if the process is not
+//                           running in a sandbox and other platforms.
+//    pLibraryProvider - a callback for locating DBI and DAC
+//    ppCordb - the outparameter used to return the debugging interface object.
+//
+// Return:
+//  S_OK on success. *ppCordb will be non-null.
+//  CORDBG_E_INCOMPATIBLE_PROTOCOL - if the proper DBI is not available. This can be a very common error if
+//    the right debug pack is not installed.
+//  else Error. (*ppCordb will be null)
+//-----------------------------------------------------------------------------
+DLLEXPORT
+HRESULT
+CreateDebuggingInterfaceFromVersion3(
+    _In_ int iDebuggerVersion,
+    _In_ LPCWSTR szDebuggeeVersion,
+    _In_ LPCWSTR szApplicationGroupId,
+    _In_ ICLRDebuggingLibraryProvider* pLibraryProvider,
+    _Out_ IUnknown ** ppCordb)
+{
     PUBLIC_CONTRACT;
 
-    HRESULT hrIgnore = S_OK; // ignored HResult
+    IUnknown* pCordb = NULL;
+    SString szFullDbiPath;
+    SString szFullDacPath;
     HRESULT hr = S_OK;
-    HMODULE hMod = NULL;
-    IUnknown * pCordb = NULL;
 
-    LOG((LF_CORDB, LL_EVERYTHING, "Calling CreateDebuggerInterfaceFromVersion, ver=%S\n", szDebuggeeVersion));
+    LOG((LF_CORDB, LL_EVERYTHING, "Calling CreateDebuggerInterfaceFromVersion3, ver=%S\n", szDebuggeeVersion));
 
     if ((szDebuggeeVersion == NULL) || (ppCordb == NULL))
     {
         hr = E_INVALIDARG;
-        goto Exit;
+        goto exit;
     }
 
     //
     // Step 1: Parse version information into internal data structures
     //
 
-    CorDebugInterfaceVersion iTargetVersion;  // the CorDebugInterfaceVersion (CorDebugVersion_2_0)
-    DWORD pidDebuggee;     // OS process ID of the debuggee
-    HMODULE hmodTargetCLR; // module of Telesto in target (the clrInstanceId)
+    CorDebugInterfaceVersion iTargetVersion;    // the CorDebugInterfaceVersion (CorDebugVersion_2_0)
+    DWORD pidDebuggee;                          // OS process ID of the debuggee
+    HMODULE hmodTargetCLR;                      // module of Telesto in target (the clrInstanceId)
 
     hr = ParseVersionString(szDebuggeeVersion, &iTargetVersion, &pidDebuggee, &hmodTargetCLR);
     if (FAILED(hr))
-        goto Exit;
+    {
+        goto exit;
+    }
+
 
     //
-    // Step 2:  Find the proper dbi module (mscordbi) and load it.
+    // Step 2:  Find the proper dbi module (mscordbi)
     //
 
-    // Check for dbi next to target CLR.
-    // This will be very common for internal developer setups, but not common in end-user setups.
     EX_TRY
     {
-        SString szFullDbiPath;
         SString szFullCoreClrPath;
-
         GetDbiFilenameNextToRuntime(pidDebuggee, hmodTargetCLR, szFullDbiPath, szFullCoreClrPath);
 
-        if (!CheckDbiAndRuntimeVersion(szFullDbiPath, szFullCoreClrPath))
-        {
-            hr = CORDBG_E_INCOMPATIBLE_PROTOCOL;
-            goto Exit;
-        }
-
-        // We calculated where dbi would be, but haven't yet verified if it's there.
-        // Try to load it. We're using this to check for file existence.
-
-        // Issue:951525: coreclr mscordbi load fails on downlevel OS since LoadLibraryEx can't find
-        // dependent forwarder DLLs. Force LoadLibrary to look for dependencies in szFullDbiPath plus the default
-        // search paths.
-#ifndef TARGET_UNIX
-        hMod = WszLoadLibraryEx(szFullDbiPath, NULL, LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR | LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
-#else
-        hMod = LoadLibraryExW(szFullDbiPath, NULL, 0);
-#endif
-    }
-    EX_CATCH_HRESULT(hrIgnore); // failure leaves hMod null
-
-    // Couldn't find Dbi, likely because the right debug pack is not installed. Failure.
-    if (NULL == hMod)
-    {
-        // Check for the following two HRESULTs and return them specifically.  These are returned by
-        // CreateToolhelp32Snapshot() and could be transient errors.  The debugger may choose to retry.
-        if ((hrIgnore == HRESULT_FROM_WIN32(ERROR_PARTIAL_COPY)) || (hrIgnore == HRESULT_FROM_WIN32(ERROR_BAD_LENGTH)))
-        {
-            hr = hrIgnore;
+        if (IsCoreClr(szFullCoreClrPath) || pLibraryProvider == NULL)
+        { 
+            // Check for dbi next to target CLR.
+            // This will be very common for internal developer setups, but not common in end-user setups.
+            if (!CheckDbiAndRuntimeVersion(szFullDbiPath, szFullCoreClrPath))
+            {
+                hr = CORDBG_E_INCOMPATIBLE_PROTOCOL;
+                goto exit;
+            }
         }
         else
         {
+            ClrInfo clrInfo;
+            GetTargetCLRMetrics(szFullCoreClrPath, NULL, &clrInfo, NULL); // throws
+
+            if (clrInfo.IsValid())
+            {
+                hr = CLRDebuggingImpl::ProvideLibraries(clrInfo, pLibraryProvider, szFullDbiPath, szFullDacPath);
+                if (FAILED(hr))
+                {
+                    goto exit;
+                }
+            }
+            else
+            {
+                hr = CORDBG_E_INCOMPATIBLE_PROTOCOL;
+                goto exit;
+            }
+        }
+    }
+    EX_CATCH_HRESULT(hr);
+
+    if (FAILED(hr))
+    {
+        // Check for the following two HRESULTs and return them specifically.  These are returned by
+        // CreateToolhelp32Snapshot() and could be transient errors.  The debugger may choose to retry.
+        if ((hr != HRESULT_FROM_WIN32(ERROR_PARTIAL_COPY)) && (hr != HRESULT_FROM_WIN32(ERROR_BAD_LENGTH)))
+        {
             hr = CORDBG_E_DEBUG_COMPONENT_MISSING;
         }
-        goto Exit;
+        goto exit;
     }
 
     //
-    // Step 3: Now that module is loaded, instantiate an ICorDebug.
+    // Step 3: Load DBI and instantiate an ICorDebug instance.
     //
-    hr = CreateCoreDbg(hmodTargetCLR, hMod, pidDebuggee, szApplicationGroupId, iDebuggerVersion, &pCordb);
+    hr = CreateCoreDbg(hmodTargetCLR, pidDebuggee, szFullDbiPath, szFullDacPath, szApplicationGroupId, iDebuggerVersion, &pCordb);
     _ASSERTE((pCordb == NULL) == FAILED(hr));
 
-Exit:
+exit:
     if (FAILED(hr))
     {
         if (pCordb != NULL)
         {
             pCordb->Release();
             pCordb = NULL;
-        }
-
-        if (hMod != NULL)
-        {
-            _ASSERTE(pCordb == NULL);
-            FreeLibrary(hMod);
         }
     }
 
@@ -1860,103 +2101,6 @@ Exit:
 
     return hr;
 }
-
-//-----------------------------------------------------------------------------
-// Public API.
-// Superceded by CreateDebuggingInterfaceFromVersionEx in SLv4.
-// Given a version string, create the matching mscordbi.dll for it.
-// Create a managed debugging interface for the specified version.
-//
-// Parameters:
-//    szDebuggeeVersion - the version of the debuggee. This will map to a version of mscordbi.dll
-//    ppCordb - the outparameter used to return the debugging interface object.
-//
-// Return:
-//  S_OK on success. *ppCordb will be non-null.
-//  CORDBG_E_INCOMPATIBLE_PROTOCOL - if the proper DBI is not available. This can be a very common error if
-//    the right debug pack is not installed.
-//  else Error. (*ppCordb will be null)
-//-----------------------------------------------------------------------------
-DLLEXPORT
-HRESULT
-CreateDebuggingInterfaceFromVersion(
-    _In_ LPCWSTR szDebuggeeVersion,
-    _Out_ IUnknown ** ppCordb
-)
-{
-    PUBLIC_CONTRACT;
-
-    return CreateDebuggingInterfaceFromVersionEx(CorDebugVersion_2_0, szDebuggeeVersion, ppCordb);
-}
-
-#ifndef TARGET_UNIX
-
-//------------------------------------------------------------------------------
-// Manually retrieves the "continue startup" event from the correct CLR instance
-// in the target process.
-//
-// Arguments:
-//    debuggeePID - (in) OS Process ID of debuggee
-//    szTelestoFullPath - (in) full path to telesto within the process.
-//    phContinueStartupEvent - (out)
-//
-// Returns:
-//   S_OK on success.
-//------------------------------------------------------------------------------
-HRESULT
-GetContinueStartupEvent(
-    DWORD debuggeePID,
-    LPCWSTR szTelestoFullPath,
-    _Out_ HANDLE* phContinueStartupEvent)
-{
-    if ((phContinueStartupEvent == NULL) || (szTelestoFullPath == NULL))
-        return E_INVALIDARG;
-
-    HRESULT hr = S_OK;
-    EX_TRY
-    {
-        *phContinueStartupEvent = INVALID_HANDLE_VALUE;
-
-        DWORD  dwCoreClrContinueEventOffset = 0;
-        CLR_ENGINE_METRICS metricsStruct;
-
-        GetTargetCLRMetrics(szTelestoFullPath, &metricsStruct, &dwCoreClrContinueEventOffset); // throws
-
-
-        BYTE* pbBaseAddress = GetRemoteModuleBaseAddress(debuggeePID, szTelestoFullPath); // throws
-
-
-        HandleHolder hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, debuggeePID);
-        if (NULL == hProcess)
-            ThrowHR(E_FAIL);
-
-        HANDLE continueEvent = NULL;
-
-        SIZE_T nBytesRead;
-        if (!ReadProcessMemory(hProcess, pbBaseAddress + dwCoreClrContinueEventOffset, &continueEvent,
-            sizeof(continueEvent), &nBytesRead))
-        {
-            ThrowHR(E_FAIL);
-        }
-
-        if (NULL != continueEvent && INVALID_HANDLE_VALUE != continueEvent)
-        {
-            if (!DuplicateHandle(hProcess, continueEvent, GetCurrentProcess(), &continueEvent,
-                EVENT_MODIFY_STATE, FALSE, 0))
-            {
-                ThrowHR(E_FAIL);
-            }
-        }
-
-        *phContinueStartupEvent = continueEvent;
-    }
-    EX_CATCH_HRESULT(hr)
-    return hr;
-}
-
-#endif // !TARGET_UNIX
-
-#include "debugshim.h"
 
 //-----------------------------------------------------------------------------
 // Public API.
@@ -1984,9 +2128,7 @@ CLRCreateInstance(
     if (clsid != CLSID_CLRDebugging || riid != IID_ICLRDebugging)
         return E_NOINTERFACE;
 
-    GUID skuId = CLR_ID_ONECORE_CLR;
-
-    CLRDebuggingImpl *pDebuggingImpl = new (nothrow) CLRDebuggingImpl(skuId);
+    CLRDebuggingImpl *pDebuggingImpl = new (nothrow) CLRDebuggingImpl(CLR_ID_ONECORE_CLR);
     if (NULL == pDebuggingImpl)
         return E_OUTOFMEMORY;
 

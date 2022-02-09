@@ -2,10 +2,14 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 #include <windows.h>
+#include <clrdata.h>
+#include <cor.h>
+#include <cordebug.h>
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
-#include <limits.h>
 #include "elfreader.h"
+#include "filedatatarget.h"
+#include "releaseholder.h"
 
 #define Elf_Ehdr   ElfW(Ehdr)
 #define Elf_Phdr   ElfW(Phdr)
@@ -32,23 +36,72 @@
 static const char ElfMagic[] = { 0x7f, 'E', 'L', 'F', '\0' };
 #endif
 
-extern bool ElfReaderReadMemory(void* address, void* buffer, size_t size);
+typedef bool (*ReadMemoryCallback)(void* address, void* buffer, size_t size);
 
-class ElfReaderExport: public ElfReader
+class ElfReaderExportWithCallback : public ElfReader
 {
+private:
+    ReadMemoryCallback m_readMemory;
+
 public:
-    ElfReaderExport()
+    ElfReaderExportWithCallback(ReadMemoryCallback readMemory) : ElfReader(false),
+        m_readMemory(readMemory)
     {
     }
 
-    virtual ~ElfReaderExport()
+    virtual ~ElfReaderExportWithCallback()
     {
     }
 
 private:
     virtual bool ReadMemory(void* address, void* buffer, size_t size)
     {
-        return ElfReaderReadMemory(address, buffer, size);
+        return m_readMemory(address, buffer, size);
+    }
+};
+
+//
+// Entry point to get an export symbol
+//
+extern "C" bool
+TryGetSymbolWithCallback(ReadMemoryCallback readMemory, uint64_t baseAddress, const char* symbolName, uint64_t* symbolAddress)
+{
+    ElfReaderExportWithCallback reader(readMemory);
+    if (reader.PopulateForSymbolLookup(baseAddress))
+    {
+        uint64_t symbolOffset;
+        if (reader.TryLookupSymbol(symbolName, &symbolOffset))
+        {
+            *symbolAddress = baseAddress + symbolOffset;
+            return true;
+        }
+    }
+    *symbolAddress = 0;
+    return false;
+}
+
+class ElfReaderExport : public ElfReader
+{
+private:
+    ICorDebugDataTarget* m_dataTarget;
+
+public:
+    ElfReaderExport(ICorDebugDataTarget* dataTarget, bool isFileLayout) : ElfReader(isFileLayout),
+        m_dataTarget(dataTarget)
+    {
+        dataTarget->AddRef();
+    }
+
+    virtual ~ElfReaderExport()
+    {
+        m_dataTarget->Release();
+    }
+
+private:
+    virtual bool ReadMemory(void* address, void* buffer, size_t size)
+    {
+        uint32_t read = 0;
+        return SUCCEEDED(m_dataTarget->ReadVirtual(reinterpret_cast<CLRDATA_ADDRESS>(address), reinterpret_cast<PBYTE>(buffer), (uint32_t)size, &read));
     }
 };
 
@@ -56,9 +109,9 @@ private:
 // Main entry point to get an export symbol
 //
 extern "C" bool
-TryGetSymbol(uint64_t baseAddress, const char* symbolName, uint64_t* symbolAddress)
+TryGetSymbol(ICorDebugDataTarget* dataTarget, uint64_t baseAddress, const char* symbolName, uint64_t* symbolAddress)
 {
-    ElfReaderExport elfreader;
+    ElfReaderExport elfreader(dataTarget, false);
     if (elfreader.PopulateForSymbolLookup(baseAddress))
     {
         uint64_t symbolOffset;
@@ -73,10 +126,31 @@ TryGetSymbol(uint64_t baseAddress, const char* symbolName, uint64_t* symbolAddre
 }
 
 //
+// Entry point to get an export symbol from a module file
+//
+extern "C" bool
+TryReadSymbolFromFile(const WCHAR* modulePath, const char* symbolName, BYTE* buffer, ULONG32 size)
+{
+    ReleaseHolder<ICorDebugDataTarget> dataTarget = new FileDataTarget(modulePath);
+    ElfReaderExport elfreader(dataTarget, true);
+    if (elfreader.PopulateForSymbolLookup(0))
+    {
+        uint64_t symbolOffset;
+        if (elfreader.TryLookupSymbol(symbolName, &symbolOffset))
+        {
+            ULONG32 bytesRead;
+            return FAILED(dataTarget->ReadVirtual(symbolOffset, buffer, size, &bytesRead));
+        }
+    }
+    return false;
+}
+
+//
 // ELF reader constructor/destructor
 //
 
-ElfReader::ElfReader() :
+ElfReader::ElfReader(bool isFileLayout) :
+    m_isFileLayout(isFileLayout),
     m_gnuHashTableAddr(nullptr),
     m_stringTableAddr(nullptr),
     m_stringTableSize(0),
@@ -186,7 +260,7 @@ ElfReader::TryLookupSymbol(std::string symbolName, uint64_t* symbolOffset)
                     if (symbolName.compare(possibleName) == 0)
                     {
                         *symbolOffset = symbol.st_value;
-                        Trace("TryLookupSymbol found '%s' at offset %" PRIxA "\n", symbolName.c_str(), *symbolOffset);
+                        Trace("TryLookupSymbol found '%s' at offset %" PRIxA " in %d\n", symbolName.c_str(), *symbolOffset, symbol.st_shndx);
                         return true;
                     }
                 }
@@ -484,8 +558,16 @@ ElfReader::EnumerateProgramHeaders(Elf_Phdr* phdrAddr, int phnum, uint64_t baseA
         switch (ph.p_type)
         {
         case PT_DYNAMIC:
-            if (pdynamicAddr != nullptr) {
-                *pdynamicAddr = reinterpret_cast<Elf_Dyn*>(loadbias + ph.p_vaddr);
+            if (pdynamicAddr != nullptr)
+            {
+                if (m_isFileLayout)
+                {
+                    *pdynamicAddr = reinterpret_cast<Elf_Dyn*>(loadbias + ph.p_offset);
+                }
+                else
+                {
+                    *pdynamicAddr = reinterpret_cast<Elf_Dyn*>(loadbias + ph.p_vaddr);
+                }
             }
             break;
         }
@@ -495,6 +577,26 @@ ElfReader::EnumerateProgramHeaders(Elf_Phdr* phdrAddr, int phnum, uint64_t baseA
     }
 
     return true;
+}
+
+void
+ElfReader::Trace(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vfprintf(stdout, format, args);
+    fflush(stdout);
+    va_end(args);
+}
+
+void
+ElfReader::TraceVerbose(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vfprintf(stdout, format, args);
+    fflush(stdout);
+    va_end(args);
 }
 
 #ifdef HOST_WINDOWS

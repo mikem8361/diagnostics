@@ -14,11 +14,13 @@ namespace Microsoft.Diagnostics.DebugServices.UnitTests
 {
     public class TestDbgEng : TestHost
     {
+        private readonly TestConfiguration _config;
         private static DbgEngController _controller;
 
         public TestDbgEng(TestConfiguration config)
-            : base (config)
+            : base(config.DumpFile(), config.TestDataFile())
         {
+            _config = config;
         }
 
         protected override ITarget GetTarget()
@@ -32,9 +34,9 @@ namespace Microsoft.Diagnostics.DebugServices.UnitTests
 
         private static IHost Host => HostServices.Instance;
 
-        private string DbgEngPath => TestConfiguration.MakeCanonicalPath(Config.AllSettings["DbgEngPath"]);
+        private string DbgEngPath => TestConfiguration.MakeCanonicalPath(_config.AllSettings["DbgEngPath"]);
 
-        private string SOSPath =>TestConfiguration.MakeCanonicalPath(Config.AllSettings["SOSPath"]);
+        private string SOSPath =>TestConfiguration.MakeCanonicalPath(_config.AllSettings["SOSPath"]);
 
         public override string ToString() => "DbgEng: " + DumpFile;
 

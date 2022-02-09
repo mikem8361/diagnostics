@@ -231,10 +231,12 @@ namespace Microsoft.Diagnostics.TestHelpers
 
             output.WriteLine("Launching {0} {1}", DotNetToolPath, dotnetArgs);
             ProcessRunner runner = new ProcessRunner(DotNetToolPath, dotnetArgs).
-                      WithWorkingDirectory(DebuggeeProjectDirPath).
-                      WithLog(output).
-                      WithTimeout(TimeSpan.FromMinutes(10)). // a mac CI build of the modules debuggee is painfully slow :(
-                      WithExpectedExitCode(0);
+                WithEnvironmentVariable("DOTNET_MULTILEVEL_LOOKUP", "0").
+                WithEnvironmentVariable("DOTNET_ROOT", Path.GetDirectoryName(DotNetToolPath)).
+                WithWorkingDirectory(DebuggeeProjectDirPath).
+                WithLog(output).
+                WithTimeout(TimeSpan.FromMinutes(10)). // a mac CI build of the modules debuggee is painfully slow :(
+                WithExpectedExitCode(0);
 
             if (OS.Kind != OSKind.Windows && Environment.GetEnvironmentVariable("HOME") == null)
             {

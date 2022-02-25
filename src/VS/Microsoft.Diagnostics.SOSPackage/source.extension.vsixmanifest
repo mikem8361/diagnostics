@@ -5,7 +5,7 @@
         <DisplayName>Microsoft.Diagnostics.SOSPackage</DisplayName>
         <Description xml:space="preserve">SOS support for Visual Studio</Description>
     </Metadata>
-    <Installation>
+    <Installation Experimental="true">
         <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[16.0, 17.0)" />
     </Installation>
     <Dependencies>

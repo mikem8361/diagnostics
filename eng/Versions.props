@@ -62,4 +62,7 @@
     <cdbsosversion>10.0.18362</cdbsosversion>
     <NewtonSoftJsonVersion>12.0.2</NewtonSoftJsonVersion>
   </PropertyGroup>
+  <PropertyGroup>
+    <UsingToolVSSDK>true</UsingToolVSSDK>
+  </PropertyGroup>
 </Project>

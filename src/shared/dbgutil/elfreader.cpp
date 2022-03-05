@@ -63,7 +63,7 @@ private:
         {
             return false;
         }
-        if (PAL_fseek(m_file, address, SEEK_SET) != 0)
+        if (PAL_fseek(m_file, (LONG)address, SEEK_SET) != 0)
         {
             return false;
         }
@@ -84,8 +84,7 @@ TryReadSymbolFromFile(const WCHAR* modulePath, const char* symbolName, BYTE* buf
         uint64_t symbolOffset;
         if (elfreader.TryLookupSymbol(symbolName, &symbolOffset))
         {
-            ULONG32 bytesRead;
-            return FAILED(dataTarget->ReadVirtual(symbolOffset, buffer, size, &bytesRead));
+            return elfreader.ReadMemory(symbolOffset, buffer, size);
         }
     }
     return false;

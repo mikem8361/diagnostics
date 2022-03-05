@@ -39,7 +39,14 @@ static const char ElfMagic[] = { 0x7f, 'E', 'L', 'F', '\0' };
 class ElfReaderFromFile : public ElfReader
 {
 private:
+    struct ProgramHeader
+    {
+        uint64_t Start;
+        uint64_t End;
+        uint64_t FileOffset;
+    };
     PAL_FILE* m_file;
+    std::vector<ProgramHeader> m_programHeaders;
 
 public:
     ElfReaderFromFile(const WCHAR* modulePath) : ElfReader(true)
@@ -53,6 +60,32 @@ public:
         {
             PAL_fclose(m_file);
             m_file = NULL;
+        }
+    }
+
+    uint64_t GetFileOffset(uint64_t address)
+    {
+        for (const ProgramHeader& header : m_programHeaders)
+        {
+            if (address >= header.Start && address < header.End)
+            {
+                return address - header.Start + header.FileOffset;
+            }
+        }
+        return 0;
+    }
+
+    virtual void VisitProgramHeader(uint64_t loadbias, uint64_t baseAddress, Phdr* phdr)
+    {
+        switch (phdr->p_type)
+        {
+        case PT_LOAD:
+            ProgramHeader header;
+            header.Start = loadbias + phdr->p_vaddr;
+            header.End = loadbias + phdr->p_vaddr + phdr->p_memsz;
+            header.FileOffset = phdr->p_offset;
+            m_programHeaders.push_back(header);
+            break;
         }
     }
 
@@ -83,7 +116,11 @@ TryReadSymbolFromFile(const WCHAR* modulePath, const char* symbolName, BYTE* buf
         uint64_t symbolOffset;
         if (elfreader.TryLookupSymbol(symbolName, &symbolOffset))
         {
-            return elfreader.ReadMemory((void*)symbolOffset, buffer, size);
+            symbolOffset = elfreader.GetFileOffset(symbolOffset);
+            if (symbolOffset != 0)
+            {
+                return elfreader.ReadMemory((void*)symbolOffset, buffer, size);
+            }
         }
     }
     return false;

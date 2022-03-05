@@ -8,10 +8,6 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 #include "elfreader.h"
-#ifdef HOST_UNIX
-#include "filedatatarget.h"
-#include "releaseholder.h"
-#endif
 
 #define Elf_Ehdr   ElfW(Ehdr)
 #define Elf_Phdr   ElfW(Phdr)
@@ -38,20 +34,79 @@
 static const char ElfMagic[] = { 0x7f, 'E', 'L', 'F', '\0' };
 #endif
 
+#ifdef HOST_UNIX
+
+class ElfReaderFromFile : public ElfReader
+{
+private:
+    PAL_FILE* m_file;
+
+public:
+    ElfReaderFromFile(const WCHAR* modulePath) : ElfReader(true)
+    {
+        m_file = _wfopen(modulePath, W("rb"));
+    }
+
+    virtual ~ElfReaderFromFile()
+    {
+        if (m_file != NULL)
+        {
+            PAL_fclose(m_file);
+            m_file = NULL;
+        }
+    }
+
+private:
+    virtual bool ReadMemory(void* address, void* buffer, size_t size)
+    {
+        if (m_file == NULL)
+        {
+            return false;
+        }
+        if (PAL_fseek(m_file, address, SEEK_SET) != 0)
+        {
+            return false;
+        }
+        size_t read = PAL_fread(buffer, 1, size, m_file);
+        return read > 0;
+    }
+};
+
+//
+// Entry point to get an export symbol from a module file
+//
+extern "C" bool
+TryReadSymbolFromFile(const WCHAR* modulePath, const char* symbolName, BYTE* buffer, ULONG32 size)
+{
+    ElfReaderFromFile elfreader(modulePath);
+    if (elfreader.PopulateForSymbolLookup(0))
+    {
+        uint64_t symbolOffset;
+        if (elfreader.TryLookupSymbol(symbolName, &symbolOffset))
+        {
+            ULONG32 bytesRead;
+            return FAILED(dataTarget->ReadVirtual(symbolOffset, buffer, size, &bytesRead));
+        }
+    }
+    return false;
+}
+
+#endif // HOST_UNIX
+
 typedef bool (*ReadMemoryCallback)(void* address, void* buffer, size_t size);
 
-class ElfReaderExportWithCallback : public ElfReader
+class ElfReaderWithCallback : public ElfReader
 {
 private:
     ReadMemoryCallback m_readMemory;
 
 public:
-    ElfReaderExportWithCallback(ReadMemoryCallback readMemory) : ElfReader(false),
+    ElfReaderWithCallback(ReadMemoryCallback readMemory) : ElfReader(false),
         m_readMemory(readMemory)
     {
     }
 
-    virtual ~ElfReaderExportWithCallback()
+    virtual ~ElfReaderWithCallback()
     {
     }
 
@@ -68,7 +123,7 @@ private:
 extern "C" bool
 TryGetSymbolWithCallback(ReadMemoryCallback readMemory, uint64_t baseAddress, const char* symbolName, uint64_t* symbolAddress)
 {
-    ElfReaderExportWithCallback reader(readMemory);
+    ElfReaderWithCallback reader(readMemory);
     if (reader.PopulateForSymbolLookup(baseAddress))
     {
         uint64_t symbolOffset;
@@ -88,7 +143,7 @@ private:
     ICorDebugDataTarget* m_dataTarget;
 
 public:
-    ElfReaderExport(ICorDebugDataTarget* dataTarget, bool isFileLayout) : ElfReader(isFileLayout),
+    ElfReaderExport(ICorDebugDataTarget* dataTarget) : ElfReader(false),
         m_dataTarget(dataTarget)
     {
         dataTarget->AddRef();
@@ -113,7 +168,7 @@ private:
 extern "C" bool
 TryGetSymbol(ICorDebugDataTarget* dataTarget, uint64_t baseAddress, const char* symbolName, uint64_t* symbolAddress)
 {
-    ElfReaderExport elfreader(dataTarget, false);
+    ElfReaderExport elfreader(dataTarget);
     if (elfreader.PopulateForSymbolLookup(baseAddress))
     {
         uint64_t symbolOffset;
@@ -126,30 +181,6 @@ TryGetSymbol(ICorDebugDataTarget* dataTarget, uint64_t baseAddress, const char* 
     *symbolAddress = 0;
     return false;
 }
-
-#ifdef HOST_UNIX
-
-//
-// Entry point to get an export symbol from a module file
-//
-extern "C" bool
-TryReadSymbolFromFile(const WCHAR* modulePath, const char* symbolName, BYTE* buffer, ULONG32 size)
-{
-    ReleaseHolder<ICorDebugDataTarget> dataTarget = new FileDataTarget(modulePath);
-    ElfReaderExport elfreader(dataTarget, true);
-    if (elfreader.PopulateForSymbolLookup(0))
-    {
-        uint64_t symbolOffset;
-        if (elfreader.TryLookupSymbol(symbolName, &symbolOffset))
-        {
-            ULONG32 bytesRead;
-            return FAILED(dataTarget->ReadVirtual(symbolOffset, buffer, size, &bytesRead));
-        }
-    }
-    return false;
-}
-
-#endif // HOST_UNIX
 
 //
 // ELF reader constructor/destructor

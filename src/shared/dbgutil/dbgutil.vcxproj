@@ -28,7 +28,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="elfreader.h" />
-    <ClInclude Include="filedatatarget.h" />
     <ClInclude Include="machoreader.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

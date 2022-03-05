@@ -8,8 +8,10 @@
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>
 #include "elfreader.h"
+#ifdef HOST_UNIX
 #include "filedatatarget.h"
 #include "releaseholder.h"
+#endif
 
 #define Elf_Ehdr   ElfW(Ehdr)
 #define Elf_Phdr   ElfW(Phdr)
@@ -125,6 +127,8 @@ TryGetSymbol(ICorDebugDataTarget* dataTarget, uint64_t baseAddress, const char* 
     return false;
 }
 
+#ifdef HOST_UNIX
+
 //
 // Entry point to get an export symbol from a module file
 //
@@ -144,6 +148,8 @@ TryReadSymbolFromFile(const WCHAR* modulePath, const char* symbolName, BYTE* buf
     }
     return false;
 }
+
+#endif // HOST_UNIX
 
 //
 // ELF reader constructor/destructor

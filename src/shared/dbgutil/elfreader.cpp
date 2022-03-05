@@ -75,7 +75,7 @@ public:
         return 0;
     }
 
-    virtual void VisitProgramHeader(uint64_t loadbias, uint64_t baseAddress, Phdr* phdr)
+    virtual void VisitProgramHeader(uint64_t loadbias, uint64_t baseAddress, ElfW(Phdr)* phdr)
     {
         switch (phdr->p_type)
         {

@@ -56,7 +56,6 @@ public:
         }
     }
 
-private:
     virtual bool ReadMemory(void* address, void* buffer, size_t size)
     {
         if (m_file == NULL)
@@ -84,7 +83,7 @@ TryReadSymbolFromFile(const WCHAR* modulePath, const char* symbolName, BYTE* buf
         uint64_t symbolOffset;
         if (elfreader.TryLookupSymbol(symbolName, &symbolOffset))
         {
-            return elfreader.ReadMemory(symbolOffset, buffer, size);
+            return elfreader.ReadMemory((void*)symbolOffset, buffer, size);
         }
     }
     return false;

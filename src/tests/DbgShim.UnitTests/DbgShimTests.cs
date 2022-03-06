@@ -235,14 +235,15 @@ namespace Microsoft.Diagnostics
             }
             await RemoteInvoke(config, static (string xml) =>
             {
-                DebugServicesTests.LoggingListener.EnableConsoleListener(ListenerName);
+                TestConfiguration cfg = TestConfiguration.Deserialize(xml);
+                ITestOutputHelper output = TestRunner.ConfigureLogging(cfg, new ConsoleTestOutputHelper(), "DbgShim.UnitTests");
+                DebugServicesTests.LoggingListener.EnableListener(output, ListenerName);
 
-                TestConfiguration c = TestConfiguration.Deserialize(xml);
-                DbgShimAPI.Initialize(c.DbgShimPath());
+                DbgShimAPI.Initialize(cfg.DbgShimPath());
                 AssertResult(DbgShimAPI.CLRCreateInstance(out ICLRDebugging clrDebugging));
                 Assert.NotNull(clrDebugging);
 
-                TestDump testDump = new(c.DumpFile(), c.TestDataFile());
+                TestDump testDump = new(cfg.DumpFile(), cfg.TestDataFile());
                 ITarget target = testDump.Target;
                 IRuntimeService runtimeService = target.Services.GetService<IRuntimeService>();
                 IRuntime runtime = runtimeService.EnumerateRuntimes().Single();
@@ -280,9 +281,10 @@ namespace Microsoft.Diagnostics
 
         private static async Task<StartInfo> StartDebuggee(TestConfiguration config, bool launch)
         {
-            DebugServicesTests.LoggingListener.EnableConsoleListener(ListenerName);
+            ITestOutputHelper output = TestRunner.ConfigureLogging(config, new ConsoleTestOutputHelper(), "DbgShim.UnitTests");
+            DebugServicesTests.LoggingListener.EnableListener(output, ListenerName);
 
-            StartInfo startInfo = new(config, launch);
+            StartInfo startInfo = new(output, config, launch);
             string debuggeeName = config.DebuggeeName();
 
             Assert.NotNull(debuggeeName);
@@ -291,8 +293,7 @@ namespace Microsoft.Diagnostics
             DbgShimAPI.Initialize(config.DbgShimPath());
 
             // Restore and build the debuggee
-            ITestOutputHelper output = new ConsoleTestOutputHelper();
-            DebuggeeConfiguration debuggeeConfig = await DebuggeeCompiler.Execute(config, debuggeeName, output);
+            DebuggeeConfiguration debuggeeConfig = await DebuggeeCompiler.Execute(config, debuggeeName, startInfo.Output);
 
             // Build the debuggee command line
             StringBuilder commandLine = new();
@@ -423,11 +424,10 @@ namespace Microsoft.Diagnostics
             {
                 Assert.True(continueEventHandles.Length == 1);
                 Assert.True(moduleNames.Length == 1);
-                ITestOutputHelper output = new ConsoleTestOutputHelper();
                 for (int i = 0; i < continueEventHandles.Length; i++)
                 {
                     Trace.TraceInformation("TestCreateDebuggingInterface pid {0} {1:X16} {2}", startInfo.ProcessId, continueEventHandles[i].ToInt64(), moduleNames[i]);
-                    AssertX.FileExists("ModuleFilePath", moduleNames[i], output);
+                    AssertX.FileExists("ModuleFilePath", moduleNames[i], startInfo.Output);
 
                     AssertResult(DbgShimAPI.CreateVersionStringFromModule(startInfo.ProcessId, moduleNames[i], out string versionString));
                     Trace.TraceInformation("TestCreateDebuggingInterface pid {0} version string {1}", startInfo.ProcessId, versionString);

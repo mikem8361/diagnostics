@@ -10,11 +10,13 @@ using System.IO.Pipes;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Microsoft.Diagnostics
 {
     public class StartInfo : IDisposable
     {
+        public readonly ITestOutputHelper Output;
         public readonly TestConfiguration TestConfiguration;
         public readonly bool Launch;
 
@@ -27,8 +29,9 @@ namespace Microsoft.Diagnostics
         private NamedPipeServerStream _pipeServer;
         private Process _process;
 
-        public StartInfo(TestConfiguration config, bool launch)
+        public StartInfo(ITestOutputHelper output, TestConfiguration config, bool launch)
         {
+            Output = output;
             TestConfiguration = config;
             Launch = launch;
         }

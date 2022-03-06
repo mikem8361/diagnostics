@@ -18,7 +18,6 @@
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.DebugServices.Implementation\Microsoft.Diagnostics.DebugServices.Implementation.csproj" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.DebugServices\Microsoft.Diagnostics.DebugServices.csproj" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.TestHelpers\Microsoft.Diagnostics.TestHelpers.csproj" />
-    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.Repl\Microsoft.Diagnostics.Repl.csproj" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\SOS\SOS.Extensions\SOS.Extensions.csproj" />
   </ItemGroup>
     
@@ -113,7 +112,7 @@
 
   <Target Name="WriteTestConfigFile" Outputs="$(TestConfigFileName)" AfterTargets="Build">
      <PropertyGroup>
-       <TestConfigFileLines>@(ConfigFileEntries->Metadata("ConfigFileEntry"))</TestConfigFileLines>
+       <TestConfigFileLines>@(ConfigFileEntries-&gt;Metadata("ConfigFileEntry"))</TestConfigFileLines>
      </PropertyGroup>
     <WriteLinesToFile File="$(TestConfigFileName)" Lines="$(TestConfigFileLines)" Overwrite="true" WriteOnlyWhenDifferent="true" />
     <Message Importance="High" Text="Created config file $(TestConfigFileName)" />

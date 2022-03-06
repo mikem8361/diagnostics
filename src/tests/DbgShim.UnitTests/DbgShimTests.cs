@@ -41,7 +41,7 @@ namespace Microsoft.Diagnostics
         public DbgShimTests(ITestOutputHelper output)
         {
             Output = output;
-            DebugServicesTests.LoggingListener.EnableListener(output, ListenerName);
+            LoggingListener.EnableListener(output, ListenerName);
         }
 
         void IDisposable.Dispose() => Trace.Listeners.Remove(ListenerName);
@@ -54,7 +54,7 @@ namespace Microsoft.Diagnostics
         {
             await RemoteInvoke(config, static async (string xml) =>
             {
-                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: true);
+                using StartInfo startInfo = await StartDebuggee(xml, launch: true);
                 TestRegisterForRuntimeStartup(startInfo, 1);
 
                 // Once the debuggee is resumed now wait until it starts
@@ -70,7 +70,7 @@ namespace Microsoft.Diagnostics
         {
             await RemoteInvoke(config, static async (string xml) =>
             {
-                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: true);
+                using StartInfo startInfo = await StartDebuggee(xml, launch: true);
                 TestRegisterForRuntimeStartup(startInfo, 2);
 
                 // Once the debuggee is resumed now wait until it starts
@@ -91,7 +91,7 @@ namespace Microsoft.Diagnostics
             }
             await RemoteInvoke(config, static async (string xml) => 
             {
-                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: true);
+                using StartInfo startInfo = await StartDebuggee(xml, launch: true);
                 TestRegisterForRuntimeStartup(startInfo, 3);
 
                 // Once the debuggee is resumed now wait until it starts
@@ -107,7 +107,7 @@ namespace Microsoft.Diagnostics
         {
             await RemoteInvoke(config, static async (string xml) => 
             {
-                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestRegisterForRuntimeStartup(startInfo, 1);
             });
         }
@@ -120,7 +120,7 @@ namespace Microsoft.Diagnostics
         {
             await RemoteInvoke(config, static async (string xml) => 
             {
-                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestRegisterForRuntimeStartup(startInfo, 2);
             });
         }
@@ -138,7 +138,7 @@ namespace Microsoft.Diagnostics
             }
             await RemoteInvoke(config, static async (string xml) => 
             {
-                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestRegisterForRuntimeStartup(startInfo, 3);
             });
         }
@@ -151,7 +151,7 @@ namespace Microsoft.Diagnostics
         {
             await RemoteInvoke(config, static async (string xml) =>
             {
-                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 Trace.TraceInformation("EnumerateCLRs pid {0} START", startInfo.ProcessId);
                 HResult hr = DbgShimAPI.EnumerateCLRs(startInfo.ProcessId, (IntPtr[] continueEventHandles, string[] moduleNames) =>
                 {
@@ -177,7 +177,7 @@ namespace Microsoft.Diagnostics
         {
             await RemoteInvoke(config, static async (string xml) =>
             {
-                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestCreateDebuggingInterface(startInfo, 0);
             });
         }
@@ -190,7 +190,7 @@ namespace Microsoft.Diagnostics
         {
             await RemoteInvoke(config, static async (string xml) =>
             {
-                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestCreateDebuggingInterface(startInfo, 1);
             });
         }
@@ -203,7 +203,7 @@ namespace Microsoft.Diagnostics
         {
             await RemoteInvoke(config, static async (string xml) =>
             {
-                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestCreateDebuggingInterface(startInfo, 2);
             });
         }
@@ -221,7 +221,7 @@ namespace Microsoft.Diagnostics
             }
             await RemoteInvoke(config, static async (string xml) =>
             {
-                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestCreateDebuggingInterface(startInfo, 3);
             });
         }
@@ -235,9 +235,7 @@ namespace Microsoft.Diagnostics
             }
             await RemoteInvoke(config, static (string xml) =>
             {
-                TestConfiguration cfg = TestConfiguration.Deserialize(xml);
-                ITestOutputHelper output = TestRunner.ConfigureLogging(cfg, new ConsoleTestOutputHelper(), "DbgShim.UnitTests");
-                DebugServicesTests.LoggingListener.EnableListener(output, ListenerName);
+                AfterInvoke(xml, out TestConfiguration cfg, out ITestOutputHelper output);
 
                 DbgShimAPI.Initialize(cfg.DbgShimPath());
                 AssertResult(DbgShimAPI.CLRCreateInstance(out ICLRDebugging clrDebugging));
@@ -279,10 +277,9 @@ namespace Microsoft.Diagnostics
 
         #region Helper functions
 
-        private static async Task<StartInfo> StartDebuggee(TestConfiguration config, bool launch)
+        private static async Task<StartInfo> StartDebuggee(string xml, bool launch)
         {
-            ITestOutputHelper output = TestRunner.ConfigureLogging(config, new ConsoleTestOutputHelper(), "DbgShim.UnitTests");
-            DebugServicesTests.LoggingListener.EnableListener(output, ListenerName);
+            AfterInvoke(xml, out TestConfiguration config, out ITestOutputHelper output);
 
             StartInfo startInfo = new(output, config, launch);
             string debuggeeName = config.DebuggeeName();
@@ -505,34 +502,15 @@ namespace Microsoft.Diagnostics
 
         private async Task RemoteInvoke(TestConfiguration config, Func<string, Task> method)
         {
-            RemoteInvokeOptions options = new()
-            {
-                StartInfo = new ProcessStartInfo() { RedirectStandardOutput = true, RedirectStandardError = true }
-            };
-            try
-            {
-                using RemoteInvokeHandle remoteInvokeHandle = RemoteExecutor.Invoke(method, config.Serialize(), options);
-                try
-                {
-                    Task<string> stdOutputTask = remoteInvokeHandle.Process.StandardOutput.ReadToEndAsync();
-                    Task<string> stdErrorTask = remoteInvokeHandle.Process.StandardError.ReadToEndAsync();
-                    await Task.WhenAll(stdErrorTask, stdOutputTask);
-                    Output.WriteLine(stdOutputTask.Result);
-                    Output.WriteLine(stdErrorTask.Result);
-                }
-                catch (ObjectDisposedException)
-                {
-                    Output.WriteLine("Failed to collect remote process's output");
-                }
-                remoteInvokeHandle.Process.WaitForExit();
-                Assert.Equal(0, remoteInvokeHandle.ExitCode);
-            }
-            // This is to catch the random exception that is thrown when the remoteInvokeHandle is disposed. It doesn't make any sense:
-            // "Method not found: 'Microsoft.Diagnostics.Runtime.DataTarget Microsoft.Diagnostics.Runtime.DataTarget.AttachToProcess(Int32, UInt32)'."
-            catch (MissingMethodException ex)
-            {
-                Output.WriteLine(ex.ToString());
-            }
+            int exitCode = await RemoteExecutorHelper.RemoteInvoke(Output, config, method);
+            Assert.Equal(0, exitCode);
+        }
+
+        private static void AfterInvoke(string xml, out TestConfiguration config, out ITestOutputHelper output)
+        {
+            config = TestConfiguration.Deserialize(xml);
+            output = TestRunner.ConfigureLogging(config, new ConsoleTestOutputHelper(), "DbgShim.UnitTests");
+            LoggingListener.EnableListener(output, ListenerName);
         }
 
         private static void AssertResult(HResult hr)

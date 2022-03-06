@@ -219,6 +219,7 @@ MachOModule::ReadHeader()
         m_reader.Trace("ERROR: failed to read header at %p\n", (void*)m_baseAddress);
         return false;
     }
+    m_reader.Trace("ReadHeader: magic %08x cputype %d ncmds %d sizeofcmds %d\n", m_header.magic, m_header.cputype, m_header.ncmds, m_header.sizeofcmds);
     return true;
 }
 

@@ -152,11 +152,10 @@ namespace Microsoft.Diagnostics
                 {
                     Assert.True(continueEventHandles.Length == 1);
                     Assert.True(moduleNames.Length == 1);
-                    ITestOutputHelper output = new ConsoleTestOutputHelper();
                     for (int i = 0; i < continueEventHandles.Length; i++)
                     {
                         Trace.TraceInformation("EnumerateCLRs pid {0} {1:X16} {2}", startInfo.ProcessId, continueEventHandles[i].ToInt64(), moduleNames[i]);
-                        AssertX.FileExists("ModuleFilePath", moduleNames[i], output);
+                        AssertX.FileExists("ModuleFilePath", moduleNames[i], startInfo.Output);
                     }
                 });
                 AssertResult(hr);

@@ -27,11 +27,11 @@
 class MachOReaderFromFile : public MachOReader
 {
 private:
-    ReadMemoryCallback m_readMemory;
+    PAL_FILE* m_file;
 
 public:
-    MachOReaderFromFile(ReadMemoryCallback readMemory) :
-        m_readMemory(readMemory)
+    MachOReaderFromFile() :
+        m_file(NULL)
     {
     }
 
@@ -39,32 +39,47 @@ public:
     {
     }
 
-private:
+    bool OpenFile(const WCHAR* modulePath)
+    {
+        _ASSERTE(m_file == NULL);
+        m_file = _wfopen(modulePath, W("rb"));
+        return m_file != NULL;
+    }
+
     virtual bool ReadMemory(void* address, void* buffer, size_t size)
     {
-        return m_readMemory(address, buffer, size);
+        if (m_file == NULL)
+        {
+            return false;
+        }
+        if (PAL_fseek(m_file, (LONG)address, SEEK_SET) != 0)
+        {
+            return false;
+        }
+        size_t read = PAL_fread(buffer, 1, size, m_file);
+        return read > 0;
     }
 };
 
 //
-// Entry point to get an export symbol
+// Entry point to get an export symbol from a module file
 //
 extern "C" bool
 TryReadSymbolFromFile(const WCHAR* modulePath, const char* symbolName, BYTE* buffer, ULONG32 size)
 {
-    //MachOReaderFromFile reader(readMemory);
-    //MachOModule module(reader, baseAddress);
-    //if (!module.ReadHeader())
-    //{
-    //    return false;
-    //}
-    //uint64_t symbolOffset;
-    //if (module.TryLookupSymbol(symbolName, &symbolOffset))
-    //{
-    //    *symbolAddress = symbolOffset;
-    //    return true;
-    //}
-    //*symbolAddress = 0;
+    MachOReaderFromFile reader;
+    if (reader.OpenFile(modulePath))
+    {
+        MachOModule module(reader, 0);
+        if (module.ReadHeader())
+        {
+            uint64_t symbolOffset;
+            if (module.TryLookupSymbol(symbolName, &symbolOffset))
+            {
+                return reader.ReadMemory((void*)symbolOffset, buffer, size);
+            }
+        }
+    }
     return false;
 }
 

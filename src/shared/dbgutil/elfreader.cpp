@@ -54,13 +54,6 @@ public:
     {
     }
 
-    bool OpenFile(const WCHAR* modulePath)
-    {
-        _ASSERTE(m_file == NULL);
-        m_file = _wfopen(modulePath, W("rb"));
-        return m_file != NULL;
-    }
-
     virtual ~ElfReaderFromFile()
     {
         if (m_file != NULL)
@@ -68,6 +61,13 @@ public:
             PAL_fclose(m_file);
             m_file = NULL;
         }
+    }
+
+    bool OpenFile(const WCHAR* modulePath)
+    {
+        _ASSERTE(m_file == NULL);
+        m_file = _wfopen(modulePath, W("rb"));
+        return m_file != NULL;
     }
 
     uint64_t GetFileOffset(uint64_t address)
@@ -117,18 +117,18 @@ public:
 extern "C" bool
 TryReadSymbolFromFile(const WCHAR* modulePath, const char* symbolName, BYTE* buffer, ULONG32 size)
 {
-    ElfReaderFromFile elfreader();
-    if (elfreader.OpenFile(modulePath))
+    ElfReaderFromFile reader;
+    if (reader.OpenFile(modulePath))
     {
-        if (elfreader.PopulateForSymbolLookup(0))
+        if (reader.PopulateForSymbolLookup(0))
         {
             uint64_t symbolOffset;
-            if (elfreader.TryLookupSymbol(symbolName, &symbolOffset))
+            if (reader.TryLookupSymbol(symbolName, &symbolOffset))
             {
-                symbolOffset = elfreader.GetFileOffset(symbolOffset);
+                symbolOffset = reader.GetFileOffset(symbolOffset);
                 if (symbolOffset != 0)
                 {
-                    return elfreader.ReadMemory((void*)symbolOffset, buffer, size);
+                    return reader.ReadMemory((void*)symbolOffset, buffer, size);
                 }
             }
         }
@@ -213,11 +213,11 @@ private:
 extern "C" bool
 TryGetSymbol(ICorDebugDataTarget* dataTarget, uint64_t baseAddress, const char* symbolName, uint64_t* symbolAddress)
 {
-    ElfReaderExport elfreader(dataTarget);
-    if (elfreader.PopulateForSymbolLookup(baseAddress))
+    ElfReaderExport reader(dataTarget);
+    if (reader.PopulateForSymbolLookup(baseAddress))
     {
         uint64_t symbolOffset;
-        if (elfreader.TryLookupSymbol(symbolName, &symbolOffset))
+        if (reader.TryLookupSymbol(symbolName, &symbolOffset))
         {
             *symbolAddress = baseAddress + symbolOffset;
             return true;

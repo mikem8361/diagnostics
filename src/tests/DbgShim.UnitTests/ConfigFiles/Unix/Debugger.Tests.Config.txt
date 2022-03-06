@@ -64,7 +64,6 @@
       <Options>
         <!--
             Single file
-         -->
         <Option Condition="'$(RuntimeVersionLatest)' != ''">
           <DebuggeeBuildRoot>$(RootBinDir)/Debuggees/SingleFile</DebuggeeBuildRoot>
           <BuildProjectFramework>$(BuildProjectFrameworkLatest)</BuildProjectFramework>
@@ -73,6 +72,7 @@
           <RuntimeFrameworkVersion>6.0.0</RuntimeFrameworkVersion>
           <RuntimeModulePath>$(RepoRootDir)/.dotnet/shared/Microsoft.NETCore.App/$(RuntimeFrameworkVersion)</RuntimeModulePath>
         </Option>
+         -->
         <!--
             Default
           -->
@@ -93,17 +93,17 @@
   <Options>
     <Option Condition="'$(OS)' == 'Linux'">
       <!--
-      <DbgShimPath>$(DotNetRoot)/shared/Microsoft.NETCore.App/$(RuntimeFrameworkVersion)/libdbgshim.so</DbgShimPath>
-       -->
       <DbgShimPath>$(InstallDir)/libdbgshim.so</DbgShimPath>
+       -->
+      <DbgShimPath>$(DotNetRoot)/shared/Microsoft.NETCore.App/$(RuntimeFrameworkVersion)/libdbgshim.so</DbgShimPath>
       <DbiModulePath>$(RuntimeModulePath)/libmscordbi.so</DbiModulePath>
       <DacModulePath>$(RuntimeModulePath)/libmscordaccore.so</DacModulePath>
     </Option>
     <Option Condition="'$(OS)' == 'OSX'">
       <!--
-      <DbgShimPath>$(DotNetRoot)/shared/Microsoft.NETCore.App/$(RuntimeFrameworkVersion)/libdbgshim.dylib</DbgShimPath>
-       -->
       <DbgShimPath>$(InstallDir)/libdbgshim.dylib</DbgShimPath>
+       -->
+      <DbgShimPath>$(DotNetRoot)/shared/Microsoft.NETCore.App/$(RuntimeFrameworkVersion)/libdbgshim.dylib</DbgShimPath>
       <DbiModulePath>$(RuntimeModulePath)/libmscordbi.dylib</DbiModulePath>
       <DacModulePath>$(RuntimeModulePath)/libmscordaccore.dylib</DacModulePath>
     </Option>

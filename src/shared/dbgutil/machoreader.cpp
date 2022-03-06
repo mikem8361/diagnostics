@@ -52,7 +52,7 @@ public:
         {
             return false;
         }
-        if (PAL_fseek(m_file, (LONG)(intptr_t)address, SEEK_SET) != 0)
+        if (PAL_fseek(m_file, reinterpret_cast<LONG>(address), SEEK_SET) != 0)
         {
             return false;
         }

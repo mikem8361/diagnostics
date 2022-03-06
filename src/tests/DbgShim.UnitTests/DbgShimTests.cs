@@ -42,6 +42,11 @@ namespace Microsoft.Diagnostics
 
         private ISymbolService SymbolService { get; }
 
+        public DbgShimTests()
+            : this(new ConsoleTestOutputHelper())
+        {
+        }
+ 
         public DbgShimTests(ITestOutputHelper output)
         {
             Output = output;
@@ -52,7 +57,7 @@ namespace Microsoft.Diagnostics
             SymbolService.AddSymbolServer(msdl: true, symweb: false, symbolServerPath: null, authToken: null, timeoutInMinutes: 0);
             SymbolService.AddCachePath(SymbolService.DefaultSymbolCache);
         }
- 
+
         void IDisposable.Dispose() => Trace.Listeners.Remove(ListenerName);
 
         /// <summary>
@@ -92,9 +97,9 @@ namespace Microsoft.Diagnostics
             {
                 throw new SkipTestException("IsRegisterForRuntimeStartup3 not supported");
             }
-            await RemoteInvoke(config, async (TestConfiguration c) => 
+            await RemoteInvoke(config, async (string xml) => 
             {
-                using StartInfo startInfo = await StartDebuggee(c, launch: true);
+                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: true);
                 TestRegisterForRuntimeStartup(startInfo, 3);
 
                 // Once the debuggee is resumed now wait until it starts
@@ -212,8 +217,6 @@ namespace Microsoft.Diagnostics
             }
             await RemoteInvoke(config.DbgShimPath(), config.DumpFile(), config.TestDataFile(), (string dbgShimPath, string dumpFile, string testDataFile) =>
             {
-                DebugServicesTests.LoggingListener.EnableConsoleListener(ListenerName);
-
                 DbgShimAPI.Initialize(dbgShimPath);
                 AssertResult(DbgShimAPI.CLRCreateInstance(out ICLRDebugging clrDebugging));
                 Assert.NotNull(clrDebugging);
@@ -472,25 +475,15 @@ namespace Microsoft.Diagnostics
             COMHelper.Release(icdp);
         }
 
-        private async Task RemoteInvoke(TestConfiguration config, Func<TestConfiguration, Task> method)
+        private async Task RemoteInvoke(TestConfiguration config, Func<string, Task> method)
         {
-            XmlSerializer xmlSerializer = new XmlSerializer(typeof(IReadOnlyDictionary<string, string>));
-            TextWriter writer = new StringWriter();
-            xmlSerializer.Serialize(writer, config.AllSettings);
-
-            Action<string> action = async (string arg) => 
-            {
-                DebugServicesTests.LoggingListener.EnableConsoleListener(ListenerName);
-                TestConfiguration newConfig = new();
-                await method(newConfig);
-            };
             RemoteInvokeOptions options = new()
             {
                 StartInfo = new ProcessStartInfo() { RedirectStandardOutput = true, RedirectStandardError = true }
             };
             try
             {
-                using RemoteInvokeHandle remoteInvokeHandle = RemoteExecutor.Invoke(action, writer.ToString(), options);
+                using RemoteInvokeHandle remoteInvokeHandle = RemoteExecutor.Invoke(method, config.Serialize(), options);
                 try
                 {
                     Task<string> stdOutputTask = remoteInvokeHandle.Process.StandardOutput.ReadToEndAsync();

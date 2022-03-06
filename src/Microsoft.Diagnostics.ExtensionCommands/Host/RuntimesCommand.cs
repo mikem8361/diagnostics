@@ -27,9 +27,6 @@ namespace Microsoft.Diagnostics.ExtensionCommands
         [Option(Name = "--netcore", Aliases = new string[] { "-netcore", "-c" }, Help = "Switches to the .NET Core runtime if exists.")]
         public bool NetCore { get; set; }
 
-        [Option(Name = "--verbose", Aliases = new string[] { "-v" }, Help = "Displays more details.")]
-        public bool Verbose { get; set; }
-
         public override void Invoke()
         {
             if (NetFx && NetCore)
@@ -61,30 +58,27 @@ namespace Microsoft.Diagnostics.ExtensionCommands
                     string current = displayStar ? (runtime == ContextService.GetCurrentRuntime() ? "*" : " ") : "";
                     Write(current);
                     Write(runtime.ToString());
-                    if (Verbose)
+                    ClrInfo clrInfo = runtime.Services.GetService<ClrInfo>();
+                    if (clrInfo is not null)
                     {
-                        ClrInfo clrInfo = runtime.Services.GetService<ClrInfo>();
-                        if (clrInfo is not null)
+                        unsafe
                         {
-                            unsafe
+                            if (clrInfo.SingleFileRuntimeInfo.HasValue)
                             {
-                                if (clrInfo.SingleFileRuntimeInfo.HasValue)
+                                RuntimeInfo runtimeInfo = clrInfo.SingleFileRuntimeInfo.Value;
+                                WriteLine("    Signature:   {0}", Encoding.ASCII.GetString(runtimeInfo.Signature, RuntimeInfo.SignatureValueLength - 1));
+                                WriteLine("    Version:     {0}", runtimeInfo.Version);
+                                if (Target.OperatingSystem == OSPlatform.Windows)
                                 {
-                                    RuntimeInfo runtimeInfo = clrInfo.SingleFileRuntimeInfo.Value;
-                                    WriteLine("    Signature:   {0}", Encoding.ASCII.GetString(runtimeInfo.Signature, RuntimeInfo.SignatureValueLength - 1));
-                                    WriteLine("    Version:     {0}", runtimeInfo.Version);
-                                    if (Target.OperatingSystem == OSPlatform.Windows)
-                                    {
-                                        WriteLine("    Runtime:     {0}", GetWindowsIndex(runtimeInfo.RuntimeModuleIndex));
-                                        WriteLine("    DBI:         {0}", GetWindowsIndex(runtimeInfo.DbiModuleIndex));
-                                        WriteLine("    DAC:         {0}", GetWindowsIndex(runtimeInfo.DacModuleIndex));
-                                    }
-                                    else 
-                                    {
-                                        WriteLine("    Runtime:     {0}",  GetUnixIndex(runtimeInfo.RuntimeModuleIndex));
-                                        WriteLine("    DBI:         {0}",  GetUnixIndex(runtimeInfo.DbiModuleIndex));
-                                        WriteLine("    DAC:         {0}",  GetUnixIndex(runtimeInfo.DacModuleIndex));
-                                    }
+                                    WriteLine("    Runtime:     {0}", GetWindowsIndex(runtimeInfo.RuntimeModuleIndex));
+                                    WriteLine("    DBI:         {0}", GetWindowsIndex(runtimeInfo.DbiModuleIndex));
+                                    WriteLine("    DAC:         {0}", GetWindowsIndex(runtimeInfo.DacModuleIndex));
+                                }
+                                else 
+                                {
+                                    WriteLine("    Runtime:     {0}",  GetUnixIndex(runtimeInfo.RuntimeModuleIndex));
+                                    WriteLine("    DBI:         {0}",  GetUnixIndex(runtimeInfo.DbiModuleIndex));
+                                    WriteLine("    DAC:         {0}",  GetUnixIndex(runtimeInfo.DacModuleIndex));
                                 }
                             }
                         }

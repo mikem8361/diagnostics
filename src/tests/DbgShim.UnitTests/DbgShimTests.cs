@@ -13,10 +13,12 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 using Xunit;
 using Xunit.Abstractions;
 using Xunit.Extensions;
@@ -90,11 +92,14 @@ namespace Microsoft.Diagnostics
             {
                 throw new SkipTestException("IsRegisterForRuntimeStartup3 not supported");
             }
-            using StartInfo startInfo = await StartDebuggee(config, launch: true);
-            TestRegisterForRuntimeStartup(startInfo, 3);
+            await RemoteInvoke(config, async (TestConfiguration c) => 
+            {
+                using StartInfo startInfo = await StartDebuggee(c, launch: true);
+                TestRegisterForRuntimeStartup(startInfo, 3);
 
-            // Once the debuggee is resumed now wait until it starts
-            Assert.True(await startInfo.WaitForDebuggee());
+                // Once the debuggee is resumed now wait until it starts
+                Assert.True(await startInfo.WaitForDebuggee());
+            });
         }
 
         /// <summary>
@@ -207,7 +212,7 @@ namespace Microsoft.Diagnostics
             }
             await RemoteInvoke(config.DbgShimPath(), config.DumpFile(), config.TestDataFile(), (string dbgShimPath, string dumpFile, string testDataFile) =>
             {
-                DebugServicesTests.LoggingListener.EnableListener(new ConsoleTestOutputHelper(), ListenerName);
+                DebugServicesTests.LoggingListener.EnableConsoleListener(ListenerName);
 
                 DbgShimAPI.Initialize(dbgShimPath);
                 AssertResult(DbgShimAPI.CLRCreateInstance(out ICLRDebugging clrDebugging));
@@ -465,6 +470,47 @@ namespace Microsoft.Diagnostics
             AssertResult(COMHelper.QueryInterface(process, IID_ICorDebugProcess, out IntPtr icdp));
             Assert.True(icdp != IntPtr.Zero);
             COMHelper.Release(icdp);
+        }
+
+        private async Task RemoteInvoke(TestConfiguration config, Func<TestConfiguration, Task> method)
+        {
+            XmlSerializer xmlSerializer = new XmlSerializer(typeof(IReadOnlyDictionary<string, string>));
+            TextWriter writer = new StringWriter();
+            xmlSerializer.Serialize(writer, config.AllSettings);
+
+            Action<string> action = async (string arg) => 
+            {
+                DebugServicesTests.LoggingListener.EnableConsoleListener(ListenerName);
+                TestConfiguration newConfig = new();
+                await method(newConfig);
+            };
+            RemoteInvokeOptions options = new()
+            {
+                StartInfo = new ProcessStartInfo() { RedirectStandardOutput = true, RedirectStandardError = true }
+            };
+            try
+            {
+                using RemoteInvokeHandle remoteInvokeHandle = RemoteExecutor.Invoke(action, writer.ToString(), options);
+                try
+                {
+                    Task<string> stdOutputTask = remoteInvokeHandle.Process.StandardOutput.ReadToEndAsync();
+                    Task<string> stdErrorTask = remoteInvokeHandle.Process.StandardError.ReadToEndAsync();
+                    await Task.WhenAll(stdErrorTask, stdOutputTask);
+                    Output.WriteLine(stdOutputTask.Result);
+                    Output.WriteLine(stdErrorTask.Result);
+                }
+                catch (ObjectDisposedException)
+                {
+                    Output.WriteLine("Failed to collect remote process's output");
+                }
+                remoteInvokeHandle.Process.WaitForExit();
+            }
+            // This is to catch the random exception that is thrown when the remoteInvokeHandle is disposed. It doesn't make any sense:
+            // "Method not found: 'Microsoft.Diagnostics.Runtime.DataTarget Microsoft.Diagnostics.Runtime.DataTarget.AttachToProcess(Int32, UInt32)'."
+            catch (MissingMethodException ex)
+            {
+                Output.WriteLine(ex.ToString());
+            }
         }
 
         private async Task RemoteInvoke(string arg1, string arg2, string arg3, Action<string, string, string> method)

@@ -119,6 +119,9 @@ static HRESULT GetSingleFileInfo(ITarget* target, PULONG pModuleIndex, PULONG64 
         if (strcmp(((RuntimeInfo*)buffer.GetPtr())->Signature, "DotNetRuntimeInfo") != 0) {
             break;
         }
+        if (((RuntimeInfo*)buffer.GetPtr())->Version <= 0) {
+            break;
+        }
         *pModuleIndex = index;
         *pModuleAddress = baseAddress;
         *ppRuntimeInfo = (RuntimeInfo*)buffer.Detach();

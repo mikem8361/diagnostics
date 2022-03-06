@@ -1158,6 +1158,10 @@ GetTargetCLRMetrics(
         {
             ThrowHR(E_FAIL);
         }
+        if (pRuntimeInfo->Version <= 0)
+        {
+            ThrowHR(E_FAIL);
+        }
         if (pRuntimeInfo->DbiModuleIndex[0] < (sizeof(DWORD) + sizeof(DWORD)) || pRuntimeInfo->DacModuleIndex[0] < (sizeof(DWORD) + sizeof(DWORD)))
         {
             ThrowHR(E_FAIL);

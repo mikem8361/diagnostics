@@ -373,8 +373,6 @@ namespace Microsoft.Diagnostics
                     break;
                 case 3:
                     LibraryProviderWrapper libraryProvider = new(startInfo.TestConfiguration.DbiModulePath(), startInfo.TestConfiguration.DacModulePath());
-                    //Console.WriteLine("Hit any key {0}", Process.GetCurrentProcess().Id);
-                    //Console.ReadLine();
                     result = DbgShimAPI.RegisterForRuntimeStartup3(startInfo.ProcessId, applicationGroupId, parameter: IntPtr.Zero, libraryProvider.ILibraryProvider, out unregisterToken, callback);
                     break;
                 default:
@@ -495,7 +493,11 @@ namespace Microsoft.Diagnostics
             AssertResult(corDebug.Initialize());
             ManagedCallbackWrapper managedCallback = new(startInfo);
             AssertResult(corDebug.SetManagedHandler(managedCallback.ICorDebugManagedCallback));
+
+            Console.WriteLine("Hit any key {0}", Process.GetCurrentProcess().Id);
+            Console.ReadLine();
             AssertResult(corDebug.DebugActiveProcess(startInfo.ProcessId, out IntPtr process));
+
             AssertResult(COMHelper.QueryInterface(process, IID_ICorDebugProcess, out IntPtr icdp));
             Assert.True(icdp != IntPtr.Zero);
             COMHelper.Release(icdp);
@@ -523,6 +525,7 @@ namespace Microsoft.Diagnostics
                     Output.WriteLine("Failed to collect remote process's output");
                 }
                 remoteInvokeHandle.Process.WaitForExit();
+                Assert.Equal(0, remoteInvokeHandle.ExitCode);
             }
             // This is to catch the random exception that is thrown when the remoteInvokeHandle is disposed. It doesn't make any sense:
             // "Method not found: 'Microsoft.Diagnostics.Runtime.DataTarget Microsoft.Diagnostics.Runtime.DataTarget.AttachToProcess(Int32, UInt32)'."

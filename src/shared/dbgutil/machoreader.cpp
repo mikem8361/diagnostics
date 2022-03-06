@@ -70,7 +70,7 @@ TryReadSymbolFromFile(const WCHAR* modulePath, const char* symbolName, BYTE* buf
     MachOReaderFromFile reader;
     if (reader.OpenFile(modulePath))
     {
-        MachOModule module(reader, 0);
+        MachOModule module(reader, true, 0);
         if (module.ReadHeader())
         {
             uint64_t symbolOffset;
@@ -114,7 +114,7 @@ extern "C" bool
 TryGetSymbolWithCallback(ReadMemoryCallback readMemory, uint64_t baseAddress, const char* symbolName, uint64_t* symbolAddress)
 {
     MachOReaderWithCallback reader(readMemory);
-    MachOModule module(reader, baseAddress);
+    MachOModule module(reader, false, baseAddress);
     if (!module.ReadHeader())
     {
         return false;
@@ -161,7 +161,7 @@ extern "C" bool
 TryGetSymbol(ICorDebugDataTarget* dataTarget, uint64_t baseAddress, const char* symbolName, uint64_t* symbolAddress)
 {
     MachOReaderExport reader(dataTarget);
-    MachOModule module(reader, baseAddress);
+    MachOModule module(reader, false, baseAddress);
     if (!module.ReadHeader())
     {
         return false;
@@ -180,8 +180,9 @@ TryGetSymbol(ICorDebugDataTarget* dataTarget, uint64_t baseAddress, const char* 
 // MachO module 
 //--------------------------------------------------------------------
 
-MachOModule::MachOModule(MachOReader& reader, mach_vm_address_t baseAddress, mach_header_64* header, std::string* name) :
+MachOModule::MachOModule(MachOReader& reader, bool isFileLayout, mach_vm_address_t baseAddress, mach_header_64* header, std::string* name) :
     m_reader(reader),
+    m_isFileLayout(isFileLayout),
     m_baseAddress(baseAddress),
     m_loadBias(0),
     m_commands(nullptr),
@@ -335,9 +336,12 @@ MachOModule::ReadLoadCommands()
 
                 // Calculate the load bias for the module. This is the value to add to the vmaddr of a
                 // segment to get the actual address.
-                if (strcmp(segment->segname, SEG_TEXT) == 0)
+                if (!m_isFileLayout)
                 {
-                    m_loadBias = m_baseAddress - segment->vmaddr;
+                    if (strcmp(segment->segname, SEG_TEXT) == 0)
+                    {
+                        m_loadBias = m_baseAddress - segment->vmaddr;
+                    }
                 }
 
                 m_reader.TraceVerbose("CMD: vmaddr %016llx vmsize %016llx fileoff %016llx filesize %016llx nsects %d max %c%c%c init %c%c%c %02x %s\n",
@@ -426,11 +430,14 @@ uint64_t
 MachOModule::GetAddressFromFileOffset(uint32_t offset)
 {
     _ASSERTE(!m_segments.empty());
-    for (const segment_command_64* segment : m_segments)
+    if (!m_isFileLayout)
     {
-        if (offset >= segment->fileoff && offset < (segment->fileoff + segment->filesize))
+        for (const segment_command_64* segment : m_segments)
         {
-            return m_loadBias + offset + segment->vmaddr - segment->fileoff;
+            if (offset >= segment->fileoff && offset < (segment->fileoff + segment->filesize))
+            {
+                return m_loadBias + offset + segment->vmaddr - segment->fileoff;
+            }
         }
     }
     return m_loadBias + offset;
@@ -473,7 +480,7 @@ MachOReader::EnumerateModules(mach_vm_address_t address, mach_header_64* header)
     _ASSERTE(header->magic == MH_MAGIC_64);
     _ASSERTE(header->filetype == MH_DYLINKER);
 
-    MachOModule dylinker(*this, address, header);
+    MachOModule dylinker(*this, false, address, header);
 
     // Search for symbol for the dyld image info cache
     uint64_t dyldInfoAddress = 0;
@@ -527,7 +534,7 @@ MachOReader::EnumerateModules(mach_vm_address_t address, mach_header_64* header)
             Trace("ERROR: Failed to read image name at %p\n", imageFilePathAddress);
             continue;
         }
-        MachOModule module(*this, imageAddress, nullptr, &imagePath);
+        MachOModule module(*this, false, imageAddress, nullptr, &imagePath);
         if (!module.ReadHeader())
         {
             continue;

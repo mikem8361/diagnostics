@@ -15,6 +15,7 @@ class MachOModule
     friend MachOReader;
 private:
     MachOReader& m_reader;
+    bool m_isFileLayout;
     mach_vm_address_t m_baseAddress;
     mach_vm_address_t m_loadBias;
     mach_header_64 m_header;
@@ -27,7 +28,7 @@ private:
     uint64_t m_strtabAddress;
 
 public:
-    MachOModule(MachOReader& reader, mach_vm_address_t baseAddress, mach_header_64* header = nullptr, std::string* name = nullptr);
+    MachOModule(MachOReader& reader, bool isFileLayout, mach_vm_address_t baseAddress, mach_header_64* header = nullptr, std::string* name = nullptr);
     ~MachOModule();
 
     inline mach_vm_address_t BaseAddress() const { return m_baseAddress; }

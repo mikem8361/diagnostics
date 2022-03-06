@@ -457,20 +457,20 @@ public:
             goto exit;
         }
 
-        // Now check if this is the coreclr module or a single-file app module
-        if (!IsCoreClrModule(pszModulePath))
-        {
-            SString runtimeModulePath;
-            runtimeModulePath.SetASCII(pszModulePath);
-            hr = GetTargetCLRMetrics(runtimeModulePath, NULL, &clrInfo, NULL);
-            if (FAILED(hr))
-            { 
-                return false;
-            }
-        }
-
         PAL_CPP_TRY
         {
+            // Now check if this is the coreclr module or a single-file app module
+            if (!IsCoreClrModule(pszModulePath))
+            {
+                SString runtimeModulePath;
+                runtimeModulePath.SetASCII(pszModulePath);
+                hr = GetTargetCLRMetrics(runtimeModulePath, NULL, &clrInfo, NULL);
+                if (FAILED(hr))
+                { 
+                    return false;
+                }
+            }
+
             SString dbiModulePath;
             SString dacModulePath;
             if (m_pLibraryProvider != NULL && clrInfo.IsValid())
@@ -1370,6 +1370,7 @@ GetRuntime(
     {
         return E_FAIL;
     }
+
     // The modules in the array returned don't need to be closed
     DWORD countModules;
     ArrayHolder<HMODULE> modules = nullptr;

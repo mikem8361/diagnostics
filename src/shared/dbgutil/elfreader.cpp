@@ -49,9 +49,16 @@ private:
     std::vector<ProgramHeader> m_programHeaders;
 
 public:
-    ElfReaderFromFile(const WCHAR* modulePath) : ElfReader(true)
+    ElfReaderFromFile() : ElfReader(true),
+        m_file(NULL)
     {
+    }
+
+    bool OpenFile(const WCHAR* modulePath)
+    {
+        _ASSERTE(m_file == NULL);
         m_file = _wfopen(modulePath, W("rb"));
+        return m_file != NULL;
     }
 
     virtual ~ElfReaderFromFile()
@@ -110,16 +117,19 @@ public:
 extern "C" bool
 TryReadSymbolFromFile(const WCHAR* modulePath, const char* symbolName, BYTE* buffer, ULONG32 size)
 {
-    ElfReaderFromFile elfreader(modulePath);
-    if (elfreader.PopulateForSymbolLookup(0))
+    ElfReaderFromFile elfreader();
+    if (elfreader.OpenFile(modulePath))
     {
-        uint64_t symbolOffset;
-        if (elfreader.TryLookupSymbol(symbolName, &symbolOffset))
+        if (elfreader.PopulateForSymbolLookup(0))
         {
-            symbolOffset = elfreader.GetFileOffset(symbolOffset);
-            if (symbolOffset != 0)
+            uint64_t symbolOffset;
+            if (elfreader.TryLookupSymbol(symbolName, &symbolOffset))
             {
-                return elfreader.ReadMemory((void*)symbolOffset, buffer, size);
+                symbolOffset = elfreader.GetFileOffset(symbolOffset);
+                if (symbolOffset != 0)
+                {
+                    return elfreader.ReadMemory((void*)symbolOffset, buffer, size);
+                }
             }
         }
     }

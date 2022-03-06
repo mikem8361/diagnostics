@@ -24,20 +24,64 @@
 #define PRIxA PRIA PRIx
 #endif
 
-typedef bool (*ReadMemoryCallback)(void* address, void* buffer, size_t size);
-
-class MachOReaderExportWithCallback : public MachOReader
+class MachOReaderFromFile : public MachOReader
 {
 private:
     ReadMemoryCallback m_readMemory;
 
 public:
-    MachOReaderExportWithCallback(ReadMemoryCallback readMemory) :
+    MachOReaderFromFile(ReadMemoryCallback readMemory) :
         m_readMemory(readMemory)
     {
     }
 
-    virtual ~MachOReaderExportWithCallback()
+    virtual ~MachOReaderFromFile()
+    {
+    }
+
+private:
+    virtual bool ReadMemory(void* address, void* buffer, size_t size)
+    {
+        return m_readMemory(address, buffer, size);
+    }
+};
+
+//
+// Entry point to get an export symbol
+//
+extern "C" bool
+TryReadSymbolFromFile(const WCHAR* modulePath, const char* symbolName, BYTE* buffer, ULONG32 size)
+{
+    //MachOReaderFromFile reader(readMemory);
+    //MachOModule module(reader, baseAddress);
+    //if (!module.ReadHeader())
+    //{
+    //    return false;
+    //}
+    //uint64_t symbolOffset;
+    //if (module.TryLookupSymbol(symbolName, &symbolOffset))
+    //{
+    //    *symbolAddress = symbolOffset;
+    //    return true;
+    //}
+    //*symbolAddress = 0;
+    return false;
+}
+
+typedef bool (*ReadMemoryCallback)(void* address, void* buffer, size_t size);
+
+class MachOReaderWithCallback : public MachOReader
+{
+private:
+    ReadMemoryCallback m_readMemory;
+
+public:
+    MachOReaderWithCallback(ReadMemoryCallback readMemory) :
+        m_readMemory(readMemory)
+    {
+    }
+
+    virtual ~MachOReaderWithCallback()
     {
     }
 
@@ -54,7 +98,7 @@ private:
 extern "C" bool
 TryGetSymbolWithCallback(ReadMemoryCallback readMemory, uint64_t baseAddress, const char* symbolName, uint64_t* symbolAddress)
 {
-    MachOReaderExportWithCallback reader(readMemory);
+    MachOReaderWithCallback reader(readMemory);
     MachOModule module(reader, baseAddress);
     if (!module.ReadHeader())
     {

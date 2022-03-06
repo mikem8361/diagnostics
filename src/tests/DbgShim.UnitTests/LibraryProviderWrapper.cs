@@ -11,6 +11,7 @@ using Microsoft.FileFormats.PE;
 using Microsoft.SymbolStore;
 using Microsoft.SymbolStore.KeyGenerators;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -19,7 +20,7 @@ using Xunit;
 
 namespace SOS.Hosting
 {
-    public sealed unsafe class LibraryProviderWrapper : COMCallableIUnknown
+    public sealed unsafe class LibraryProviderWrapper : COMCallableIUnknown, IHost
     {
         public static readonly Guid IID_ICLRDebuggingLibraryProvider = new Guid("3151C08D-4D09-4f9b-8838-2880BF18FE51");
         public static readonly Guid IID_ICLRDebuggingLibraryProvider2 = new Guid("E04E2FF1-DCFD-45D5-BCD1-16FFF2FAF7BA");
@@ -28,19 +29,18 @@ namespace SOS.Hosting
         public IntPtr ILibraryProvider { get; }
 
         private readonly OSPlatform _targetOS;
-        private readonly ISymbolService _symbolService;
         private readonly string _dbiModulePath;
         private readonly string _dacModulePath;
+        private ISymbolService _symbolService;
 
-        public LibraryProviderWrapper(ISymbolService symbolService, string dbiModulePath, string dacModulePath)
-           : this(GetRunningOS(), symbolService, dbiModulePath, dacModulePath)
+        public LibraryProviderWrapper(string dbiModulePath, string dacModulePath)
+           : this(GetRunningOS(), dbiModulePath, dacModulePath)
         {
         }
 
-        public LibraryProviderWrapper(OSPlatform targetOS, ISymbolService symbolService, string dbiModulePath, string dacModulePath)
+        public LibraryProviderWrapper(OSPlatform targetOS, string dbiModulePath, string dacModulePath)
         {
             _targetOS = targetOS;
-            _symbolService = symbolService;
             _dbiModulePath = dbiModulePath;
             _dacModulePath = dacModulePath;
 
@@ -234,7 +234,7 @@ namespace SOS.Hosting
             Assert.True(timeStamp != 0 && sizeOfImage != 0);
             SymbolStoreKey key = PEFileKeyGenerator.GetKey(moduleName, timeStamp, sizeOfImage);
             Assert.NotNull(key);
-            string downloadedPath = _symbolService.DownloadFile(key);
+            string downloadedPath = SymbolService.DownloadFile(key);
             Assert.NotNull(downloadedPath);
             return downloadedPath;
         }
@@ -271,7 +271,7 @@ namespace SOS.Hosting
                 key = MachOFileKeyGenerator.GetKeys(KeyTypeFlags.IdentityKey, moduleName, buildId, symbolFile: false, symbolFileName: null).SingleOrDefault();
             }
             Assert.NotNull(key);
-            string downloadedPath = _symbolService.DownloadFile(key);
+            string downloadedPath = SymbolService.DownloadFile(key);
             Assert.NotNull(downloadedPath);
             return downloadedPath;
         }
@@ -346,6 +346,34 @@ namespace SOS.Hosting
                 throw new NotSupportedException($"OS not supported {RuntimeInformation.OSDescription}");
             }
         }
+
+        private ISymbolService SymbolService
+        {
+            get 
+            {
+                if (_symbolService is null)
+                {
+                    _symbolService = new SymbolService(this);
+                    _symbolService.AddSymbolServer(msdl: true, symweb: false, symbolServerPath: null, authToken: null, timeoutInMinutes: 0);
+                    _symbolService.AddCachePath(SymbolService.DefaultSymbolCache);
+                }
+                return _symbolService;
+            }
+        }
+
+        #region IHost
+
+        IServiceEvent IHost.OnShutdownEvent => throw new NotImplementedException();
+
+        HostType IHost.HostType => HostType.DotnetDump;
+
+        IServiceProvider IHost.Services => throw new NotImplementedException();
+
+        IEnumerable<ITarget> IHost.EnumerateTargets() => throw new NotImplementedException();
+
+        void IHost.DestroyTarget(ITarget target) => throw new NotImplementedException();
+
+        #endregion
 
         #region ICLRDebuggingLibraryProvider* delegates
 

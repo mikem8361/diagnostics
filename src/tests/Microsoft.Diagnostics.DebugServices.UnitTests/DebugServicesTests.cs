@@ -282,11 +282,28 @@ namespace Microsoft.Diagnostics.DebugServices.UnitTests
                 }
             }
 
+            public static void EnableConsoleListener(string name)
+            {
+                if (Trace.Listeners[name] == null) 
+                {
+                    Trace.Listeners.Add(new LoggingListener(name));
+                    Trace.AutoFlush = true;
+                }
+            }
+
             private LoggingListener(ITestOutputHelper output, string name)
                 : base(name)
             {
                 _converter = new CharToLineConverter((text) => {
                     output.WriteLine(text);
+                });
+            }
+
+            private LoggingListener(string name)
+                : base(name)
+            {
+                _converter = new CharToLineConverter((text) => {
+                    Console.WriteLine(text);
                 });
             }
 

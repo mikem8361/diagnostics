@@ -25,7 +25,7 @@ using Xunit.Extensions;
 
 namespace Microsoft.Diagnostics
 {
-    public class DbgShimTests : IHost, IDisposable
+    public class DbgShimTests : IDisposable
     {
         private const string ListenerName = "DbgShimTests";
 
@@ -38,17 +38,10 @@ namespace Microsoft.Diagnostics
 
         private ITestOutputHelper Output { get; }
 
-        private ISymbolService SymbolService { get; }
-
         public DbgShimTests(ITestOutputHelper output)
         {
             Output = output;
             DebugServicesTests.LoggingListener.EnableListener(output, ListenerName);
-
-            // Automatically enable symbol server support
-            SymbolService = new SymbolService(this);
-            SymbolService.AddSymbolServer(msdl: true, symweb: false, symbolServerPath: null, authToken: null, timeoutInMinutes: 0);
-            SymbolService.AddCachePath(SymbolService.DefaultSymbolCache);
         }
 
         void IDisposable.Dispose() => Trace.Listeners.Remove(ListenerName);
@@ -59,11 +52,14 @@ namespace Microsoft.Diagnostics
         [SkippableTheory, MemberData(nameof(Configurations))]
         public async Task Launch1(TestConfiguration config)
         {
-            using StartInfo startInfo = await StartDebuggee(config, launch: true);
-            TestRegisterForRuntimeStartup(startInfo, 1);
+            await RemoteInvoke(config, static async (string xml) =>
+            {
+                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: true);
+                TestRegisterForRuntimeStartup(startInfo, 1);
 
-            // Once the debuggee is resumed now wait until it starts
-            Assert.True(await startInfo.WaitForDebuggee());
+                // Once the debuggee is resumed now wait until it starts
+                Assert.True(await startInfo.WaitForDebuggee());
+            });
         }
 
         /// <summary>
@@ -72,11 +68,14 @@ namespace Microsoft.Diagnostics
         [SkippableTheory, MemberData(nameof(Configurations))]
         public async Task Launch2(TestConfiguration config)
         {
-            using StartInfo startInfo = await StartDebuggee(config, launch: true);
-            TestRegisterForRuntimeStartup(startInfo, 2);
+            await RemoteInvoke(config, static async (string xml) =>
+            {
+                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: true);
+                TestRegisterForRuntimeStartup(startInfo, 2);
 
-            // Once the debuggee is resumed now wait until it starts
-            Assert.True(await startInfo.WaitForDebuggee());
+                // Once the debuggee is resumed now wait until it starts
+                Assert.True(await startInfo.WaitForDebuggee());
+            });
         }
 
         /// <summary>
@@ -92,9 +91,8 @@ namespace Microsoft.Diagnostics
             }
             await RemoteInvoke(config, static async (string xml) => 
             {
-                DbgShimTests tests = new(new ConsoleTestOutputHelper());
-                using StartInfo startInfo = await tests.StartDebuggee(TestConfiguration.Deserialize(xml), launch: true);
-                tests.TestRegisterForRuntimeStartup(startInfo, 3);
+                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: true);
+                TestRegisterForRuntimeStartup(startInfo, 3);
 
                 // Once the debuggee is resumed now wait until it starts
                 Assert.True(await startInfo.WaitForDebuggee());
@@ -107,8 +105,11 @@ namespace Microsoft.Diagnostics
         [SkippableTheory, MemberData(nameof(Configurations))]
         public async Task Attach1(TestConfiguration config)
         {
-            using StartInfo startInfo = await StartDebuggee(config, launch: false);
-            TestRegisterForRuntimeStartup(startInfo, 1);
+            await RemoteInvoke(config, static async (string xml) => 
+            {
+                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                TestRegisterForRuntimeStartup(startInfo, 1);
+            });
         }
 
         /// <summary>
@@ -117,8 +118,11 @@ namespace Microsoft.Diagnostics
         [SkippableTheory, MemberData(nameof(Configurations))]
         public async Task Attach2(TestConfiguration config)
         {
-            using StartInfo startInfo = await StartDebuggee(config, launch: false);
-            TestRegisterForRuntimeStartup(startInfo, 2);
+            await RemoteInvoke(config, static async (string xml) => 
+            {
+                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                TestRegisterForRuntimeStartup(startInfo, 2);
+            });
         }
 
         /// <summary>
@@ -132,8 +136,11 @@ namespace Microsoft.Diagnostics
             {
                 throw new SkipTestException("IsRegisterForRuntimeStartup3 not supported");
             }
-            using StartInfo startInfo = await StartDebuggee(config, launch: false);
-            TestRegisterForRuntimeStartup(startInfo, 3);
+            await RemoteInvoke(config, static async (string xml) => 
+            {
+                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                TestRegisterForRuntimeStartup(startInfo, 3);
+            });
         }
 
         /// <summary>
@@ -142,19 +149,24 @@ namespace Microsoft.Diagnostics
         [SkippableTheory, MemberData(nameof(Configurations))]
         public async Task EnumerateCLRs(TestConfiguration config)
         {
-            using StartInfo startInfo = await StartDebuggee(config, launch: false);
-            Trace.TraceInformation("EnumerateCLRs pid {0} START", startInfo.ProcessId);
-            HResult hr = DbgShimAPI.EnumerateCLRs(startInfo.ProcessId, (IntPtr[] continueEventHandles, string[] moduleNames) => {
-                Assert.True(continueEventHandles.Length > 0);
-                Assert.True(moduleNames.Length > 0);
-                for (int i = 0; i < continueEventHandles.Length; i++)
+            await RemoteInvoke(config, static async (string xml) =>
+            {
+                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                Trace.TraceInformation("EnumerateCLRs pid {0} START", startInfo.ProcessId);
+                HResult hr = DbgShimAPI.EnumerateCLRs(startInfo.ProcessId, (IntPtr[] continueEventHandles, string[] moduleNames) =>
                 {
-                    Trace.TraceInformation("EnumerateCLRs pid {0} {1:X16} {2}", startInfo.ProcessId, continueEventHandles[i].ToInt64(), moduleNames[i]);
-                    AssertX.FileExists("ModuleFilePath", moduleNames[i], Output);
-                }
+                    Assert.True(continueEventHandles.Length == 1);
+                    Assert.True(moduleNames.Length == 1);
+                    ITestOutputHelper output = new ConsoleTestOutputHelper();
+                    for (int i = 0; i < continueEventHandles.Length; i++)
+                    {
+                        Trace.TraceInformation("EnumerateCLRs pid {0} {1:X16} {2}", startInfo.ProcessId, continueEventHandles[i].ToInt64(), moduleNames[i]);
+                        AssertX.FileExists("ModuleFilePath", moduleNames[i], output);
+                    }
+                });
+                AssertResult(hr);
+                Trace.TraceInformation("EnumerateCLRs pid {0} DONE", startInfo.ProcessId);
             });
-            AssertResult(hr);
-            Trace.TraceInformation("EnumerateCLRs pid {0} DONE", startInfo.ProcessId);
         }
 
         /// <summary>
@@ -163,8 +175,11 @@ namespace Microsoft.Diagnostics
         [SkippableTheory, MemberData(nameof(Configurations))]
         public async Task CreateDebuggingInterfaceFromVersion(TestConfiguration config)
         {
-            using StartInfo startInfo = await StartDebuggee(config, launch: false);
-            TestCreateDebuggingInterface(startInfo, 0);
+            await RemoteInvoke(config, static async (string xml) =>
+            {
+                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                TestCreateDebuggingInterface(startInfo, 0);
+            });
         }
 
         /// <summary>
@@ -173,8 +188,11 @@ namespace Microsoft.Diagnostics
         [SkippableTheory, MemberData(nameof(Configurations))]
         public async Task CreateDebuggingInterfaceFromVersionEx(TestConfiguration config)
         {
-            using StartInfo startInfo = await StartDebuggee(config, launch: false);
-            TestCreateDebuggingInterface(startInfo, 1);
+            await RemoteInvoke(config, static async (string xml) =>
+            {
+                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                TestCreateDebuggingInterface(startInfo, 1);
+            });
         }
 
         /// <summary>
@@ -183,8 +201,11 @@ namespace Microsoft.Diagnostics
         [SkippableTheory, MemberData(nameof(Configurations))]
         public async Task CreateDebuggingInterfaceFromVersion2(TestConfiguration config)
         {
-            using StartInfo startInfo = await StartDebuggee(config, launch: false);
-            TestCreateDebuggingInterface(startInfo, 2);
+            await RemoteInvoke(config, static async (string xml) =>
+            {
+                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                TestCreateDebuggingInterface(startInfo, 2);
+            });
         }
 
         /// <summary>
@@ -198,8 +219,11 @@ namespace Microsoft.Diagnostics
             {
                 throw new SkipTestException("CreateDebuggingInterfaceFromVersion3 not supported");
             }
-            using StartInfo startInfo = await StartDebuggee(config, launch: false);
-            TestCreateDebuggingInterface(startInfo, 3);
+            await RemoteInvoke(config, static async (string xml) =>
+            {
+                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: false);
+                TestCreateDebuggingInterface(startInfo, 3);
+            });
         }
 
         [SkippableTheory, MemberData(nameof(GetConfigurations), "TestName", "OpenVirtualProcess")]
@@ -209,19 +233,22 @@ namespace Microsoft.Diagnostics
             {
                 throw new SkipTestException("OpenVirtualProcessTest: No dump file");
             }
-            await RemoteInvoke(config.DbgShimPath(), config.DumpFile(), config.TestDataFile(), (string dbgShimPath, string dumpFile, string testDataFile) =>
+            await RemoteInvoke(config, static (string xml) =>
             {
-                DbgShimAPI.Initialize(dbgShimPath);
+                DebugServicesTests.LoggingListener.EnableConsoleListener(ListenerName);
+
+                TestConfiguration c = TestConfiguration.Deserialize(xml);
+                DbgShimAPI.Initialize(c.DbgShimPath());
                 AssertResult(DbgShimAPI.CLRCreateInstance(out ICLRDebugging clrDebugging));
                 Assert.NotNull(clrDebugging);
 
-                TestDump testDump = new(dumpFile, testDataFile);
+                TestDump testDump = new(c.DumpFile(), c.TestDataFile());
                 ITarget target = testDump.Target;
                 IRuntimeService runtimeService = target.Services.GetService<IRuntimeService>();
                 IRuntime runtime = runtimeService.EnumerateRuntimes().Single();
 
                 CorDebugDataTargetWrapper dataTarget = new(target.Services);
-                LibraryProviderWrapper libraryProvider = new(target.OperatingSystem, testDump.Services.GetService<ISymbolService>(), runtime.GetDbiFilePath(), runtime.GetDacFilePath());
+                LibraryProviderWrapper libraryProvider = new(target.OperatingSystem, runtime.GetDbiFilePath(), runtime.GetDacFilePath());
                 ClrDebuggingVersion maxDebuggerSupportedVersion = new()
                 {
                     StructVersion = 0,
@@ -245,13 +272,16 @@ namespace Microsoft.Diagnostics
                 Assert.Equal(1, COMHelper.Release(corDebugProcess));
                 Assert.Equal(0, COMHelper.Release(corDebugProcess));
                 Assert.Equal(0, clrDebugging.Release());
+                return Task.CompletedTask;
             });
         }
 
         #region Helper functions
 
-        private async Task<StartInfo> StartDebuggee(TestConfiguration config, bool launch)
+        private static async Task<StartInfo> StartDebuggee(TestConfiguration config, bool launch)
         {
+            DebugServicesTests.LoggingListener.EnableConsoleListener(ListenerName);
+
             StartInfo startInfo = new(config, launch);
             string debuggeeName = config.DebuggeeName();
 
@@ -261,7 +291,8 @@ namespace Microsoft.Diagnostics
             DbgShimAPI.Initialize(config.DbgShimPath());
 
             // Restore and build the debuggee
-            DebuggeeConfiguration debuggeeConfig = await DebuggeeCompiler.Execute(config, debuggeeName, Output);
+            ITestOutputHelper output = new ConsoleTestOutputHelper();
+            DebuggeeConfiguration debuggeeConfig = await DebuggeeCompiler.Execute(config, debuggeeName, output);
 
             // Build the debuggee command line
             StringBuilder commandLine = new();
@@ -300,7 +331,7 @@ namespace Microsoft.Diagnostics
             return startInfo;
         }
 
-        private void TestRegisterForRuntimeStartup(StartInfo startInfo, int api)
+        private static void TestRegisterForRuntimeStartup(StartInfo startInfo, int api)
         {
             AutoResetEvent wait = new AutoResetEvent(false);
             string applicationGroupId =  null;
@@ -341,7 +372,7 @@ namespace Microsoft.Diagnostics
                     result = DbgShimAPI.RegisterForRuntimeStartupEx(startInfo.ProcessId, applicationGroupId, parameter: IntPtr.Zero, out unregisterToken, callback);
                     break;
                 case 3:
-                    LibraryProviderWrapper libraryProvider = new(SymbolService, startInfo.TestConfiguration.DbiModulePath(), startInfo.TestConfiguration.DacModulePath());
+                    LibraryProviderWrapper libraryProvider = new(startInfo.TestConfiguration.DbiModulePath(), startInfo.TestConfiguration.DacModulePath());
                     //Console.WriteLine("Hit any key {0}", Process.GetCurrentProcess().Id);
                     //Console.ReadLine();
                     result = DbgShimAPI.RegisterForRuntimeStartup3(startInfo.ProcessId, applicationGroupId, parameter: IntPtr.Zero, libraryProvider.ILibraryProvider, out unregisterToken, callback);
@@ -387,17 +418,18 @@ namespace Microsoft.Diagnostics
             Trace.TraceInformation("RegisterForRuntimeStartup pid {0} DONE", startInfo.ProcessId);
         }
 
-        private void TestCreateDebuggingInterface(StartInfo startInfo, int api)
+        private static void TestCreateDebuggingInterface(StartInfo startInfo, int api)
         {
             Trace.TraceInformation("TestCreateDebuggingInterface pid {0} api {1} START", startInfo.ProcessId, api);
             HResult hr = DbgShimAPI.EnumerateCLRs(startInfo.ProcessId, (IntPtr[] continueEventHandles, string[] moduleNames) =>
             {
                 Assert.True(continueEventHandles.Length == 1);
                 Assert.True(moduleNames.Length == 1);
+                ITestOutputHelper output = new ConsoleTestOutputHelper();
                 for (int i = 0; i < continueEventHandles.Length; i++)
                 {
                     Trace.TraceInformation("TestCreateDebuggingInterface pid {0} {1:X16} {2}", startInfo.ProcessId, continueEventHandles[i].ToInt64(), moduleNames[i]);
-                    AssertX.FileExists("ModuleFilePath", moduleNames[i], Output);
+                    AssertX.FileExists("ModuleFilePath", moduleNames[i], output);
 
                     AssertResult(DbgShimAPI.CreateVersionStringFromModule(startInfo.ProcessId, moduleNames[i], out string versionString));
                     Trace.TraceInformation("TestCreateDebuggingInterface pid {0} version string {1}", startInfo.ProcessId, versionString);
@@ -418,7 +450,7 @@ namespace Microsoft.Diagnostics
                             result = DbgShimAPI.CreateDebuggingInterfaceFromVersion2(DbgShimAPI.CorDebugLatestVersion, versionString, applicationGroupId, out corDebug);
                             break;
                         case 3:
-                            LibraryProviderWrapper libraryProvider = new(SymbolService, startInfo.TestConfiguration.DbiModulePath(), startInfo.TestConfiguration.DacModulePath());
+                            LibraryProviderWrapper libraryProvider = new(startInfo.TestConfiguration.DbiModulePath(), startInfo.TestConfiguration.DacModulePath());
                             result = DbgShimAPI.CreateDebuggingInterfaceFromVersion3(DbgShimAPI.CorDebugLatestVersion, versionString, applicationGroupId, libraryProvider.ILibraryProvider, out corDebug);
                             break;
                         default:
@@ -457,7 +489,7 @@ namespace Microsoft.Diagnostics
 
         private static readonly Guid IID_ICorDebugProcess = new Guid("3D6F5F64-7538-11D3-8D5B-00104B35E7EF");
 
-        private void TestICorDebug(StartInfo startInfo, ICorDebug corDebug)
+        private static void TestICorDebug(StartInfo startInfo, ICorDebug corDebug)
         {
             Assert.NotNull(corDebug);
             AssertResult(corDebug.Initialize());
@@ -500,55 +532,10 @@ namespace Microsoft.Diagnostics
             }
         }
 
-        private async Task RemoteInvoke(string arg1, string arg2, string arg3, Action<string, string, string> method)
-        {
-            var options = new RemoteInvokeOptions()
-            {
-                StartInfo = new ProcessStartInfo() { RedirectStandardOutput = true, RedirectStandardError = true }
-            };
-            try
-            {
-                using RemoteInvokeHandle remoteInvokeHandle = RemoteExecutor.Invoke(method, arg1, arg2, arg3, options);
-                try
-                {
-                    Task<string> stdOutputTask = remoteInvokeHandle.Process.StandardOutput.ReadToEndAsync();
-                    Task<string> stdErrorTask = remoteInvokeHandle.Process.StandardError.ReadToEndAsync();
-                    await Task.WhenAll(stdErrorTask, stdOutputTask);
-                    Output.WriteLine(stdOutputTask.Result);
-                    Output.WriteLine(stdErrorTask.Result);
-                }
-                catch (ObjectDisposedException)
-                {
-                    Output.WriteLine("Failed to collect remote process's output");
-                }
-                remoteInvokeHandle.Process.WaitForExit();
-            }
-            // This is to catch the random exception that is thrown when the remoteInvokeHandle is disposed. It doesn't make any sense:
-            // "Method not found: 'Microsoft.Diagnostics.Runtime.DataTarget Microsoft.Diagnostics.Runtime.DataTarget.AttachToProcess(Int32, UInt32)'."
-            catch (MissingMethodException ex)
-            {
-                Output.WriteLine(ex.ToString());
-            }
-        }
-
         private static void AssertResult(HResult hr)
         {
             Xunit.Assert.Equal<HResult>(HResult.S_OK, hr);
         }
-
-        #endregion
-
-        #region IHost
-
-        IServiceEvent IHost.OnShutdownEvent => throw new NotImplementedException();
-
-        HostType IHost.HostType => HostType.DotnetDump;
-
-        IServiceProvider IHost.Services => throw new NotImplementedException();
-
-        IEnumerable<ITarget> IHost.EnumerateTargets() => throw new NotImplementedException();
-
-        void IHost.DestroyTarget(ITarget target) => throw new NotImplementedException();
 
         #endregion
     }

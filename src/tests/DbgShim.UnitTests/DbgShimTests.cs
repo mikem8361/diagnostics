@@ -13,12 +13,10 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml.Serialization;
 using Xunit;
 using Xunit.Abstractions;
 using Xunit.Extensions;
@@ -42,11 +40,6 @@ namespace Microsoft.Diagnostics
 
         private ISymbolService SymbolService { get; }
 
-        public DbgShimTests()
-            : this(new ConsoleTestOutputHelper())
-        {
-        }
- 
         public DbgShimTests(ITestOutputHelper output)
         {
             Output = output;
@@ -97,10 +90,11 @@ namespace Microsoft.Diagnostics
             {
                 throw new SkipTestException("IsRegisterForRuntimeStartup3 not supported");
             }
-            await RemoteInvoke(config, async (string xml) => 
+            await RemoteInvoke(config, static async (string xml) => 
             {
-                using StartInfo startInfo = await StartDebuggee(TestConfiguration.Deserialize(xml), launch: true);
-                TestRegisterForRuntimeStartup(startInfo, 3);
+                DbgShimTests tests = new(new ConsoleTestOutputHelper());
+                using StartInfo startInfo = await tests.StartDebuggee(TestConfiguration.Deserialize(xml), launch: true);
+                tests.TestRegisterForRuntimeStartup(startInfo, 3);
 
                 // Once the debuggee is resumed now wait until it starts
                 Assert.True(await startInfo.WaitForDebuggee());

@@ -52,7 +52,7 @@ public:
         {
             return false;
         }
-        if (PAL_fseek(m_file, (LONG)address, SEEK_SET) != 0)
+        if (PAL_fseek(m_file, (LONG)(intptr_t)address, SEEK_SET) != 0)
         {
             return false;
         }
@@ -557,3 +557,25 @@ MachOReader::ReadString(const char* address, std::string& str)
     }
     return true;
 }
+
+
+void
+MachOReader::Trace(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vfprintf(stdout, format, args);
+    fflush(stdout);
+    va_end(args);
+}
+
+void
+MachOReader::TraceVerbose(const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vfprintf(stdout, format, args);
+    fflush(stdout);
+    va_end(args);
+}
+

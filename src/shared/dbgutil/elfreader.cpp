@@ -661,26 +661,6 @@ ElfReader::EnumerateProgramHeaders(Elf_Phdr* phdrAddr, int phnum, uint64_t baseA
     return true;
 }
 
-void
-ElfReader::Trace(const char* format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    vfprintf(stdout, format, args);
-    fflush(stdout);
-    va_end(args);
-}
-
-void
-ElfReader::TraceVerbose(const char* format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    vfprintf(stdout, format, args);
-    fflush(stdout);
-    va_end(args);
-}
-
 #ifdef HOST_WINDOWS
 
 /* ELF 32bit header */

@@ -213,7 +213,7 @@ GetRuntime(
     DWORD debuggeePID,
     ClrRuntimeInfo& clrRuntimeInfo);
 
-void
+HRESULT
 GetTargetCLRMetrics(
     LPCWSTR wszModulePath,
     CLR_ENGINE_METRICS *pEngineMetricsOut,
@@ -460,13 +460,9 @@ public:
         // Now check if this is the coreclr module or a single-file app module
         if (!IsCoreClrModule(pszModulePath))
         {
-            EX_TRY
-            {
-                SString runtimeModulePath;
-                runtimeModulePath.SetASCII(pszModulePath);
-                GetTargetCLRMetrics(runtimeModulePath, NULL, &clrInfo, NULL); // throws
-            }
-            EX_CATCH_HRESULT(hr);
+            SString runtimeModulePath;
+            runtimeModulePath.SetASCII(pszModulePath);
+            hr = GetTargetCLRMetrics(runtimeModulePath, NULL, &clrInfo, NULL);
             if (FAILED(hr))
             { 
                 return false;
@@ -495,7 +491,7 @@ public:
                     goto exit;
                 }
                 dbiModulePath.SetASCII(pszModulePath, pszLast - pszModulePath);
-                dbiModulePath.AppendASCII(DIRECTORY_SEPARATOR_STR_A MAKEDLLNAME_A("mscordbi"));
+                dbiModulePath.Append(DIRECTORY_SEPARATOR_STR_W MAKEDLLNAME_W("mscordbi"));
             }
 
             HRESULT hr = CreateCoreDbg(hModule, m_processId, dbiModulePath, dacModulePath, m_applicationGroupId, CorDebugVersion_2_0, &pCordb);
@@ -1060,7 +1056,7 @@ const WORD kOrdinalForMetrics = 2;
 //   pdwRVAContinueStartupEvent - (out; optional) return the RVA to the continue startup event
 //
 // Returns:
-//   Throwss on error.
+//   HRESULT
 //
 // Notes:
 //     When VS pops up the attach dialog box, it is actually enumerating all the processes on the machine
@@ -1070,19 +1066,13 @@ const WORD kOrdinalForMetrics = 2;
 //     That's why we need to be extra careful reading coreclr.dll in this function.
 //-----------------------------------------------------------------------------
 static
-void
+HRESULT
 GetTargetCLRMetrics(
     LPCWSTR wszModulePath,
     CLR_ENGINE_METRICS *pEngineMetricsOut,
     ClrInfo* pClrInfoOut,
     DWORD *pdwRVAContinueStartupEvent)
 {
-    CONTRACTL
-    {
-        THROWS;
-    }
-    CONTRACTL_END;
-
     CONSISTENCY_CHECK(wszModulePath != NULL);
 
 #ifdef TARGET_WINDOWS
@@ -1097,32 +1087,32 @@ GetTargetCLRMetrics(
                                               NULL);
     if (hCoreClrFile == INVALID_HANDLE_VALUE)
     {
-        ThrowLastError();
+        return HRESULT_FROM_WIN32(GetLastError());
     }
 
     DWORD cbFileHigh = 0;
     DWORD cbFileLow = GetFileSize(hCoreClrFile, &cbFileHigh);
     if (cbFileLow == INVALID_FILE_SIZE)
     {
-        ThrowLastError();
+        return HRESULT_FROM_WIN32(GetLastError());
     }
 
     // A maximum size of 100 MB should be more than enough for coreclr.dll.
     if ((cbFileHigh != 0) || (cbFileLow > 0x6400000) || (cbFileLow == 0))
     {
-        ThrowHR(E_FAIL);
+        return E_FAIL;
     }
 
     HandleHolder hCoreClrMap = WszCreateFileMapping(hCoreClrFile, NULL, PAGE_READONLY, cbFileHigh, cbFileLow, NULL);
     if (hCoreClrMap == NULL)
     {
-        ThrowLastError();
+        return HRESULT_FROM_WIN32(GetLastError());
     }
 
     MapViewHolder hCoreClrMapView = MapViewOfFile(hCoreClrMap, FILE_MAP_READ, 0, 0, 0);
     if (hCoreClrMapView == NULL)
     {
-        ThrowLastError();
+        return HRESULT_FROM_WIN32(GetLastError());
     }
 
     // At this point we have read the file into the process, but be careful because it is flat, i.e. not mapped.
@@ -1132,7 +1122,7 @@ GetTargetCLRMetrics(
     // Check the NT headers.
     if (!pedecoder.CheckNTFormat())
     {
-        ThrowHR(E_FAIL);
+        return E_FAIL;
     }
 
     // At this point we can safely read anything in the NT headers.
@@ -1140,7 +1130,7 @@ GetTargetCLRMetrics(
     if (!pedecoder.HasDirectoryEntry(IMAGE_DIRECTORY_ENTRY_EXPORT) ||
         !pedecoder.CheckDirectoryEntry(IMAGE_DIRECTORY_ENTRY_EXPORT))
     {
-        ThrowHR(E_FAIL);
+        return E_FAIL;
     }
 
     // If we are looking for the DotNetRuntimeInfo export for a single-file app, do this before looking for
@@ -1151,20 +1141,20 @@ GetTargetCLRMetrics(
         PTR_VOID runtimeInfoExport = pedecoder.GetExport(RUNTIME_INFO_SIGNATURE);
         if (runtimeInfoExport == NULL)
         {
-            ThrowHR(E_FAIL);
+            return E_FAIL;
         }
         RuntimeInfo* pRuntimeInfo = reinterpret_cast<RuntimeInfo*>(runtimeInfoExport);
         if (strncmp(pRuntimeInfo->Signature, RUNTIME_INFO_SIGNATURE, sizeof(pRuntimeInfo->Signature)) != 0)
         {
-            ThrowHR(E_FAIL);
+            return E_FAIL;
         }
         if (pRuntimeInfo->Version <= 0)
         {
-            ThrowHR(E_FAIL);
+            return E_FAIL;
         }
         if (pRuntimeInfo->DbiModuleIndex[0] < (sizeof(DWORD) + sizeof(DWORD)) || pRuntimeInfo->DacModuleIndex[0] < (sizeof(DWORD) + sizeof(DWORD)))
         {
-            ThrowHR(E_FAIL);
+            return E_FAIL;
         }
         pClrInfoOut->DbiTimeStamp = *((DWORD*)&pRuntimeInfo->DbiModuleIndex[1]);
         pClrInfoOut->DbiSizeOfImage = *((DWORD*)&pRuntimeInfo->DbiModuleIndex[5]);
@@ -1180,7 +1170,7 @@ GetTargetCLRMetrics(
 
         if (!pedecoder.CheckDirectory(pExportDirectoryEntry))
         {
-            ThrowHR(E_FAIL);
+            return E_FAIL;
         }
 
         IMAGE_EXPORT_DIRECTORY * pExportDir =
@@ -1193,7 +1183,7 @@ GetTargetCLRMetrics(
         if ((pExportDir->Base > kOrdinalForMetrics) || 
             (pExportDir->NumberOfFunctions < (kOrdinalForMetrics - pExportDir->Base)))
         {
-            ThrowHR(E_FAIL);
+            return E_FAIL;
         }
         DWORD dwRealIndex = kOrdinalForMetrics - pExportDir->Base;
 
@@ -1201,7 +1191,7 @@ GetTargetCLRMetrics(
         // Then read the RVA to the CLR_ENGINE_METRICS.
         if (!pedecoder.CheckRva(pExportDir->AddressOfFunctions, (dwRealIndex + 1) * sizeof(DWORD)))
         {
-            ThrowHR(E_FAIL);
+            return E_FAIL;
         }
         DWORD rvaMetrics = *reinterpret_cast<DWORD *>(
            pedecoder.GetRvaData(pExportDir->AddressOfFunctions + dwRealIndex * sizeof(DWORD)));
@@ -1209,7 +1199,7 @@ GetTargetCLRMetrics(
         // Make sure we can safely read the CLR_ENGINE_METRICS at the RVA we have retrieved.
         if (!pedecoder.CheckRva(rvaMetrics, sizeof(*pEngineMetricsOut)))
         {
-            ThrowHR(E_FAIL);
+            return E_FAIL;
         }
 
         // Finally, copy the CLR_ENGINE_METRICS into the output buffer.
@@ -1220,7 +1210,7 @@ GetTargetCLRMetrics(
         // stored it in output buffer.
         if (pEngineMetricsOut->cbSize != sizeof(*pEngineMetricsOut))
         {
-            ThrowHR(E_INVALIDARG);
+            return E_INVALIDARG;
         }
     }
 
@@ -1234,7 +1224,7 @@ GetTargetCLRMetrics(
             ((SIZE_T)pEngineMetricsOut->phContinueStartupEvent >
                 ((SIZE_T)pedecoder.GetPreferredBase() + pedecoder.GetVirtualSize())))
         {
-            ThrowHR(E_FAIL);
+            return E_FAIL;
         }
 
         DWORD rvaContinueStartupEvent =
@@ -1245,7 +1235,7 @@ GetTargetCLRMetrics(
         // falls in the loaded image.
         if ((rvaContinueStartupEvent + sizeof(HANDLE)) > pedecoder.GetVirtualSize())
         {
-            ThrowHR(E_FAIL);
+            return E_FAIL;
         }
 
         *pdwRVAContinueStartupEvent = rvaContinueStartupEvent;
@@ -1258,11 +1248,11 @@ GetTargetCLRMetrics(
         RuntimeInfo runtimeInfo;
         if (!TryReadSymbolFromFile(wszModulePath, RUNTIME_INFO_SIGNATURE, (BYTE*)&runtimeInfo, sizeof(RuntimeInfo)))
         {
-            ThrowHR(E_FAIL);
+            return E_FAIL;
         }
         if (strcmp(runtimeInfo.Signature, RUNTIME_INFO_SIGNATURE) != 0)
         {
-            ThrowHR(E_FAIL);
+            return E_FAIL;
         }
         // The first byte is the number of bytes in the index
         pClrInfoOut->DbiBuildIdSize = runtimeInfo.DbiModuleIndex[0];
@@ -1286,6 +1276,7 @@ GetTargetCLRMetrics(
         *pdwRVAContinueStartupEvent = NULL;
     }
 #endif // TARGET_WINDOWS
+    return S_OK;
 }
 
 //
@@ -1405,22 +1396,17 @@ GetRuntime(
 
         DWORD rvaContinueStartupEvent = 0;
         hr = S_OK;
-        EX_TRY
+        if (IsCoreClr(clrRuntimeInfo.ModulePath))
         {
-            if (IsCoreClr(clrRuntimeInfo.ModulePath))
-            {
-                // Make sure it is a real coreclr.dll by getting the metrics.
-                GetTargetCLRMetrics(clrRuntimeInfo.ModulePath, &clrRuntimeInfo.EngineMetrics, NULL, &rvaContinueStartupEvent); // throws
-            }
-            else 
-            {
-                // Check if single-file app by looking for the DotNetRuntimeInfo export. We need to 
-                // get the metrics too because that is required to get the startup event.
-                GetTargetCLRMetrics(clrRuntimeInfo.ModulePath, &clrRuntimeInfo.EngineMetrics, &clrRuntimeInfo.ClrInfo, &rvaContinueStartupEvent); // throws
-            }
+            // Make sure it is a real coreclr.dll by getting the metrics.
+            hr = GetTargetCLRMetrics(clrRuntimeInfo.ModulePath, &clrRuntimeInfo.EngineMetrics, NULL, &rvaContinueStartupEvent);
         }
-        EX_CATCH_HRESULT(hr);
-
+        else 
+        {
+            // Check if single-file app by looking for the DotNetRuntimeInfo export. We need to 
+            // get the metrics too because that is required to get the startup event.
+            hr = GetTargetCLRMetrics(clrRuntimeInfo.ModulePath, &clrRuntimeInfo.EngineMetrics, &clrRuntimeInfo.ClrInfo, &rvaContinueStartupEvent);
+        }
         if (SUCCEEDED(hr))
         {
             clrRuntimeInfo.ModuleHandle = modules[i];
@@ -1704,7 +1690,6 @@ CreateVersionStringFromModule(
     }
     else if (pBuffer != NULL)
     {
-
         HRESULT hr = S_OK;
         EX_TRY
         {
@@ -1712,17 +1697,20 @@ CreateVersionStringFromModule(
             BYTE* hmodTargetCLR = NULL;
             CLR_ENGINE_METRICS metricsStruct;
 
-            GetTargetCLRMetrics(szModuleName, &metricsStruct); // throws
-            dbiVersion = (CorDebugInterfaceVersion) metricsStruct.dwDbiVersion;
+            hr = GetTargetCLRMetrics(szModuleName, &metricsStruct);
+            if (SUCCEEDED(hr))
+            {
+                dbiVersion = (CorDebugInterfaceVersion) metricsStruct.dwDbiVersion;
 
-            hmodTargetCLR = GetRemoteModuleBaseAddress(pidDebuggee, szModuleName); // throws
-            if (hmodTargetCLR == NULL)
-            {
-                hr = COR_E_FILENOTFOUND;
-            }
-            else
-            {
-                swprintf_s(pBuffer, cchBuffer, c_versionStrFormat, dbiVersion, pidDebuggee, hmodTargetCLR);
+                hmodTargetCLR = GetRemoteModuleBaseAddress(pidDebuggee, szModuleName); // throws
+                if (hmodTargetCLR == NULL)
+                {
+                    hr = COR_E_FILENOTFOUND;
+                }
+                else
+                {
+                    swprintf_s(pBuffer, cchBuffer, c_versionStrFormat, dbiVersion, pidDebuggee, hmodTargetCLR);
+                }
             }
         }
         EX_CATCH_HRESULT(hr);
@@ -2050,20 +2038,15 @@ CreateDebuggingInterfaceFromVersion3(
         else
         {
             ClrInfo clrInfo;
-            GetTargetCLRMetrics(szFullCoreClrPath, NULL, &clrInfo, NULL); // throws
-
-            if (clrInfo.IsValid())
+            hr = GetTargetCLRMetrics(szFullCoreClrPath, NULL, &clrInfo, NULL);
+            if (SUCCEEDED(hr))
             {
-                hr = CLRDebuggingImpl::ProvideLibraries(clrInfo, pLibraryProvider, szFullDbiPath, szFullDacPath);
-                if (FAILED(hr))
+                if (!clrInfo.IsValid())
                 {
+                    hr = CORDBG_E_INCOMPATIBLE_PROTOCOL;
                     goto exit;
                 }
-            }
-            else
-            {
-                hr = CORDBG_E_INCOMPATIBLE_PROTOCOL;
-                goto exit;
+                hr = CLRDebuggingImpl::ProvideLibraries(clrInfo, pLibraryProvider, szFullDbiPath, szFullDacPath);
             }
         }
     }

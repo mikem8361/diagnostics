@@ -3,11 +3,8 @@
 // See the LICENSE file in the project root for more information.
 
 using Microsoft.Diagnostics.DebugServices;
-using Microsoft.Diagnostics.DebugServices.Implementation;
-using Microsoft.Diagnostics.DebugServices.UnitTests;
 using Microsoft.Diagnostics.Runtime.Utilities;
 using Microsoft.Diagnostics.TestHelpers;
-using Microsoft.DotNet.RemoteExecutor;
 using SOS.Hosting;
 using System;
 using System.Collections.Generic;
@@ -20,8 +17,6 @@ using System.Threading.Tasks;
 using Xunit;
 using Xunit.Abstractions;
 using Xunit.Extensions;
-
-[assembly: CollectionBehavior(DisableTestParallelization = true)]
 
 namespace Microsoft.Diagnostics
 {

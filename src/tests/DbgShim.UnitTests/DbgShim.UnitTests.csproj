@@ -19,7 +19,6 @@
 
   <ItemGroup>
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.TestHelpers\Microsoft.Diagnostics.TestHelpers.csproj" />
-    <ProjectReference Include="$(MSBuildThisFileDirectory)..\Microsoft.Diagnostics.DebugServices.UnitTests\Microsoft.Diagnostics.DebugServices.UnitTests.csproj" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\SOS\SOS.Hosting\SOS.Hosting.csproj" />
   </ItemGroup>
 

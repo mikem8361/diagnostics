@@ -24,9 +24,21 @@ namespace Microsoft.Diagnostics.DebugServices.UnitTests
         {
             _configurations ??= TestRunConfiguration.Instance.Configurations
                 .Where((config) => config.AllSettings.ContainsKey("DumpFile"))
-                .Select((config) => TestHost.CreateHost(config))
+                .Select((config) => CreateHost(config))
                 .Select((host) => new[] { host }).ToImmutableArray();
             return _configurations;
+        }
+
+        private static TestHost CreateHost(TestConfiguration config)
+        {
+            if (config.IsTestDbgEng())
+            {
+                return new TestDbgEng(config);
+            }
+            else
+            {
+                return new TestDump(config);
+            }
         }
 
         ITestOutputHelper Output { get; set; }

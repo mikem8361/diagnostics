@@ -494,8 +494,8 @@ namespace Microsoft.Diagnostics
             ManagedCallbackWrapper managedCallback = new(startInfo);
             AssertResult(corDebug.SetManagedHandler(managedCallback.ICorDebugManagedCallback));
 
-            Console.WriteLine("Hit any key {0}", Process.GetCurrentProcess().Id);
-            Console.ReadLine();
+            //Console.WriteLine("Hit any key {0}", Process.GetCurrentProcess().Id);
+            //Console.ReadLine();
             AssertResult(corDebug.DebugActiveProcess(startInfo.ProcessId, out IntPtr process));
 
             AssertResult(COMHelper.QueryInterface(process, IID_ICorDebugProcess, out IntPtr icdp));

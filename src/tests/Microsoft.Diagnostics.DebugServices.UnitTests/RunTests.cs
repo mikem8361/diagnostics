@@ -23,7 +23,7 @@ namespace Microsoft.Diagnostics.DebugServices.UnitTests
 
         public override void Invoke()
         {
-            IEnumerable<TestDebugger> configurations;
+            IEnumerable<TestHost> configurations;
             if (TestDataPath != null)
             {
                 Dictionary<string, string> initialConfig = new Dictionary<string, string>
@@ -40,7 +40,7 @@ namespace Microsoft.Diagnostics.DebugServices.UnitTests
                 configurations = TestRunConfiguration.Instance.Configurations.Select((config) => new TestDebugger(config, Target));
             }
             using var debugServicesTests = new DebugServicesTests(this);
-            foreach (TestDebugger host in configurations)
+            foreach (TestHost host in configurations)
             {
                 if (!host.Config.IsTestDbgEng())
                 {
@@ -73,14 +73,11 @@ namespace Microsoft.Diagnostics.DebugServices.UnitTests
 
     class TestDebugger : TestHost
     {
-        internal readonly TestConfiguration Config;
-
         private readonly ITarget _target;
 
         internal TestDebugger(TestConfiguration config, ITarget target)
-            : base(config.DumpFile(), config.TestDataFile())
+            : base(config)
         {
-            Config = config;
             _target = target;
         }
 

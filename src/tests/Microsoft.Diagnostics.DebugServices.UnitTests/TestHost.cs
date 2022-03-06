@@ -8,10 +8,11 @@ namespace Microsoft.Diagnostics.DebugServices.UnitTests
         private TestDataReader _testData;
         private ITarget _target;
 
-        public TestHost(string dumpFile, string testDataFile)
+        public readonly TestConfiguration Config;
+
+        public TestHost(TestConfiguration config)
         {
-            DumpFile = dumpFile;
-            TestDataFile = testDataFile;
+            Config = config;
         }
 
         public static TestHost CreateHost(TestConfiguration config)
@@ -22,7 +23,7 @@ namespace Microsoft.Diagnostics.DebugServices.UnitTests
             }
             else
             {
-                return new TestDump(config.DumpFile(), config.TestDataFile());
+                return new TestDump(config);
             }
         }
 
@@ -44,11 +45,13 @@ namespace Microsoft.Diagnostics.DebugServices.UnitTests
             }
         }
 
+        public bool IsTestDbgEng => Config.AllSettings.TryGetValue("TestDbgEng", out string value) && value == "true";
+
         protected abstract ITarget GetTarget();
 
-        public string DumpFile { get; }
+        public string DumpFile => TestConfiguration.MakeCanonicalPath(Config.AllSettings["DumpFile"]);
 
-        public string TestDataFile { get; }
+        public string TestDataFile => TestConfiguration.MakeCanonicalPath(Config.AllSettings["TestDataFile"]);
 
         public override string ToString() => DumpFile;
     }
@@ -56,9 +59,5 @@ namespace Microsoft.Diagnostics.DebugServices.UnitTests
     public static class TestHostExtensions
     {
         public static bool IsTestDbgEng(this TestConfiguration config) => config.AllSettings.TryGetValue("TestDbgEng", out string value) && value == "true";
-
-        public static string DumpFile(this TestConfiguration config) => TestConfiguration.MakeCanonicalPath(config.GetValue("DumpFile"));
-
-        public static string TestDataFile(this TestConfiguration config) => TestConfiguration.MakeCanonicalPath(config.GetValue("TestDataFile"));
     }
 }

@@ -243,7 +243,7 @@ namespace Microsoft.Diagnostics
                 AssertResult(DbgShimAPI.CLRCreateInstance(out ICLRDebugging clrDebugging));
                 Assert.NotNull(clrDebugging);
 
-                TestDump testDump = new(cfg.DumpFile(), cfg.TestDataFile());
+                TestDump testDump = new(cfg);
                 ITarget target = testDump.Target;
                 IRuntimeService runtimeService = target.Services.GetService<IRuntimeService>();
                 IRuntime runtime = runtimeService.EnumerateRuntimes().Single();

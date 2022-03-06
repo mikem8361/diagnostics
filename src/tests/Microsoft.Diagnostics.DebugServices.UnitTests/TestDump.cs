@@ -16,8 +16,8 @@ namespace Microsoft.Diagnostics.DebugServices.UnitTests
         private DataTarget _dataTarget;
         private int _targetIdFactory;
 
-        public TestDump(string dumpFile, string testDataFile)
-            : base(dumpFile, testDataFile)
+        public TestDump(TestConfiguration config)
+            : base(config)
         {
             _serviceProvider = new ServiceProvider();
             _contextService = new ContextService(this);
@@ -46,13 +46,13 @@ namespace Microsoft.Diagnostics.DebugServices.UnitTests
 
         public IServiceEvent OnShutdownEvent { get; } = new ServiceEvent();
 
-        public HostType HostType => HostType.DotnetDump;
+        HostType IHost.HostType => HostType.DotnetDump;
 
-        public IServiceProvider Services => _serviceProvider;
+        IServiceProvider IHost.Services => _serviceProvider;
 
-        public IEnumerable<ITarget> EnumerateTargets() => Target != null ? new ITarget[] { Target } : Array.Empty<ITarget>();
+        IEnumerable<ITarget> IHost.EnumerateTargets() => Target != null ? new ITarget[] { Target } : Array.Empty<ITarget>();
 
-        public void DestroyTarget(ITarget target)
+        void IHost.DestroyTarget(ITarget target)
         {
             if (target == null) {
                 throw new ArgumentNullException(nameof(target));

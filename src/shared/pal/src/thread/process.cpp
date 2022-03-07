@@ -1493,7 +1493,7 @@ public:
         listHead = CreateProcessModules(m_processId, &count);
         if (listHead == NULL)
         {
-            TRACE("CreateProcessModules failed for pid %d\n", m_processId);
+            ERROR("CreateProcessModules failed for pid %d\n", m_processId);
             pe = ERROR_INVALID_PARAMETER;
             goto exit;
         }
@@ -1504,7 +1504,6 @@ public:
 
             PAL_CPP_TRY
             {
-                TRACE("InvokeStartupCallback executing callback %p %s\n", entry->BaseAddress, entry->Name);
                 found = m_callback(entry->Name, entry->BaseAddress, m_parameter);
             }
             PAL_CPP_CATCH_ALL

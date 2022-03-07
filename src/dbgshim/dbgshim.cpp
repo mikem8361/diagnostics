@@ -496,7 +496,7 @@ public:
                 dbiModulePath.Append(DIRECTORY_SEPARATOR_STR_W MAKEDLLNAME_W("mscordbi"));
             }
 
-            HRESULT hr = CreateCoreDbg(hModule, m_processId, dbiModulePath, dacModulePath, m_applicationGroupId, CorDebugVersion_2_0, &pCordb);
+            hr = CreateCoreDbg(hModule, m_processId, dbiModulePath, dacModulePath, m_applicationGroupId, CorDebugVersion_2_0, &pCordb);
             _ASSERTE((pCordb == NULL) == FAILED(hr));
             if (FAILED(hr))
             {

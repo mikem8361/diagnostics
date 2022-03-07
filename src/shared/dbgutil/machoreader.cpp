@@ -52,7 +52,7 @@ public:
         {
             return false;
         }
-        if (PAL_fseek(m_file, reinterpret_cast<LONG>(address), SEEK_SET) != 0)
+        if (PAL_fseek(m_file, (LONG)(intptr_t)address, SEEK_SET) != 0)
         {
             return false;
         }
@@ -220,7 +220,7 @@ MachOModule::ReadHeader()
         return false;
     }
     m_reader.Trace("ReadHeader: magic %08x cputype %d ncmds %d sizeofcmds %d\n", m_header.magic, m_header.cputype, m_header.ncmds, m_header.sizeofcmds);
-    return true;
+    return m_header.magic == 0xfeedfacf;
 }
 
 bool

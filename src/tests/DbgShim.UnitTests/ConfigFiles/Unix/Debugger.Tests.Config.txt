@@ -18,7 +18,11 @@
   <DebuggeeBuildProcess>cli</DebuggeeBuildProcess>
   <DebuggeeName>SimpleDebuggee</DebuggeeName>
 
+  !-- Use the global.json SDK to build and the test SDK/runtime to run -->
+  <CliPath>$(RepoRootDir)/.dotnet/dotnet</CliPath>
+  <!--
   <CliPath>$(DotNetRoot)/dotnet</CliPath>
+  -->
 
   <NuGetPackageFeeds>
       dotnet6=https://dnceng.pkgs.visualstudio.com/public/_packaging/dotnet6/nuget/v3/index.json;
@@ -69,8 +73,12 @@
           <BuildProjectFramework>$(BuildProjectFrameworkLatest)</BuildProjectFramework>
           <PublishSingleFile>true</PublishSingleFile>
           <BuildProjectRuntime>$(OSRid)-$(TargetArchitecture)</BuildProjectRuntime>
+          <RuntimeFrameworkVersion>6.0.0</RuntimeFrameworkVersion>
+          <RuntimeModulePath>$(RepoRootDir)/.dotnet/shared/Microsoft.NETCore.App/$(RuntimeFrameworkVersion)</RuntimeModulePath>
+          <!--
           <RuntimeFrameworkVersion>6.0.2</RuntimeFrameworkVersion>
           <RuntimeModulePath>$(DotNetRoot)/shared/Microsoft.NETCore.App/$(RuntimeFrameworkVersion)</RuntimeModulePath>
+          -->
         </Option>
         <!--
             Default

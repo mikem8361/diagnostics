@@ -347,7 +347,7 @@ namespace Microsoft.Diagnostics
             Trace.TraceInformation("RegisterForRuntimeStartup pid {0} launch {1} api {2} START", startInfo.ProcessId, startInfo.Launch, api);
 
             DbgShimAPI.RuntimeStartupCallbackDelegate callback = (ICorDebug cordbg, object parameter, HResult hr) => {
-                Trace.TraceInformation("RegisterForRuntimeStartup callback pid {0} hr {1:X}", startInfo.ProcessId, hr);
+                Trace.TraceInformation("RegisterForRuntimeStartup in callback pid {0} hr {1:X}", startInfo.ProcessId, hr);
                 corDebug = cordbg;
                 callbackResult = hr;
                 try
@@ -495,7 +495,9 @@ namespace Microsoft.Diagnostics
             AssertResult(corDebug.Initialize());
             ManagedCallbackWrapper managedCallback = new(startInfo);
             AssertResult(corDebug.SetManagedHandler(managedCallback.ICorDebugManagedCallback));
+            Trace.TraceInformation("TestICorDebug pid {0} before DebugActiveProcess ", startInfo.ProcessId);
             AssertResult(corDebug.DebugActiveProcess(startInfo.ProcessId, out IntPtr process));
+            Trace.TraceInformation("TestICorDebug pid {0} after DebugActiveProcess ", startInfo.ProcessId);
             AssertResult(COMHelper.QueryInterface(process, IID_ICorDebugProcess, out IntPtr icdp));
             Assert.True(icdp != IntPtr.Zero);
             COMHelper.Release(icdp);

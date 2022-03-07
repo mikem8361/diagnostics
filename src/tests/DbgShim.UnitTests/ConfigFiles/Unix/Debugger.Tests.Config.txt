@@ -73,12 +73,12 @@
         </Option>
         <!--
             Default
+         -->
         <Option Condition="'$(RuntimeVersionLatest)' != ''">
           <DebuggeeBuildRoot>$(RootBinDir)/Debuggees</DebuggeeBuildRoot>
           <BuildProjectFramework>$(BuildProjectFrameworkLatest)</BuildProjectFramework>
           <RuntimeFrameworkVersion>$(RuntimeVersionLatest)</RuntimeFrameworkVersion>
         </Option>
-         -->
       </Options>
     </Option>
   </Options>

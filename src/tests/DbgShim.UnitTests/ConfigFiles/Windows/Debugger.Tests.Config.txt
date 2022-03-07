@@ -69,6 +69,7 @@
           <PublishSingleFile>true</PublishSingleFile>
           <BuildProjectRuntime>win-$(TargetArchitecture)</BuildProjectRuntime>
           <RuntimeFrameworkVersion>6.0.2</RuntimeFrameworkVersion>
+          <RuntimeModulePath>$(DotNetRoot)\shared\Microsoft.NETCore.App\$(RuntimeFrameworkVersion)</RuntimeModulePath>
         </Option>
         <!--
             Default
@@ -77,6 +78,7 @@
           <DebuggeeBuildRoot>$(RootBinDir)\Debuggees</DebuggeeBuildRoot>
           <BuildProjectFramework>$(BuildProjectFrameworkLatest)</BuildProjectFramework>
           <RuntimeFrameworkVersion>$(RuntimeVersionLatest)</RuntimeFrameworkVersion>
+          <RuntimeModulePath>$(DotNetRoot)\shared\Microsoft.NETCore.App\$(RuntimeFrameworkVersion)</RuntimeModulePath>
         </Option>
       </Options>
     </Option>
@@ -86,11 +88,10 @@
   <HostExe Condition="'$(PublishSingleFile)' != 'true'">$(DotNetRoot)\dotnet.exe</HostExe>
   <HostArgs Condition="'$(PublishSingleFile)' != 'true'">--fx-version $(RuntimeFrameworkVersion)</HostArgs>
 
-  <RuntimeModulePath>$(DotNetRoot)\shared\Microsoft.NETCore.App\$(RuntimeFrameworkVersion)</RuntimeModulePath>
   <!--
-  <DbgShimPath>$(RuntimeModulePath)\dbgshim.dll</DbgShimPath>
+  <DbgShimPath>$(DotNetRoot)\shared\Microsoft.NETCore.App\$(RuntimeFrameworkVersion)\dbgshim.dll</DbgShimPath>
    -->
   <DbgShimPath>$(InstallDir)\dbgshim.dll</DbgShimPath>
-  <DbiModulePath>$(RuntimeModulePath)\mscordbi.dll</DbiModulePath>
-  <DacModulePath>$(RuntimeModulePath)\mscordaccore.dll</DacModulePath>
+  <DbiModulePath Condition="'$(RuntimeModulePath)' != ''">$(RuntimeModulePath)\mscordbi.dll</DbiModulePath>
+  <DacModulePath Condition="'$(RuntimeModulePath)' != ''">$(RuntimeModulePath)\mscordaccore.dll</DacModulePath>
 </Configuration>

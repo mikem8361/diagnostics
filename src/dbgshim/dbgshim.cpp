@@ -478,8 +478,10 @@ public:
                 hr = CLRDebuggingImpl::ProvideLibraries(clrInfo, m_pLibraryProvider, dbiModulePath, dacModulePath);
                 if (FAILED(hr))
                 {
+                    printf("InvokeStartupCallback: ProvideLibraries FAILED %08x\n", hr);
                     goto exit;
                 }
+                printf("InvokeStartupCallback: ProvideLibraries SUCCEEDED\n");
             }
             else
             {
@@ -498,13 +500,17 @@ public:
             _ASSERTE((pCordb == NULL) == FAILED(hr));
             if (FAILED(hr))
             {
+                printf("InvokeStartupCallback: CreateCorDbg FAILED %08x\n", hr);
                 goto exit;
             }
 
+            printf("InvokeStartupCallback: before callback\n");
             m_callback(pCordb, m_parameter, S_OK);
+            printf("InvokeStartupCallback: after callback\n");
         }
         PAL_CPP_CATCH_ALL
         {
+            printf("InvokeStartupCallback: exception\n");
             hr = E_FAIL;
             goto exit;
         }
@@ -516,7 +522,9 @@ public:
             _ASSERTE(pCordb == NULL);
 
             // Invoke the callback on error
+            printf("InvokeStartupCallback: before callback on error %08x\n", hr);
             m_callback(NULL, m_parameter, hr);
+            printf("InvokeStartupCallback: after callback on error %08x\n", hr);
         }
 
         return true;

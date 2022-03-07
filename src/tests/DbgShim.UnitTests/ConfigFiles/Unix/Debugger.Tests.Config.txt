@@ -5,7 +5,7 @@
 
   <RootBinDir>$(RepoRootDir)/artifacts</RootBinDir>
   <InstallDir>$(RootBinDir)/bin/$(OS).$(TargetArchitecture).$(TargetConfiguration)</InstallDir>
-  <LogDir>$(RootBinDir)/TestResults/$(TargetConfiguration)</LogDir>
+  <LogDir>$(RootBinDir)/TestResults/$(TargetConfiguration)/dbgshim.unittests_$(Timestamp)</LogDir>
  
   <OSRid>linux</OSRid>
   <OSRid Condition="$(OS) == OSX">osx</OSRid>

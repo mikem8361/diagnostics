@@ -322,8 +322,8 @@ namespace Microsoft.Diagnostics
             Assert.NotEqual(IntPtr.Zero, resumeHandle);
             Trace.TraceInformation("CreateProcessForLaunch pid {0} {1}", processId, commandLine.ToString());
 
-            startInfo.SetProcessId(processId);
             startInfo.ResumeHandle = resumeHandle;
+            startInfo.SetProcessId(processId);
 
             // Wait for debuggee to start if attach/run
             if (!launch)
@@ -384,7 +384,7 @@ namespace Microsoft.Diagnostics
 
             if (startInfo.Launch && startInfo.ResumeHandle != IntPtr.Zero) 
             {
-                Trace.TraceInformation("RegisterForRuntimeStartup pid {0} ResumeProcess", startInfo.ProcessId);
+                Trace.TraceInformation("RegisterForRuntimeStartup pid {0} ResumeProcess {1:X8}", startInfo.ProcessId, startInfo.ResumeHandle);
                 AssertResult(DbgShimAPI.ResumeProcess(startInfo.ResumeHandle));
             }
 

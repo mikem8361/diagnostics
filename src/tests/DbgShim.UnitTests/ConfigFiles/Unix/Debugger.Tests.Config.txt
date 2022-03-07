@@ -69,10 +69,8 @@
           <BuildProjectFramework>$(BuildProjectFrameworkLatest)</BuildProjectFramework>
           <PublishSingleFile>true</PublishSingleFile>
           <BuildProjectRuntime>$(OSRid)-$(TargetArchitecture)</BuildProjectRuntime>
-          <!--
           <RuntimeFrameworkVersion>6.0.2</RuntimeFrameworkVersion>
           <RuntimeModulePath>$(DotNetRoot)/shared/Microsoft.NETCore.App/$(RuntimeFrameworkVersion)</RuntimeModulePath>
-          -->
         </Option>
         <!--
             Default

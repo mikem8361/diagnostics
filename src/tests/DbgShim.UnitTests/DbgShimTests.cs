@@ -365,8 +365,6 @@ namespace Microsoft.Diagnostics
                     break;
                 case 3:
                     LibraryProviderWrapper libraryProvider = new(startInfo.TestConfiguration.DbiModulePath(), startInfo.TestConfiguration.DacModulePath());
-                    Console.WriteLine("Hit any key {0}", Process.GetCurrentProcess().Id);
-                    Console.ReadLine();
                     result = DbgShimAPI.RegisterForRuntimeStartup3(startInfo.ProcessId, applicationGroupId, parameter: IntPtr.Zero, libraryProvider.ILibraryProvider, out unregisterToken, callback);
                     break;
                 default:

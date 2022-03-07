@@ -219,7 +219,7 @@ MachOModule::ReadHeader()
         m_reader.Trace("ERROR: failed to read header at %p\n", (void*)m_baseAddress);
         return false;
     }
-    m_reader.Trace("ReadHeader: magic %08x cputype %d ncmds %d sizeofcmds %d\n", m_header.magic, m_header.cputype, m_header.ncmds, m_header.sizeofcmds);
+    m_reader.Trace("ReadHeader: magic %08x cputype %08x ncmds %d sizeofcmds %d\n", m_header.magic, m_header.cputype, m_header.ncmds, m_header.sizeofcmds);
     return m_header.magic == 0xfeedfacf;
 }
 
@@ -565,25 +565,3 @@ MachOReader::ReadString(const char* address, std::string& str)
     }
     return true;
 }
-
-
-void
-MachOReader::Trace(const char* format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    vfprintf(stdout, format, args);
-    fflush(stdout);
-    va_end(args);
-}
-
-void
-MachOReader::TraceVerbose(const char* format, ...)
-{
-    va_list args;
-    va_start(args, format);
-    vfprintf(stdout, format, args);
-    fflush(stdout);
-    va_end(args);
-}
-

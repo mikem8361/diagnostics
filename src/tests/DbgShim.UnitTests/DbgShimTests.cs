@@ -54,6 +54,7 @@ namespace Microsoft.Diagnostics
 
                 // Once the debuggee is resumed now wait until it starts
                 Assert.True(await startInfo.WaitForDebuggee());
+                return 0;
             });
         }
 
@@ -70,6 +71,7 @@ namespace Microsoft.Diagnostics
 
                 // Once the debuggee is resumed now wait until it starts
                 Assert.True(await startInfo.WaitForDebuggee());
+                return 0;
             });
         }
 
@@ -91,6 +93,7 @@ namespace Microsoft.Diagnostics
 
                 // Once the debuggee is resumed now wait until it starts
                 Assert.True(await startInfo.WaitForDebuggee());
+                return 0;
             });
         }
 
@@ -104,6 +107,7 @@ namespace Microsoft.Diagnostics
             {
                 using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestRegisterForRuntimeStartup(startInfo, 1);
+                return 0;
             });
         }
 
@@ -117,6 +121,7 @@ namespace Microsoft.Diagnostics
             {
                 using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestRegisterForRuntimeStartup(startInfo, 2);
+                return 0;
             });
         }
 
@@ -135,6 +140,7 @@ namespace Microsoft.Diagnostics
             {
                 using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestRegisterForRuntimeStartup(startInfo, 3);
+                return 0;
             });
         }
 
@@ -160,6 +166,7 @@ namespace Microsoft.Diagnostics
                 });
                 AssertResult(hr);
                 Trace.TraceInformation("EnumerateCLRs pid {0} DONE", startInfo.ProcessId);
+                return 0;
             });
         }
 
@@ -173,6 +180,7 @@ namespace Microsoft.Diagnostics
             {
                 using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestCreateDebuggingInterface(startInfo, 0);
+                return 0;
             });
         }
 
@@ -186,6 +194,7 @@ namespace Microsoft.Diagnostics
             {
                 using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestCreateDebuggingInterface(startInfo, 1);
+                return 0;
             });
         }
 
@@ -199,6 +208,7 @@ namespace Microsoft.Diagnostics
             {
                 using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestCreateDebuggingInterface(startInfo, 2);
+                return 0;
             });
         }
 
@@ -217,6 +227,7 @@ namespace Microsoft.Diagnostics
             {
                 using StartInfo startInfo = await StartDebuggee(xml, launch: false);
                 TestCreateDebuggingInterface(startInfo, 3);
+                return 0;
             });
         }
 
@@ -265,7 +276,7 @@ namespace Microsoft.Diagnostics
                 Assert.Equal(1, COMHelper.Release(corDebugProcess));
                 Assert.Equal(0, COMHelper.Release(corDebugProcess));
                 Assert.Equal(0, clrDebugging.Release());
-                return Task.CompletedTask;
+                return Task.FromResult(0);
             });
         }
 
@@ -490,7 +501,7 @@ namespace Microsoft.Diagnostics
             COMHelper.Release(icdp);
         }
 
-        private async Task RemoteInvoke(TestConfiguration config, Func<string, Task> method)
+        private async Task RemoteInvoke(TestConfiguration config, Func<string, Task<int>> method)
         {
             int exitCode = await RemoteExecutorHelper.RemoteInvoke(Output, config, method);
             Assert.Equal(0, exitCode);

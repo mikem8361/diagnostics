@@ -12,12 +12,13 @@ namespace Microsoft.Diagnostics.TestHelpers
 {
     public static class RemoteExecutorHelper
     {
-        public static async Task<int> RemoteInvoke(ITestOutputHelper output, TestConfiguration config, Func<string, Task> method)
+        public static async Task<int> RemoteInvoke(ITestOutputHelper output, TestConfiguration config, Func<string, Task<int>> method)
         {
             RemoteInvokeOptions options = new()
             {
                 StartInfo = new ProcessStartInfo() { RedirectStandardOutput = true, RedirectStandardError = true }
             };
+            int exitCode = 0;
             try
             {
                 using RemoteInvokeHandle remoteInvokeHandle = RemoteExecutor.Invoke(method, config.Serialize(), options);
@@ -34,15 +35,15 @@ namespace Microsoft.Diagnostics.TestHelpers
                     output.WriteLine("Failed to collect remote process's output");
                 }
                 remoteInvokeHandle.Process.WaitForExit();
-                return remoteInvokeHandle.ExitCode;
+                exitCode = remoteInvokeHandle.ExitCode;
             }
             // This is to catch the random exception that is thrown when the remoteInvokeHandle is disposed. It doesn't make any sense:
             // "Method not found: 'Microsoft.Diagnostics.Runtime.DataTarget Microsoft.Diagnostics.Runtime.DataTarget.AttachToProcess(Int32, UInt32)'."
             catch (MissingMethodException ex)
             {
                 output.WriteLine(ex.ToString());
-                return 0;
             }
+            return exitCode;
         }
 
         public static async Task RemoteInvoke(ITestOutputHelper output, Action testCase)

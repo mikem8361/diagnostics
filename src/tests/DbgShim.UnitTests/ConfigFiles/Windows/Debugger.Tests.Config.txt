@@ -16,8 +16,7 @@
   <DebuggeeBuildProcess>cli</DebuggeeBuildProcess>
   <DebuggeeName>SimpleDebuggee</DebuggeeName>
 
-  <!-- Use the global.json SDK to build and the test SDK/runtime to run -->
-  <CliPath>$(RepoRootDir)\.dotnet\dotnet.exe</CliPath>
+  <CliPath>$(DotNetRoot)\dotnet.exe</CliPath>
 
   <NuGetPackageFeeds>
       dotnet6=https://dnceng.pkgs.visualstudio.com/public/_packaging/dotnet6/nuget/v3/index.json;
@@ -69,8 +68,7 @@
           <BuildProjectFramework>$(BuildProjectFrameworkLatest)</BuildProjectFramework>
           <PublishSingleFile>true</PublishSingleFile>
           <BuildProjectRuntime>win-$(TargetArchitecture)</BuildProjectRuntime>
-          <RuntimeFrameworkVersion>6.0.0</RuntimeFrameworkVersion>
-          <RuntimeModulePath>$(RepoRootDir)\.dotnet\shared\Microsoft.NETCore.App\$(RuntimeFrameworkVersion)</RuntimeModulePath>
+          <RuntimeFrameworkVersion>6.0.2</RuntimeFrameworkVersion>
         </Option>
         <!--
             Default
@@ -79,7 +77,6 @@
           <DebuggeeBuildRoot>$(RootBinDir)\Debuggees</DebuggeeBuildRoot>
           <BuildProjectFramework>$(BuildProjectFrameworkLatest)</BuildProjectFramework>
           <RuntimeFrameworkVersion>$(RuntimeVersionLatest)</RuntimeFrameworkVersion>
-          <RuntimeModulePath>$(DotNetRoot)\shared\Microsoft.NETCore.App\$(RuntimeFrameworkVersion)</RuntimeModulePath>
         </Option>
       </Options>
     </Option>
@@ -89,8 +86,9 @@
   <HostExe Condition="'$(PublishSingleFile)' != 'true'">$(DotNetRoot)\dotnet.exe</HostExe>
   <HostArgs Condition="'$(PublishSingleFile)' != 'true'">--fx-version $(RuntimeFrameworkVersion)</HostArgs>
 
+  <RuntimeModulePath>$(DotNetRoot)\shared\Microsoft.NETCore.App\$(RuntimeFrameworkVersion)</RuntimeModulePath>
   <!--
-  <DbgShimPath>$(DotNetRoot)\shared\Microsoft.NETCore.App\$(RuntimeFrameworkVersion)\dbgshim.dll</DbgShimPath>
+  <DbgShimPath>$(RuntimeModulePath)\dbgshim.dll</DbgShimPath>
    -->
   <DbgShimPath>$(InstallDir)\dbgshim.dll</DbgShimPath>
   <DbiModulePath>$(RuntimeModulePath)\mscordbi.dll</DbiModulePath>

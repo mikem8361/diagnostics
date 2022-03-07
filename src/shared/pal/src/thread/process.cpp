@@ -1509,11 +1509,13 @@ public:
             }
             PAL_CPP_CATCH_ALL
             {
+                ERROR("InvokeStartupCallback exception in callback %p %s\n", entry->BaseAddress, entry->Name);
             }
             PAL_CPP_ENDTRY
 
             if (found)
             {
+                TRACE("InvokeStartupCallback found module %p %s\n", entry->BaseAddress, entry->Name);
                 break;
             }
         }

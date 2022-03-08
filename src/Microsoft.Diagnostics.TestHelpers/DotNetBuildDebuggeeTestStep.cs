@@ -233,10 +233,6 @@ namespace Microsoft.Diagnostics.TestHelpers
             AssertDebuggeeAssetsFileExists(output);
 
             output.WriteLine("Launching {0} {1}", DotNetToolPath, dotnetArgs);
-            foreach (string env in Environment.GetEnvironmentVariables().Cast<DictionaryEntry>().Select(de => de.Key + "=" + de.Value))
-            {
-                output.WriteLine(env);
-            }
             ProcessRunner runner = new ProcessRunner(DotNetToolPath, dotnetArgs).
                 WithEnvironmentVariable("DOTNET_MULTILEVEL_LOOKUP", "0").
                 WithEnvironmentVariable("DOTNET_ROOT", Path.GetDirectoryName(DotNetToolPath)).
@@ -245,6 +241,11 @@ namespace Microsoft.Diagnostics.TestHelpers
                 WithLog(output).
                 WithTimeout(TimeSpan.FromMinutes(10)). // a mac CI build of the modules debuggee is painfully slow :(
                 WithExpectedExitCode(0);
+
+            foreach (string env in runner.EnvironmentVariables.Cast<DictionaryEntry>().Select(de => de.Key + "=" + de.Value))
+            {
+                output.WriteLine(env);
+            }
 
             if (OS.Kind != OSKind.Windows && Environment.GetEnvironmentVariable("HOME") == null)
             {

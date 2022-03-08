@@ -242,11 +242,6 @@ namespace Microsoft.Diagnostics.TestHelpers
                 WithTimeout(TimeSpan.FromMinutes(10)). // a mac CI build of the modules debuggee is painfully slow :(
                 WithExpectedExitCode(0);
 
-            foreach (string env in runner.EnvironmentVariables.Select(de => de.Key + "=" + de.Value))
-            {
-                output.WriteLine(env);
-            }
-
             if (OS.Kind != OSKind.Windows && Environment.GetEnvironmentVariable("HOME") == null)
             {
                 output.WriteLine("Detected HOME environment variable doesn't exist. This will trigger a bug in dotnet build.");

@@ -5,7 +5,7 @@
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <TestConfigFileName>$(OutputPath)$(TargetFramework)\Debugger.Tests.Common.txt</TestConfigFileName>
+    <DbgShimConfigFileName>$(OutputPath)$(TargetFramework)\Debugger.Tests.Common.txt</DbgShimConfigFileName>
     <TestAssetsVersion>1.0.257801</TestAssetsVersion>
   </PropertyGroup>
 
@@ -84,14 +84,14 @@
     <None Include="Debuggees\SimpleDebuggee\SimpleDebuggee.cs" />
   </ItemGroup>
 
-  <Target Name="WriteTestConfigFile" Outputs="$(TestConfigFileName)" AfterTargets="Build">
+  <Target Name="DbgShimWriteTestConfigFile" Outputs="$(DbgShimConfigFileName)" AfterTargets="Build">
      <PropertyGroup>
        <TestConfigFileLines>@(ConfigFileEntries-&gt;Metadata("ConfigFileEntry"))</TestConfigFileLines>
      </PropertyGroup>
-    <WriteLinesToFile File="$(TestConfigFileName)" Lines="$(TestConfigFileLines)" Overwrite="true" WriteOnlyWhenDifferent="true" />
-    <Message Importance="High" Text="Created config file $(TestConfigFileName)" />
+    <WriteLinesToFile File="$(DbgShimConfigFileName)" Lines="$(TestConfigFileLines)" Overwrite="true" WriteOnlyWhenDifferent="true" />
+    <Message Importance="High" Text="Created config file $(DbgShimConfigFileName)" />
     <ItemGroup>
-      <FileWrites Include="$(TestConfigFileName)" />
+      <FileWrites Include="$(DbgShimConfigFileName)" />
     </ItemGroup>
   </Target>
 </Project>

@@ -3,8 +3,10 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -231,6 +233,10 @@ namespace Microsoft.Diagnostics.TestHelpers
             AssertDebuggeeAssetsFileExists(output);
 
             output.WriteLine("Launching {0} {1}", DotNetToolPath, dotnetArgs);
+            foreach (string env in Environment.GetEnvironmentVariables().Cast<DictionaryEntry>().Select(de => de.Key + "=" + de.Value))
+            {
+                output.WriteLine(env);
+            }
             ProcessRunner runner = new ProcessRunner(DotNetToolPath, dotnetArgs).
                 WithEnvironmentVariable("DOTNET_MULTILEVEL_LOOKUP", "0").
                 WithEnvironmentVariable("DOTNET_ROOT", Path.GetDirectoryName(DotNetToolPath)).

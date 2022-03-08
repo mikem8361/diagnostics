@@ -101,6 +101,7 @@ namespace Microsoft.Diagnostics.TestHelpers
             {
                 publishArgs += $" /p:{prop.Key}={prop.Value}";
             }
+            publishArgs += $" /bl:{DebuggeeName}.binlog";
             await Build(publishArgs, output);
         }
 

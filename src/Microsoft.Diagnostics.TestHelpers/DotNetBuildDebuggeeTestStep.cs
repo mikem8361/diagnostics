@@ -242,7 +242,7 @@ namespace Microsoft.Diagnostics.TestHelpers
                 WithTimeout(TimeSpan.FromMinutes(10)). // a mac CI build of the modules debuggee is painfully slow :(
                 WithExpectedExitCode(0);
 
-            foreach (string env in runner.EnvironmentVariables.Cast<DictionaryEntry>().Select(de => de.Key + "=" + de.Value))
+            foreach (string env in runner.EnvironmentVariables.Select(de => de.Key + "=" + de.Value))
             {
                 output.WriteLine(env);
             }

@@ -175,7 +175,7 @@ CloseResumeHandle(
 static
 bool
 RuntimeStartupHandler(
-    char *pszModulePath,
+    const char *pszModulePath,
     HMODULE hModule,
     PVOID parameter);
 
@@ -443,7 +443,7 @@ public:
         PAL_UnregisterForRuntimeStartup(m_unregisterToken);
     }
 
-    bool InvokeStartupCallback(char *pszModulePath, HMODULE hModule)
+    bool InvokeStartupCallback(const char *pszModulePath, HMODULE hModule)
     {
         IUnknown *pCordb = NULL;
         HRESULT hr = S_OK;
@@ -754,7 +754,7 @@ public:
 
 static
 bool
-RuntimeStartupHandler(char *pszModulePath, HMODULE hModule, PVOID parameter)
+RuntimeStartupHandler(const char *pszModulePath, HMODULE hModule, PVOID parameter)
 {
     RuntimeStartupHelper *helper = (RuntimeStartupHelper *)parameter;
     return helper->InvokeStartupCallback(pszModulePath, hModule);

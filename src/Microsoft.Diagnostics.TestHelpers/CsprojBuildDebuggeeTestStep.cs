@@ -101,6 +101,7 @@ namespace Microsoft.Diagnostics.TestHelpers
             {
                 publishArgs += $" /p:{prop.Key}={prop.Value}";
             }
+
             await Build(publishArgs, output);
         }
 

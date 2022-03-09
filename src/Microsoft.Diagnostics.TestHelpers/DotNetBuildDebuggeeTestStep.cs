@@ -193,6 +193,8 @@ namespace Microsoft.Diagnostics.TestHelpers
                 WithEnvironmentVariable("DOTNET_MULTILEVEL_LOOKUP", "0").
                 WithEnvironmentVariable("DOTNET_ROOT", Path.GetDirectoryName(DotNetToolPath)).
                 WithEnvironmentVariable("DOTNET_MSBUILD_SDK_RESOLVER_CLI_DIR", Path.GetDirectoryName(DotNetToolPath)).
+                WithEnvironmentVariable("DOTNET_INSTALL_DIR", Path.GetDirectoryName(DotNetToolPath)).
+                RemoveEnvironmentVariable("MSBuildSDKsPath").
                 WithWorkingDirectory(DebuggeeSolutionDirPath).
                 WithLog(output).
                 WithTimeout(TimeSpan.FromMinutes(10)).                    // restore can be painfully slow
@@ -237,6 +239,8 @@ namespace Microsoft.Diagnostics.TestHelpers
                 WithEnvironmentVariable("DOTNET_MULTILEVEL_LOOKUP", "0").
                 WithEnvironmentVariable("DOTNET_ROOT", Path.GetDirectoryName(DotNetToolPath)).
                 WithEnvironmentVariable("DOTNET_MSBUILD_SDK_RESOLVER_CLI_DIR", Path.GetDirectoryName(DotNetToolPath)).
+                WithEnvironmentVariable("DOTNET_INSTALL_DIR", Path.GetDirectoryName(DotNetToolPath)).
+                RemoveEnvironmentVariable("MSBuildSDKsPath").
                 WithWorkingDirectory(DebuggeeProjectDirPath).
                 WithLog(output).
                 WithTimeout(TimeSpan.FromMinutes(10)). // a mac CI build of the modules debuggee is painfully slow :(

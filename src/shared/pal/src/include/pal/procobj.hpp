@@ -40,6 +40,7 @@ namespace CorUnix
     {
         ProcessModules *Next;
         PVOID BaseAddress;
+        PVOID MinimumAddress;
         CHAR Name[0];
     };
 

@@ -2437,6 +2437,11 @@ CreateProcessModules(
                 {
                     if (strcmp(moduleName, entry->Name) == 0)
                     {
+                        if (entry->BaseAddress == 0 && offset == 0)
+                        {
+                            entry->BaseAddress = startAddress;
+                        }
+                        entry->MinimumAddress = min(startAddress, entry->MinimumAddress)
                         dup = true;
                         break;
                     }
@@ -2454,7 +2459,12 @@ CreateProcessModules(
                         break;
                     }
                     strcpy_s(entry->Name, cbModuleName, moduleName);
-                    entry->BaseAddress = startAddress;
+                    entry->BaseAddress = 0;
+                    entry->MinimumAddress = startAddress;
+                    if (offset == 0)
+                    {
+                        entry->BaseAddress = startAddress;
+                    }
                     entry->Next = listHead;
                     listHead = entry;
                     count++;

@@ -45,7 +45,7 @@ namespace CorUnix
 
         ProcessModules* GetNext() const { return _next; }
         PVOID GetBaseAddress() const { return _baseAddress == 0 ? _minimumAddress : _baseAddress; }
-        CHAR* GetName() const { return _name; }
+        const CHAR* GetName() const { return _name; }
     };
 
     //

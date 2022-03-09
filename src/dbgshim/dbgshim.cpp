@@ -754,7 +754,7 @@ public:
 
 static
 bool
-RuntimeStartupHandler(char *pszModulePath, HMODULE hModule, PVOID parameter)
+RuntimeStartupHandler(const char *pszModulePath, HMODULE hModule, PVOID parameter)
 {
     RuntimeStartupHelper *helper = (RuntimeStartupHelper *)parameter;
     return helper->InvokeStartupCallback(pszModulePath, hModule);

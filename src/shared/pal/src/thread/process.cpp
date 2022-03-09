@@ -1498,23 +1498,23 @@ public:
             goto exit;
         }
 
-        for (ProcessModules *entry = listHead; entry != NULL; entry = entry->Next)
+        for (ProcessModules *entry = listHead; entry != NULL; entry = entry->GetNext())
         {
             bool found = false;
 
             PAL_CPP_TRY
             {
-                found = m_callback(entry->Name, entry->BaseAddress, m_parameter);
+                found = m_callback(entry->GetName(), entry->GetBaseAddress(), m_parameter);
             }
             PAL_CPP_CATCH_ALL
             {
-                ERROR("InvokeStartupCallback exception in callback %p %s\n", entry->BaseAddress, entry->Name);
+                ERROR("InvokeStartupCallback exception in callback %p %s\n", entry->GetBaseAddress(), entry->GetName());
             }
             PAL_CPP_ENDTRY
 
             if (found)
             {
-                TRACE("InvokeStartupCallback found module %p %s\n", entry->BaseAddress, entry->Name);
+                TRACE("InvokeStartupCallback found module %p %s\n", entry->GetBaseAddress(), entry->GetName());
                 break;
             }
         }
@@ -2120,14 +2120,14 @@ EnumProcessModules(
     ProcessModules *listHead = GetProcessModulesFromHandle(hProcess, &count);
     if (listHead != NULL)
     {
-        for (ProcessModules *entry = listHead; entry != NULL; entry = entry->Next)
+        for (ProcessModules *entry = listHead; entry != NULL; entry = entry->GetNext())
         {
             if (cb <= 0)
             {
                 break;
             }
             cb -= sizeof(HMODULE);
-            *lphModule = (HMODULE)entry->BaseAddress;
+            *lphModule = (HMODULE)entry->GetBaseAddress();
             lphModule++;
         }
     }
@@ -2171,12 +2171,12 @@ GetModuleFileNameExW(
     ProcessModules *listHead = GetProcessModulesFromHandle(hProcess, &count);
     if (listHead != NULL)
     {
-        for (ProcessModules *entry = listHead; entry != NULL; entry = entry->Next)
+        for (ProcessModules *entry = listHead; entry != NULL; entry = entry->GetNext())
         {
-            if ((HMODULE)entry->BaseAddress == hModule)
+            if ((HMODULE)entry->GetBaseAddress() == hModule)
             {
                 // Convert CHAR string into WCHAR string
-                result = MultiByteToWideChar(CP_ACP, 0, entry->Name, -1, lpFilename, nSize);
+                result = MultiByteToWideChar(CP_ACP, 0, entry->GetName(), -1, lpFilename, nSize);
                 break;
             }
         }
@@ -2356,9 +2356,9 @@ CreateProcessModules(
         const char *moduleName = rwpi.prp_vip.vip_path;
 
         bool dup = false;
-        for (ProcessModules *entry = listHead; entry != NULL; entry = entry->Next)
+        for (ProcessModules *entry = listHead; entry != NULL; entry = entry->GetNext())
         {
-            if (strcmp(moduleName, entry->Name) == 0)
+            if (strcmp(moduleName, entry->_name) == 0)
             {
                 dup = true;
                 break;
@@ -2376,8 +2376,9 @@ CreateProcessModules(
                 count = 0;
                 break; // no memory
             }
-            memcpy_s(entry->Name, cbModuleName, moduleName, cbModuleName);
-            entry->BaseAddress = (void *)rwpi.prp_prinfo.pri_address;
+            memcpy_s(entry->_name, cbModuleName, moduleName, cbModuleName);
+            entry->_minimumAddress = 0;
+            entry->_baseAddress = (void *)rwpi.prp_prinfo.pri_address;
             entry->Next = listHead;
             listHead = entry;
             count++;
@@ -2433,15 +2434,15 @@ CreateProcessModules(
             if (inode != 0)
             {
                 bool dup = false;
-                for (ProcessModules *entry = listHead; entry != NULL; entry = entry->Next)
+                for (ProcessModules *entry = listHead; entry != NULL; entry = entry->GetNext())
                 {
-                    if (strcmp(moduleName, entry->Name) == 0)
+                    if (strcmp(moduleName, entry->GetName()) == 0)
                     {
-                        if (entry->BaseAddress == 0 && offset == 0)
+                        if (entry->_baseAddress == 0 && offset == 0)
                         {
-                            entry->BaseAddress = startAddress;
+                            entry->_baseAddress = startAddress;
                         }
-                        entry->MinimumAddress = min(startAddress, entry->MinimumAddress)
+                        entry->_minimumAddress = min(startAddress, entry->_minimumAddress)
                         dup = true;
                         break;
                     }
@@ -2458,14 +2459,14 @@ CreateProcessModules(
                         count = 0;
                         break;
                     }
-                    strcpy_s(entry->Name, cbModuleName, moduleName);
-                    entry->BaseAddress = 0;
-                    entry->MinimumAddress = startAddress;
+                    strcpy_s(entry->_name, cbModuleName, moduleName);
+                    entry->_baseAddress = 0;
+                    entry->_minimumAddress = startAddress;
                     if (offset == 0)
                     {
-                        entry->BaseAddress = startAddress;
+                        entry->_baseAddress = startAddress;
                     }
-                    entry->Next = listHead;
+                    entry->_next = listHead;
                     listHead = entry;
                     count++;
                 }
@@ -2501,7 +2502,7 @@ DestroyProcessModules(IN ProcessModules *listHead)
 {
     for (ProcessModules *entry = listHead; entry != NULL; )
     {
-        ProcessModules *next = entry->Next;
+        ProcessModules *next = entry->GetNext();
         free(entry);
         entry = next;
     }

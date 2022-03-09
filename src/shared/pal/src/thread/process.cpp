@@ -2442,7 +2442,7 @@ CreateProcessModules(
                         {
                             entry->_baseAddress = startAddress;
                         }
-                        entry->_minimumAddress = min(startAddress, entry->_minimumAddress)
+                        entry->_minimumAddress = std::min(startAddress, entry->_minimumAddress)
                         dup = true;
                         break;
                     }

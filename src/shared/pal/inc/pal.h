@@ -368,7 +368,7 @@ PALAPI
 PAL_InitializeDLL();
 
 typedef bool (*PPAL_STARTUP_CALLBACK)(
-    const char *modulePath,
+    char *modulePath,
     HMODULE hModule,
     PVOID parameter);
 

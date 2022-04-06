@@ -7,7 +7,6 @@ using EnvDTE80;
 using Microsoft.Diagnostics.SOSConcord;
 using Microsoft.VisualStudio;
 using Microsoft.VisualStudio.Debugger;
-using Microsoft.VisualStudio.Debugger.CallStack;
 using Microsoft.VisualStudio.Debugger.DefaultPort;
 using Microsoft.VisualStudio.Debugger.Interop;
 using Microsoft.VisualStudio.OLE.Interop;

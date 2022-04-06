@@ -12,6 +12,9 @@
         "$(MicrosoftNETCoreApp50Version)",
         "$(VSRedistCommonNetCoreSharedFrameworkx6460Version)"
       ]
+    },
+    "vs": {
+      "version": "16.8"
     }
   },
   "msbuild-sdks": {

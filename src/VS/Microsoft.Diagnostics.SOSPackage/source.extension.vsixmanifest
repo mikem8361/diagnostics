@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="Microsoft.Diagnostics.SOSPackage.fe5704f0-9b28-4f22-a268-5231913bf788" Version="1.0" Language="en-US" Publisher="HP Inc." />
+        <Identity Id="Microsoft.Diagnostics.SOSPackage.fe5704f0-9b28-4f22-a268-5231913bf788" Version="1.0" Language="en-US" Publisher="Microsoft" />
         <DisplayName>Microsoft.Diagnostics.SOSPackage</DisplayName>
         <Description xml:space="preserve">SOS support for Visual Studio</Description>
     </Metadata>

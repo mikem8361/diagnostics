@@ -1,13 +1,11 @@
-﻿// Licensed to the .NET Foundation under one or more agreements.
+// Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
 using Microsoft.Diagnostics.DebugServices;
 using Microsoft.Diagnostics.DebugServices.Implementation;
-using Microsoft.Diagnostics.Runtime;
 
 namespace Microsoft.Diagnostics.TestHelpers
 {
@@ -16,7 +14,8 @@ namespace Microsoft.Diagnostics.TestHelpers
         private readonly ServiceManager _serviceManager;
         private readonly ServiceContainer _serviceContainer;
         private readonly SymbolService _symbolService;
-        private DataTarget _dataTarget;
+        private readonly DumpTargetFactory _dumpTargetFactory;
+        private readonly List<ITarget> _targets = new();
         private int _targetIdFactory;
 
         public TestDump(TestConfiguration config)
@@ -40,16 +39,12 @@ namespace Microsoft.Diagnostics.TestHelpers
             _symbolService = new SymbolService(this);
             _serviceContainer.AddService<ISymbolService>(_symbolService);
 
+            _dumpTargetFactory = new DumpTargetFactory(this);
+            _serviceContainer.AddService<IDumpTargetFactory>(_dumpTargetFactory);
+
             // Automatically enable symbol server support
             _symbolService.AddSymbolServer(timeoutInMinutes: 6, retryCount: 5);
             _symbolService.AddCachePath(_symbolService.DefaultSymbolCache);
-        }
-
-        public override void Dispose()
-        {
-            base.Dispose();
-            _dataTarget?.Dispose();
-            _dataTarget = null;
         }
 
         public ServiceManager ServiceManager => _serviceManager;
@@ -58,15 +53,8 @@ namespace Microsoft.Diagnostics.TestHelpers
 
         protected override ITarget GetTarget()
         {
-            _dataTarget = DataTarget.LoadDump(DumpFile);
-
-            OSPlatform targetPlatform = _dataTarget.DataReader.TargetPlatform;
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            {
-                targetPlatform = OSPlatform.OSX;
-            }
             _symbolService.AddDirectoryPath(Path.GetDirectoryName(DumpFile));
-            return new TargetFromDataReader(_dataTarget.DataReader, targetPlatform, this, _targetIdFactory++, DumpFile);
+            return _dumpTargetFactory.OpenDump(DumpFile);
         }
 
         #region IHost
@@ -79,7 +67,16 @@ namespace Microsoft.Diagnostics.TestHelpers
 
         public IServiceProvider Services => _serviceContainer;
 
-        public IEnumerable<ITarget> EnumerateTargets() => Target != null ? new ITarget[] { Target } : Array.Empty<ITarget>();
+        public IEnumerable<ITarget> EnumerateTargets() => _targets.ToArray();
+
+        public int AddTarget(ITarget target)
+        {
+            _targets.Add(target);
+            target.OnDestroyEvent.Register(() => {
+                _targets.Remove(target);
+            });
+            return _targetIdFactory++;
+        }
 
         #endregion
     }

@@ -40,14 +40,6 @@ namespace Microsoft.Diagnostics.Tools.Dump
 
             _commandService = new CommandService();
             _serviceManager.NotifyExtensionLoad.Register(_commandService.AddCommands);
-
-            // Add and remove targets from the host
-            OnTargetCreate.Register((target) => {
-                _targets.Add(target);
-                target.OnDestroyEvent.Register(() => {
-                    _targets.Remove(target);
-                });
-            });
         }
 
         public Task<int> Analyze(FileInfo dump_path, string[] command)
@@ -106,6 +98,12 @@ namespace Microsoft.Diagnostics.Tools.Dump
             _serviceContainer.AddService<ICommandService>(_commandService);
             _serviceContainer.AddService<CommandService>(_commandService);
 
+            DumpTargetFactory dumpTargetFactory = new(this);
+            _serviceContainer.AddService<IDumpTargetFactory>(dumpTargetFactory);
+
+            LiveTargetFactory liveTargetFactory = new(this);
+            _serviceContainer.AddService<ILiveTargetFactory>(liveTargetFactory);
+
             SymbolService symbolService = new(this);
             _serviceContainer.AddService<ISymbolService>(symbolService);
 
@@ -114,17 +112,17 @@ namespace Microsoft.Diagnostics.Tools.Dump
 
             try
             {
-                using DataTarget dataTarget = DataTarget.LoadDump(dump_path.FullName);
-                OSPlatform targetPlatform = dataTarget.DataReader.TargetPlatform;
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && (targetPlatform != OSPlatform.OSX))
+                ITarget target = dumpTargetFactory.OpenDump(dump_path.FullName);
+
+                OSPlatform os = target.OperatingSystem;
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && (os != OSPlatform.OSX))
                 {
                     throw new NotSupportedException("Analyzing Windows or Linux dumps not supported when running on MacOS");
                 }
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && (targetPlatform != OSPlatform.Linux))
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && (os != OSPlatform.Linux))
                 {
                     throw new NotSupportedException("Analyzing Windows or MacOS dumps not supported when running on Linux");
                 }
-                TargetFromDataReader target = new(dataTarget.DataReader, targetPlatform, this, _targetIdFactory++, dump_path.FullName);
                 contextService.SetCurrentTarget(target);
 
                 // Automatically enable symbol server support, default cache and search for symbols in the dump directory
@@ -217,6 +215,15 @@ namespace Microsoft.Diagnostics.Tools.Dump
         public IServiceProvider Services => _serviceContainer;
 
         public IEnumerable<ITarget> EnumerateTargets() => _targets.ToArray();
+
+        public int AddTarget(ITarget target)
+        {
+            _targets.Add(target);
+            target.OnDestroyEvent.Register(() => {
+                _targets.Remove(target);
+            });
+            return _targetIdFactory++;
+        }
 
         #endregion
     }

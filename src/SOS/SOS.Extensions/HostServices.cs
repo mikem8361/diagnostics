@@ -41,11 +41,12 @@ namespace SOS.Extensions
         private readonly CommandService _commandService;
         private readonly SymbolService _symbolService;
         private readonly HostWrapper _hostWrapper;
+        private readonly List<ITarget> _targets = new();
         private ServiceContainer _serviceContainer;
         private ServiceContainer _servicesWithManagedOnlyFilter;
-        private ContextServiceFromDebuggerServices _contextService;
+        private TargetFromDebuggerServices _targetFromDebuggerServices;
+        private ContextServiceFromDebuggerServices _contextServiceFromDebuggerServices;
         private int _targetIdFactory;
-        private ITarget _target;
 
         /// <summary>
         /// Enable the assembly resolver to get the right versions in the same directory as this assembly.
@@ -115,8 +116,7 @@ namespace SOS.Extensions
             _commandService = new CommandService(RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ">!sos" : null);
             _serviceManager.NotifyExtensionLoad.Register(_commandService.AddCommands);
 
-            _symbolService = new SymbolService(this)
-            {
+            _symbolService = new SymbolService(this) {
                 DefaultTimeout = DefaultTimeout,
                 DefaultRetryCount = DefaultRetryCount
             };
@@ -155,7 +155,20 @@ namespace SOS.Extensions
 
         public IServiceProvider Services => _serviceContainer;
 
-        public IEnumerable<ITarget> EnumerateTargets() => _target != null ? new ITarget[] { _target } : Array.Empty<ITarget>();
+        public IEnumerable<ITarget> EnumerateTargets() => _targets.ToArray();
+
+        public int AddTarget(ITarget target)
+        {
+            _targets.Add(target);
+            target.OnDestroyEvent.Register(() => {
+                if (_targetFromDebuggerServices == target)
+                {
+                    _targetFromDebuggerServices = null;
+                }
+                _targets.Remove(target);
+            });
+            return _targetIdFactory++;
+        }
 
         #endregion
 
@@ -230,14 +243,14 @@ namespace SOS.Extensions
                 _serviceContainer.AddService<IConsoleFileLoggingService>(fileLoggingConsoleService);
                 _serviceContainer.AddService<IDiagnosticLoggingService>(DiagnosticLoggingService.Instance);
 
-                _contextService = new ContextServiceFromDebuggerServices(this, DebuggerServices);
-                _serviceContainer.AddService<IContextService>(_contextService);
+                _contextServiceFromDebuggerServices = new ContextServiceFromDebuggerServices(this, DebuggerServices);
+                _serviceContainer.AddService<IContextService>(_contextServiceFromDebuggerServices);
 
                 ThreadUnwindServiceFromDebuggerServices threadUnwindService = new(DebuggerServices);
                 _serviceContainer.AddService<IThreadUnwindService>(threadUnwindService);
 
                 // Used to invoke only managed commands
-                _servicesWithManagedOnlyFilter = new(_contextService.Services);
+                _servicesWithManagedOnlyFilter = new(_contextServiceFromDebuggerServices.Services);
                 _servicesWithManagedOnlyFilter.AddService(new SOSCommandBase.ManagedOnlyCommandFilter());
 
                 // Add each extension command to the native debugger
@@ -285,15 +298,14 @@ namespace SOS.Extensions
             IntPtr self)
         {
             Trace.TraceInformation("HostServices.CreateTarget");
-            if (_target != null || DebuggerServices == null)
+            if (_targetFromDebuggerServices != null || DebuggerServices == null)
             {
                 return HResult.E_FAIL;
             }
             try
             {
-                TargetFromDebuggerServices target = new(DebuggerServices, this, _targetIdFactory++);
-                _contextService.SetCurrentTarget(target);
-                _target = target;
+                _targetFromDebuggerServices = new TargetFromDebuggerServices(DebuggerServices, this);
+                _contextServiceFromDebuggerServices.SetCurrentTarget(_targetFromDebuggerServices);
             }
             catch (Exception ex)
             {
@@ -307,12 +319,12 @@ namespace SOS.Extensions
             IntPtr self,
             uint processId)
         {
-            Trace.TraceInformation("HostServices.UpdateTarget {0} #{1}", processId, _target != null ? _target.Id : "<none>");
-            if (_target == null)
+            Trace.TraceInformation("HostServices.UpdateTarget {0} #{1}", processId, _targetFromDebuggerServices != null ? _targetFromDebuggerServices.Id : "<none>");
+            if (_targetFromDebuggerServices == null)
             {
                 return CreateTarget(self);
             }
-            else if (_target.ProcessId.GetValueOrDefault() != processId)
+            else if (_targetFromDebuggerServices.ProcessId.GetValueOrDefault() != processId)
             {
                 DestroyTarget(self);
                 return CreateTarget(self);
@@ -324,17 +336,17 @@ namespace SOS.Extensions
             IntPtr self)
         {
             Trace.TraceInformation("HostServices.FlushTarget");
-            _target?.Flush();
+            _targetFromDebuggerServices?.Flush();
         }
 
         private void DestroyTarget(
             IntPtr self)
         {
-            Trace.TraceInformation("HostServices.DestroyTarget #{0}", _target != null ? _target.Id : "<none>");
+            Trace.TraceInformation("HostServices.DestroyTarget #{0}", _targetFromDebuggerServices != null ? _targetFromDebuggerServices.Id : "<none>");
             try
             {
-                _target?.Destroy();
-                _target = null;
+                _targetFromDebuggerServices?.Destroy();
+                _targetFromDebuggerServices = null;
             }
             catch (Exception ex)
             {
@@ -354,7 +366,7 @@ namespace SOS.Extensions
             }
             try
             {
-                _commandService.Execute(commandName, commandArguments, string.Equals(commandName, "help", StringComparison.OrdinalIgnoreCase) ? _contextService.Services : _servicesWithManagedOnlyFilter);
+                _commandService.Execute(commandName, commandArguments, string.Equals(commandName, "help", StringComparison.OrdinalIgnoreCase) ?  _contextServiceFromDebuggerServices.Services : _servicesWithManagedOnlyFilter);
             }
             catch (Exception ex)
             {
@@ -379,7 +391,12 @@ namespace SOS.Extensions
             Trace.TraceInformation("HostServices.Uninitialize");
             try
             {
-                DestroyTarget(self);
+                foreach (ITarget target in _targets.ToArray())
+                {
+                    target.Destroy();
+                }
+                _targets.Clear();
+                _targetFromDebuggerServices = null;
 
                 // Send shutdown event on exit
                 OnShutdownEvent.Fire();

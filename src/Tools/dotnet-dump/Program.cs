@@ -32,58 +32,59 @@ namespace Microsoft.Diagnostics.Tools.Dump
             new Command( name: "collect", description: "Capture dumps from a process")
             {
                 // Handler
-                CommandHandler.Create<IConsole, int, string, bool, bool, Dumper.DumpTypeOption, string>(new Dumper().Collect),
+                //CommandHandler.Create<IConsole, int, string, bool, bool, Dumper.DumpTypeOption, string>(new Dumper().Collect),
                 // Options
                 ProcessIdOption(), OutputOption(), DiagnosticLoggingOption(), CrashReportOption(), TypeOption(), ProcessNameOption()
             };
 
         private static Option ProcessIdOption() =>
-            new Option(
+            new Option<int>(
                 aliases: new[] { "-p", "--process-id" },
                 description: "The process id to collect a memory dump.")
             {
-                Argument = new Argument<int>(name: "pid")
+                ArgumentHelpName = "pid"
             };
 
         private static Option ProcessNameOption() =>
-            new Option(
+            new Option<string>(
                 aliases: new[] { "-n", "--name" },
                 description: "The name of the process to collect a memory dump.")
             {
-                Argument = new Argument<string>(name: "name")
+                ArgumentHelpName = "name"
             };
 
         private static Option OutputOption() =>
-            new Option( 
+            new Option<string>( 
                 aliases: new[] { "-o", "--output" },
                 description: @"The path where collected dumps should be written. Defaults to '.\dump_YYYYMMDD_HHMMSS.dmp' on Windows and './core_YYYYMMDD_HHMMSS' 
 on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Otherwise, it is the full path and file name of the dump.") 
             {
-                Argument = new Argument<string>(name: "output_dump_path")
+                ArgumentHelpName = "output_dump_path"
             };
 
         private static Option DiagnosticLoggingOption() =>
-            new Option(
-                alias: "--diag", 
+            new Option<bool>(
+                name: "--diag", 
                 description: "Enable dump collection diagnostic logging.") 
             {
-                Argument = new Argument<bool>(name: "diag")
+                ArgumentHelpName = "diag"
             };
 
         private static Option CrashReportOption() =>
-            new Option(
-                alias: "--crashreport", 
+            new Option<bool>(
+                name: "--crashreport", 
                 description: "Enable crash report generation.") 
             {
-                Argument = new Argument<bool>(name: "crashreport")
+                ArgumentHelpName = "crashreport"
             };
 
         private static Option TypeOption() =>
-            new Option(
-                alias: "--type",
+            new Option<Dumper.DumpTypeOption>(
+                name: "--type",
+                getDefaultValue: () => Dumper.DumpTypeOption.Full,
                 description: @"The dump type determines the kinds of information that are collected from the process. There are several types: Full - The largest dump containing all memory including the module images. Heap - A large and relatively comprehensive dump containing module lists, thread lists, all stacks, exception information, handle information, and all memory except for mapped images. Mini - A small dump containing module lists, thread lists, exception information and all stacks. Triage - A small dump containing module lists, thread lists, exception information, all stacks and PII removed.")
             {
-                Argument = new Argument<Dumper.DumpTypeOption>(name: "dump_type", getDefaultValue: () => Dumper.DumpTypeOption.Full)
+                ArgumentHelpName = "dump_type"
             };
 
         private static Command AnalyzeCommand() =>
@@ -92,11 +93,11 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
                 description: "Starts an interactive shell with debugging commands to explore a dump")
             {
                 // Handler
-                CommandHandler.Create<FileInfo, string[]>(new Analyzer().Analyze),
+                //SetHandler<FileInfo, string[]>(new Analyzer().Analyze) 
                 // Arguments and Options
                 DumpPath(),
                 RunCommand() 
-            };
+            }; 
 
         private static Argument DumpPath() =>
             new Argument<FileInfo>(
@@ -106,11 +107,13 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
             }.ExistingOnly();
 
         private static Option RunCommand() =>
-            new Option(
+            new Option<string[]>(
                 aliases: new[] { "-c", "--command" }, 
+                getDefaultValue: () => Array.Empty<string>(),
                 description: "Runs the command on start. Multiple instances of this parameter can be used in an invocation to chain commands. Commands will get run in the order that they are provided on the command line. If you want dotnet dump to exit after the commands, your last command should be 'exit'.") 
             {
-                Argument = new Argument<string[]>(name: "command", getDefaultValue: () => Array.Empty<string>()) { Arity = ArgumentArity.ZeroOrMore }
+                ArgumentHelpName = "command",
+                Arity = ArgumentArity.ZeroOrMore,
             };
     }
 }

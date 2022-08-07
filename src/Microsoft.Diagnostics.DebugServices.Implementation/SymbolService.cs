@@ -372,6 +372,32 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         public string DownloadFile(string index, string file) => DownloadFile(new SymbolStoreKey(index, file));
 
         /// <summary>
+        /// Downloads and returns the metadata for the assembly.
+        /// </summary>
+        /// <param name="module">module assembly</param>
+        /// <returns>metadata bytes</returns>
+        public ImmutableArray<byte> GetMetadata(IModule module)
+        {
+            try
+            {
+                PEReader reader = module.Services.GetService<PEReader>();
+                if (reader is not null && reader.HasMetadata)
+                {
+                    PEMemoryBlock metadataInfo = reader.GetMetadata();
+                    return metadataInfo.GetContent();
+                }
+            }
+            catch (Exception ex) when
+                (ex is InvalidOperationException ||
+                 ex is BadImageFormatException ||
+                 ex is IOException)
+            {
+                Trace.TraceError($"GetMetaData: {ex.Message}");
+            }
+            return ImmutableArray<byte>.Empty;
+        }
+
+        /// <summary>
         /// Returns the metadata for the assembly
         /// </summary>
         /// <param name="imagePath">file name and path to module</param>

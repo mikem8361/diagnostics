@@ -124,38 +124,43 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             for (int i = 0; i < moduleInfos.Length; i++)
             {
                 ModuleInfo moduleInfo = moduleInfos[i];
-                ulong imageSize = (ulong)moduleInfo.ImageSize;
 
-                // Only add images that have a size. On Linux these are special files like /run/shm/lttng-ust-wait-8-1000 and non-ELF
-                // resource(?) files like /usr/share/zoneinfo-icu/44/le/metaZones.res. Haven't see any 0 sized PE or MachO files.
-                if (imageSize > 0)
+                // To be consistent across all hosts only expose the native modules. The CLRMD ELF reader returns both managed and native.
+                if (!moduleInfo.IsManaged)
                 {
-                    // There are times when the module infos returned by the data reader overlap which breaks the module
-                    // service's address binary search. This code adjusts the module's image size to the next module's
-                    // image base address if there is overlap.
-                    if ((i + 1) < moduleInfos.Length)
-                    {
-                        ModuleInfo moduleInfoNext = moduleInfos[i + 1];
-                        ulong start = moduleInfo.ImageBase;
-                        ulong end = moduleInfo.ImageBase + imageSize;
-                        ulong startNext = moduleInfoNext.ImageBase;
+                    ulong imageSize = (ulong)moduleInfo.ImageSize;
 
-                        if (end > startNext)
+                    // Only add images that have a size. On Linux these are special files like /run/shm/lttng-ust-wait-8-1000 and non-ELF
+                    // resource(?) files like /usr/share/zoneinfo-icu/44/le/metaZones.res. Haven't see any 0 sized PE or MachO files.
+                    if (imageSize > 0)
+                    {
+                        // There are times when the module infos returned by the data reader overlap which breaks the module
+                        // service's address binary search. This code adjusts the module's image size to the next module's
+                        // image base address if there is overlap.
+                        if ((i + 1) < moduleInfos.Length)
                         {
-                            Trace.TraceWarning($"Module {moduleInfo.FileName} {start:X16} - {end:X16} ({imageSize:X8})");
-                            Trace.TraceWarning($"  overlaps with {moduleInfoNext.FileName} {startNext:X16}");
-                            imageSize = startNext - start;
+                            ModuleInfo moduleInfoNext = moduleInfos[i + 1];
+                            ulong start = moduleInfo.ImageBase;
+                            ulong end = moduleInfo.ImageBase + imageSize;
+                            ulong startNext = moduleInfoNext.ImageBase;
+
+                            if (end > startNext)
+                            {
+                                Trace.TraceWarning($"Module {moduleInfo.FileName} {start:X16} - {end:X16} ({imageSize:X8})");
+                                Trace.TraceWarning($"  overlaps with {moduleInfoNext.FileName} {startNext:X16}");
+                                imageSize = startNext - start;
+                            }
                         }
-                    }
-                    ModuleFromDataReader module = new(this, moduleIndex, moduleInfo, imageSize);
-                    try
-                    {
-                        modules.Add(moduleInfo.ImageBase, module);
-                        moduleIndex++;
-                    }
-                    catch (ArgumentException)
-                    {
-                        Trace.TraceError($"GetModules(): duplicate module base '{module}' dup '{modules[moduleInfo.ImageBase]}'");
+                        ModuleFromDataReader module = new(this, moduleIndex, moduleInfo, imageSize);
+                        try
+                        {
+                            modules.Add(moduleInfo.ImageBase, module);
+                            moduleIndex++;
+                        }
+                        catch (ArgumentException)
+                        {
+                            Trace.TraceError($"GetModules(): duplicate module base '{module}' dup '{modules[moduleInfo.ImageBase]}'");
+                        }
                     }
                 }
             }

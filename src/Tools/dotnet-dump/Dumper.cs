@@ -5,11 +5,9 @@
 using Microsoft.Diagnostics.NETCore.Client;
 using Microsoft.Internal.Common.Utils;
 using System;
-using System.CommandLine;
-using System.CommandLine.IO;
-using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 
 namespace Microsoft.Diagnostics.Tools.Dump
 {
@@ -34,32 +32,32 @@ namespace Microsoft.Diagnostics.Tools.Dump
         {
         }
 
-        public int Collect(IConsole console, int processId, string output, bool diag, bool crashreport, DumpTypeOption type, string name)
+        public Task<int> Collect(int processId, string output, bool diag, bool crashreport, DumpTypeOption type, string name)
         {
             Console.WriteLine(name);
             if (name != null)
             {
                 if (processId != 0)
                 {
-                    Console.WriteLine("Can only specify either --name or --process-id option.");
-                    return -1;
+                    Console.Error.WriteLine("Can only specify either --name or --process-id option.");
+                    return Task.FromResult(-1);
                 }
                 processId = CommandUtils.FindProcessIdWithName(name);
                 if (processId < 0)
                 {
-                    return -1;
+                    return Task.FromResult(-1);
                 }
             }
 
             if (processId == 0) {
                 Console.Error.WriteLine("ProcessId is required.");
-                return -1;
+                return Task.FromResult(-1);
             }
 
             if (processId < 0)
             {
                 Console.Error.WriteLine($"The PID cannot be negative: {processId}");
-                return -1;
+                return Task.FromResult(-1);
             }
 
             try
@@ -91,14 +89,14 @@ namespace Microsoft.Diagnostics.Tools.Dump
                         dumpTypeMessage = "triage dump";
                         break;
                 }
-                console.Out.WriteLine($"Writing {dumpTypeMessage} to {output}");
+                Console.WriteLine($"Writing {dumpTypeMessage} to {output}");
 
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
                     if (crashreport)
                     {
-                        Console.WriteLine("Crash reports not supported on Windows.");
-                        return -1;
+                        Console.Error.WriteLine("Crash reports not supported on Windows.");
+                        return Task.FromResult(-1);
                     }
 
                     Windows.CollectDump(processId, output, type);
@@ -149,12 +147,12 @@ namespace Microsoft.Diagnostics.Tools.Dump
                  ex is NotSupportedException ||
                  ex is DiagnosticsClientException)
             {
-                console.Error.WriteLine($"{ex.Message}");
-                return -1;
+                Console.Error.WriteLine($"{ex.Message}");
+                return Task.FromResult(-1);
             }
 
-            console.Out.WriteLine($"Complete");
-            return 0;
+            Console.WriteLine($"Complete");
+            return Task.FromResult(0);
         }
     }
 }

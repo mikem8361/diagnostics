@@ -28,7 +28,7 @@ namespace Microsoft.Internal.Common.Utils
                 {
                     if (commonId != -1)
                     {
-                        Console.WriteLine("There are more than one active processes with the given name: {0}", name);
+                        Console.Error.WriteLine("There are more than one active processes with the given name: {0}", name);
                         return -1;
                     }
                     commonId = processesWithMatchingName[i].Id;

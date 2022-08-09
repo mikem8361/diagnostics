@@ -3,11 +3,9 @@
 // See the LICENSE file in the project root for more information.
 
 using Microsoft.Internal.Common.Commands;
-using Microsoft.Tools.Common;
 using System;
 using System.CommandLine;
 using System.CommandLine.Builder;
-using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
 using System.IO;
 using System.Threading.Tasks;
@@ -18,26 +16,25 @@ namespace Microsoft.Diagnostics.Tools.Dump
     {
         public static Task<int> Main(string[] args)
         {
-            var parser = new CommandLineBuilder()
-                .AddCommand(CollectCommand())
-                .AddCommand(AnalyzeCommand())
-                .AddCommand(ProcessStatusCommandHandler.ProcessStatusCommand("Lists the dotnet processes that dumps can be collected from."))
-                .UseDefaults()
-                .Build();
-
-            return parser.InvokeAsync(args);
+            var builder = new CommandLineBuilder().UseDefaults();
+            builder.Command.AddCommand(CollectCommand());
+            builder.Command.AddCommand(AnalyzeCommand());
+            builder.Command.AddCommand(ProcessStatusCommandHandler.ProcessStatusCommand("Lists the dotnet processes that dumps can be collected from."));
+            return builder.Build().InvokeAsync(args);
         }
 
-        private static Command CollectCommand() =>
-            new Command( name: "collect", description: "Capture dumps from a process")
+        private static Command CollectCommand()
+        {
+            Command command = new(name: "collect", description: "Capture dumps from a process")
             {
-                // Handler
-                //CommandHandler.Create<IConsole, int, string, bool, bool, Dumper.DumpTypeOption, string>(new Dumper().Collect),
                 // Options
                 ProcessIdOption(), OutputOption(), DiagnosticLoggingOption(), CrashReportOption(), TypeOption(), ProcessNameOption()
             };
+            command.SetHandler(new Dumper().Collect, ProcessIdOption(), OutputOption(), DiagnosticLoggingOption(), CrashReportOption(), TypeOption(), ProcessNameOption());
+            return command;
+        }
 
-        private static Option ProcessIdOption() =>
+        private static Option<int> ProcessIdOption() =>
             new Option<int>(
                 aliases: new[] { "-p", "--process-id" },
                 description: "The process id to collect a memory dump.")
@@ -45,7 +42,7 @@ namespace Microsoft.Diagnostics.Tools.Dump
                 ArgumentHelpName = "pid"
             };
 
-        private static Option ProcessNameOption() =>
+        private static Option<string> ProcessNameOption() =>
             new Option<string>(
                 aliases: new[] { "-n", "--name" },
                 description: "The name of the process to collect a memory dump.")
@@ -53,7 +50,7 @@ namespace Microsoft.Diagnostics.Tools.Dump
                 ArgumentHelpName = "name"
             };
 
-        private static Option OutputOption() =>
+        private static Option<string> OutputOption() =>
             new Option<string>( 
                 aliases: new[] { "-o", "--output" },
                 description: @"The path where collected dumps should be written. Defaults to '.\dump_YYYYMMDD_HHMMSS.dmp' on Windows and './core_YYYYMMDD_HHMMSS' 
@@ -62,7 +59,7 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
                 ArgumentHelpName = "output_dump_path"
             };
 
-        private static Option DiagnosticLoggingOption() =>
+        private static Option<bool> DiagnosticLoggingOption() =>
             new Option<bool>(
                 name: "--diag", 
                 description: "Enable dump collection diagnostic logging.") 
@@ -70,7 +67,7 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
                 ArgumentHelpName = "diag"
             };
 
-        private static Option CrashReportOption() =>
+        private static Option<bool> CrashReportOption() =>
             new Option<bool>(
                 name: "--crashreport", 
                 description: "Enable crash report generation.") 
@@ -78,7 +75,7 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
                 ArgumentHelpName = "crashreport"
             };
 
-        private static Option TypeOption() =>
+        private static Option<Dumper.DumpTypeOption> TypeOption() =>
             new Option<Dumper.DumpTypeOption>(
                 name: "--type",
                 getDefaultValue: () => Dumper.DumpTypeOption.Full,
@@ -87,26 +84,27 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
                 ArgumentHelpName = "dump_type"
             };
 
-        private static Command AnalyzeCommand() =>
-            new Command(
-                name: "analyze", 
+        private static Command AnalyzeCommand()
+        {
+            var command = new Command(
+                name: "analyze",
                 description: "Starts an interactive shell with debugging commands to explore a dump")
             {
-                // Handler
-                //SetHandler<FileInfo, string[]>(new Analyzer().Analyze) 
                 // Arguments and Options
-                DumpPath(),
-                RunCommand() 
-            }; 
+                DumpPath(), RunCommand()
+            };
+            command.SetHandler(new Analyzer().Analyze, DumpPath(), RunCommand()); 
+            return command;
+        }
 
-        private static Argument DumpPath() =>
+        private static Argument<FileInfo> DumpPath() =>
             new Argument<FileInfo>(
                 name: "dump_path")
             {
                 Description = "Name of the dump file to analyze."
             }.ExistingOnly();
 
-        private static Option RunCommand() =>
+        private static Option<string[]> RunCommand() =>
             new Option<string[]>(
                 aliases: new[] { "-c", "--command" }, 
                 getDefaultValue: () => Array.Empty<string>(),

@@ -5,7 +5,7 @@
         <DisplayName>Microsoft.Diagnostics.SOSPackage.2022</DisplayName>
         <Description xml:space="preserve">SOS support for Visual Studio 2022</Description>
     </Metadata>
-    <Installation>
+    <Installation Experimental="true">
         <InstallationTarget Id="Microsoft.VisualStudio.Pro" Version="[17.0,18.0)">
             <ProductArchitecture>amd64</ProductArchitecture>
         </InstallationTarget>

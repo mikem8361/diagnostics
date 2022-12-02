@@ -198,7 +198,6 @@
 
   <FrameworkVersion Condition="'$(FrameworkVersion)' == ''">$(RuntimeFrameworkVersion)</FrameworkVersion>
   <RuntimeSymbolsPath>$(DotNetRoot)/shared/Microsoft.NETCore.App/$(RuntimeFrameworkVersion)</RuntimeSymbolsPath>
-  <LLDBHelperScript>$(ScriptRootDir)/lldbhelper.py</LLDBHelperScript>
 
   <BuildType>servicing</BuildType>
   <BuildType Condition="'$(RuntimeVersionLatest)' == '$(RuntimeFrameworkVersion)'">nightly</BuildType>
@@ -212,10 +211,15 @@
   <HostArgs Condition="'$(SetFxVersion)' == 'true'">--fx-version $(FrameworkVersion)</HostArgs>
 
   <Options>
-    <Option Condition="'$(OS)' == 'linux'">
+    <Option Condition="$(OS) == linux">
+      <!--
+      <LLDBHelperExtension>$(ScriptRootDir)/lldbhelper.py</LLDBHelperExtension>
+      -->
+      <LLDBHelperExtension>$(InstallDir)\libruncommand.so</LLDBHelperExtension>
       <SOSPath>$(InstallDir)/libsosplugin.so</SOSPath>
     </Option>
-    <Option Condition="'$(OS)' == 'osx'">
+    <Option Condition="$(OS) == osx">
+      <LLDBHelperExtension>$(InstallDir)\libruncommand.dylib</LLDBHelperExtension>
       <SOSPath>$(InstallDir)/libsosplugin.dylib</SOSPath>
     </Option>
   </Options>

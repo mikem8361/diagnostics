@@ -19,5 +19,6 @@ add_compile_definitions(DACCESS_COMPILE)
 add_compile_definitions(SOS_INCLUDE)
 add_compile_definitions(DISABLE_CONTRACTS)
 
+add_subdirectory(runcommand)
 add_subdirectory(extensions)
 add_subdirectory(Strike)

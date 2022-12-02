@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Xunit.Abstractions;
@@ -243,17 +244,20 @@ namespace Microsoft.Diagnostics.TestHelpers
         public void StandardInputWriteLine(string line)
         {
             IProcessLogger[] loggers = null;
-            StreamWriter inputStream = null;
+            Stream inputStream = null;
             lock (_lock)
             {
                 loggers = _loggers.ToArray();
-                inputStream = _p.StandardInput;
+                // We are using the underlying Stream directly not the StreamWriter. Do not use
+                // the StandardInput StreamWriter directly anyway else.
+                inputStream = _p.StandardInput.BaseStream;
             }
             foreach (IProcessLogger logger in loggers)
             {
                 logger.WriteLine(this, line, ProcessStream.StandardIn);
             }
-            inputStream.WriteLine(line);
+            byte[] lineBytes = Encoding.ASCII.GetBytes(line + Environment.NewLine);
+            inputStream.Write(lineBytes, 0, lineBytes.Length);
             inputStream.Flush();
         }
 

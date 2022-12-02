@@ -12,7 +12,6 @@ if(CLR_CMAKE_HOST_WIN32)
   add_compile_options(/FIWarningControl.h) # force include of WarningControl.h
   add_compile_options(/Zl) # omit default library name in .OBJ
 
-  add_subdirectory(runcommand)
   if(NOT CLR_CMAKE_TARGET_ARCH_ARM64 AND NOT CLR_CMAKE_TARGET_ARCH_ARM)
     add_subdirectory(SOS.UnitTests/Debuggees/DesktopClrHost)
   endif(NOT CLR_CMAKE_TARGET_ARCH_ARM64 AND NOT CLR_CMAKE_TARGET_ARCH_ARM)
@@ -27,6 +26,7 @@ if (NOT CLR_CMAKE_TARGET_ARCH_I386 OR NOT CLR_CMAKE_TARGET_WIN32)
   add_compile_definitions($<$<NOT:$<BOOL:$<TARGET_PROPERTY:IGNORE_DEFAULT_TARGET_ARCH>>>:FEATURE_EH_FUNCLETS>)
 endif (NOT CLR_CMAKE_TARGET_ARCH_I386 OR NOT CLR_CMAKE_TARGET_WIN32)
 
+add_subdirectory(runcommand)
 add_subdirectory(extensions)
 add_subdirectory(SOS.Extensions)
 add_subdirectory(Strike)

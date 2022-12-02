@@ -563,15 +563,16 @@ public class SOSRunner : IDisposable
                     break;
 
                 case NativeDebugger.Lldb:
-                    // Get the lldb python script file path necessary to capture the output of commands
+                    // Get the lldb helper extension file path necessary to capture the output of commands
                     // by printing a prompt after all the command output is printed.
-                    string lldbHelperScript = config.LLDBHelperScript();
-                    if (string.IsNullOrWhiteSpace(lldbHelperScript) || !File.Exists(lldbHelperScript))
+                    string lldbHelperExtension = config.LLDBHelperExtension();
+                    if (string.IsNullOrWhiteSpace(lldbHelperExtension) || !File.Exists(lldbHelperExtension))
                     {
-                        throw new ArgumentException("LLDB helper script path not set or does not exist: " + lldbHelperScript);
+                        throw new ArgumentException("LLDB helper script path not set or does not exist: " + lldbHelperExtension);
                     }
-                    arguments.Append(@"--no-lldbinit -o ""settings set target.disable-aslr false"" -o ""settings set interpreter.prompt-on-quit false""");
-                    arguments.AppendFormat(@" -o ""command script import {0}"" -o ""version""", lldbHelperScript);
+                    arguments.Append(@"--no-lldbinit -o ""settings set target.disable-aslr false"" -o ""settings set interpreter.prompt-on-quit false"" -o ""version""");
+                    arguments.AppendFormat(@" -o ""plugin load {0}""", lldbHelperExtension);
+                    //arguments.AppendFormat(@" -o ""command script import {0}""", lldbHelperExtension);
 
                     string debuggeeTarget = config.HostExe;
                     if (string.IsNullOrWhiteSpace(debuggeeTarget))
@@ -736,6 +737,10 @@ public class SOSRunner : IDisposable
             {
                 initialCommands.Insert(0, string.Format("shell echo 0x3F > /proc/{0}/coredump_filter", processRunner.ProcessId));
             }
+
+            // Wait for the initial prompt/end of command sent by the "runcommand" extension initialization
+            ScriptLogger.CommandResult result = await scriptLogger.WaitForCommandResult();
+            Debug.Assert(result.CommandType == ScriptLogger.CommandResultType.Succeeded);
 
             // Execute the initial debugger commands
             await sosRunner.RunCommands(initialCommands);
@@ -911,7 +916,6 @@ public class SOSRunner : IDisposable
                 }
                 try
                 {
-                    _scriptLogger.FlushCurrentOutputAsError(_processRunner);
                     await RunSosCommand("SOSStatus");
                 }
                 catch (Exception ex)
@@ -1078,17 +1082,14 @@ public class SOSRunner : IDisposable
         if (!_dumpType.HasValue)
         {
             string command = null;
-            bool addPrefix = true;
             switch (Debugger)
             {
                 case NativeDebugger.Cdb:
                     command = "g";
-                    // Don't add the !runcommand prefix because it gets printed when cdb stops
-                    // again because the helper extension used .pcmd to set a stop command.
-                    addPrefix = false;
                     break;
                 case NativeDebugger.Lldb:
-                    command = "process continue";
+                    //await HandleCommand("log enable lldb all");
+                    command = ProcessCommand("process continue");
                     break;
                 case NativeDebugger.Gdb:
                     command = "continue";
@@ -1098,10 +1099,12 @@ public class SOSRunner : IDisposable
             }
             if (command != null)
             {
-                if (!await RunCommand(command, addPrefix))
+                ScriptLogger.CommandResult result = await WaitForCommand(command);
+                if (result.CommandType == ScriptLogger.CommandResultType.Failed)
                 {
                     throw new Exception($"'{command}' FAILED");
                 }
+                Debug.Assert(result.CommandType == ScriptLogger.CommandResultType.Succeeded || result.CommandType == ScriptLogger.CommandResultType.ProcessTerminated);
             }
         }
     }
@@ -1158,36 +1161,33 @@ public class SOSRunner : IDisposable
         }
     }
 
-    public async Task<bool> RunCommand(string command, bool addPrefix = true)
+    public async Task<bool> RunCommand(string command)
     {
         if (string.IsNullOrWhiteSpace(command))
         {
             throw new ArgumentException("Debugger command empty or null");
         }
-        return await HandleCommand(command, addPrefix);
+        return await HandleCommand(command);
     }
 
     public async Task QuitDebugger()
     {
-        if (await _scriptLogger.WaitForCommandPrompt())
+        string command = null;
+        switch (Debugger)
         {
-            string command = null;
-            switch (Debugger)
-            {
-                case NativeDebugger.Cdb:
-                case NativeDebugger.Gdb:
-                    command = "q";
-                    break;
-                case NativeDebugger.Lldb:
-                case NativeDebugger.DotNetDump:
-                    command = "quit";
-                    break;
-            }
-            _processRunner.StandardInputWriteLine(command);
-            if (await _scriptLogger.WaitForCommandPrompt())
-            {
-                throw new Exception(DebuggerToString + " did not exit after quit command");
-            }
+            case NativeDebugger.Cdb:
+            case NativeDebugger.Gdb:
+                command = "q";
+                break;
+            case NativeDebugger.Lldb:
+            case NativeDebugger.DotNetDump:
+                command = "quit";
+                break;
+        }
+        ScriptLogger.CommandResult result = await WaitForCommand(command);
+        if (result.CommandType != ScriptLogger.CommandResultType.ProcessTerminated)
+        { 
+            throw new Exception(DebuggerToString + " did not exit after quit command");
         }
         await _processRunner.WaitForExit();
     }
@@ -1301,13 +1301,8 @@ public class SOSRunner : IDisposable
         return null;
     }
 
-    private async Task<bool> HandleCommand(string input, bool addPrefix)
+    private async Task<bool> HandleCommand(string input)
     {
-        if (!await _scriptLogger.WaitForCommandPrompt())
-        {
-            throw new Exception(string.Format("{0} exited unexpectedly executing '{1}'", DebuggerToString, input));
-        }
-
         // The PREVPOUT convention is to write a command like this:
         // COMMAND: Some stuff <PREVPOUT> more stuff
         // The PREVPOUT tag will be replaced by whatever the last <POUT>
@@ -1357,26 +1352,40 @@ public class SOSRunner : IDisposable
                 input = input.Substring(0, firstPOUT) + poutMatchResult + input.Substring(secondPOUT + poutTag.Length);
             }
         }
-        string command = ReplaceVariables(input);
-        if (addPrefix)
-        {
-            command = ProcessCommand(command);
-        }
+        string command = ProcessCommand(ReplaceVariables(input));
         if (Debugger == NativeDebugger.Lldb)
         {
             // Back quotes need to be escaped so lldb passes them through
             command = command.Replace("`", "'`");
         }
+        ScriptLogger.CommandResult result = await WaitForCommand(command);
+        if (result.CommandType == ScriptLogger.CommandResultType.ProcessTerminated)
+        {
+            throw new Exception(string.Format("{0} exited unexpectedly executing '{1}'", DebuggerToString, command));
+        }
+        Debug.Assert(result.CommandType == ScriptLogger.CommandResultType.Succeeded || result.CommandType == ScriptLogger.CommandResultType.Failed);
+        return result.CommandType == ScriptLogger.CommandResultType.Succeeded;
+    }
+
+    private async Task<ScriptLogger.CommandResult> WaitForCommand(string command)
+    {
+        // Wait for command prompt
+        ScriptLogger.CommandResult prompt = await _scriptLogger.WaitForCommandResult();
+        Debug.Assert(prompt.CommandType == ScriptLogger.CommandResultType.Prompt);
+
+        // Send the command to the debugger via standard input. This assumes the debugger is ready for a command.
         _processRunner.StandardInputWriteLine(command);
 
-        ScriptLogger.CommandResult result = await _scriptLogger.WaitForCommandOutput();
+        // Wait for the command to finish
+        ScriptLogger.CommandResult result = await _scriptLogger.WaitForCommandResult();
+
         _lastCommandOutput = result.CommandOutput;
         if (Debugger == NativeDebugger.Cdb)
         {
-            // Remove the cdb prompt because it interferes with script's regex's
+            // Remove the typical cdb prompt because it interferes with script's regex's
             _lastCommandOutput = _lastCommandOutput?.Replace("0:000>", string.Empty);
         }
-        return result.CommandSucceeded;
+        return result;
     }
 
     private string ProcessCommand(string command)
@@ -1565,15 +1574,24 @@ public class SOSRunner : IDisposable
 
     private class ScriptLogger : TestOutputProcessLogger
     {
+        public enum CommandResultType
+        {
+            None,
+            Succeeded,
+            Failed,
+            Prompt,
+            ProcessTerminated
+        }
+
         public struct CommandResult
         {
-            public readonly string CommandOutput;       // Command output or null if process terminated.
-            public readonly bool CommandSucceeded;      // If true, command succeeded.
+            public readonly CommandResultType CommandType;  // Result type
+            public readonly string CommandOutput;           // Command output
 
-            internal CommandResult(string commandOutput, bool commandSucceeded)
+            internal CommandResult(string commandOutput, CommandResultType commandType)
             {
                 CommandOutput = commandOutput;
-                CommandSucceeded = commandSucceeded;
+                CommandType = commandType;
             }
         }
 
@@ -1587,16 +1605,13 @@ public class SOSRunner : IDisposable
         public ScriptLogger(ITestOutputHelper output)
             : base(output)
         {
-            lock (this)
-            {
-                _lineBuffer = new StringBuilder();
-                _lastCommandOutput = new StringBuilder();
-                _taskQueue = new List<Task<CommandResult>>();
-                AddTask();
-            }
+            _lineBuffer = new StringBuilder();
+            _lastCommandOutput = new StringBuilder();
+            _taskQueue = new List<Task<CommandResult>>();
+            AddTask();
         }
 
-        private void AddTask()
+        public Task<CommandResult> WaitForCommandResult()
         {
             TaskCompletionSource<CommandResult> tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
             lock (this)
@@ -1608,26 +1623,19 @@ public class SOSRunner : IDisposable
 
         public async Task<bool> WaitForCommandPrompt()
         {
-            Task<CommandResult> currentTask = null;
+            Task<CommandResult> currentTask;
             lock (this)
             {
-                if (_taskQueue.Count == 0 || HasProcessExited)
+                if (HasProcessExited)
                 {
-                    return false;
+                    currentTask = Task.FromResult(new CommandResult(null, CommandResultType.ProcessTerminated));
                 }
-                currentTask = _taskQueue[0];
-                _taskQueue.RemoveAt(0);
-            }
-            return (await currentTask.ConfigureAwait(false)).CommandOutput != null;
-        }
-
-        public Task<CommandResult> WaitForCommandOutput()
-        {
-            Task<CommandResult> currentTask = null;
-            lock (this)
-            {
-                Debug.Assert(_taskQueue.Count > 0);
-                currentTask = _taskQueue[0];
+                else
+                {
+                    Debug.Assert(_taskQueue.Count >= 0);
+                    currentTask = _taskQueue[0];
+                    _taskQueue.RemoveAt(0);
+                }
             }
             return currentTask;
         }
@@ -1646,6 +1654,7 @@ public class SOSRunner : IDisposable
 
         private static readonly string s_endCommandOutput = "<END_COMMAND_OUTPUT>";
         private static readonly string s_endCommandError = "<END_COMMAND_ERROR>";
+        private static readonly string s_commandPrompt = "<COMMAND_PROMPT>";
 
         public override void WriteLine(ProcessRunner runner, string data, ProcessStream stream)
         {
@@ -1658,16 +1667,24 @@ public class SOSRunner : IDisposable
                     string lineBuffer = _lineBuffer.ToString();
                     _lineBuffer.Clear();
 
-                    bool commandError = lineBuffer.EndsWith(s_endCommandError);
-                    bool commandEnd = commandError || lineBuffer.EndsWith(s_endCommandOutput);
-                    if (commandEnd)
+                    CommandResultType result = CommandResultType.None;
+                    if (lineBuffer.EndsWith(s_endCommandOutput))
                     {
-                        FlushOutput();
+                        result = CommandResultType.Succeeded;
+                    }
+                    else if (lineBuffer.EndsWith(s_endCommandError))
+                    {
+                        result = CommandResultType.Failed;
+                    }
+                    else if (lineBuffer.EndsWith(s_commandPrompt))
+                    {
+                        result = CommandResultType.Prompt;
+                    }
+
+                    if (result != CommandResultType.None)
+                    {
                         _lastCommandOutput.AppendLine();
-                        string lastCommandOutput = _lastCommandOutput.ToString();
-                        _lastCommandOutput.Clear();
-                        _taskSource.TrySetResult(new CommandResult(lastCommandOutput, !commandError));
-                        AddTask();
+                        AddCommandResult(result);
                     }
                     else
                     {
@@ -1677,24 +1694,32 @@ public class SOSRunner : IDisposable
             }
         }
 
-        public void FlushCurrentOutputAsError(ProcessRunner runner)
-        {
-            // TODO: Clean this up... It's acting as stdout from within
-            // the runner, and it can act after the process exits and after
-            // all output has been drained from the output streams. This output
-            // would never get logged.
-            WriteLine(runner, s_endCommandError, ProcessStream.StandardOut);
-        }
-
         public override void ProcessExited(ProcessRunner runner)
         {
             lock (this)
             {
-                base.ProcessExited(runner);
-                FlushOutput();
                 HasProcessExited = true;
-                _taskSource.TrySetResult(new CommandResult(null, true));
+                base.ProcessExited(runner);
+                AddCommandResult(CommandResultType.ProcessTerminated);
             }
+        }
+        
+        private void AddCommandResult(CommandResultType type)
+        {
+            FlushOutput();
+            string lastCommandOutput = _lastCommandOutput.ToString();
+            TaskCompletionSource<CommandResult> taskSource = _taskSource;
+            _lastCommandOutput.Clear();
+            AddTask();
+
+            // This must be the last thing done because this thread may be used by the task scheduler in the WaitForCommandResult
+            taskSource.SetResult(new CommandResult(lastCommandOutput, type));
+        }
+
+        private void AddTask()
+        {
+            _taskSource = new TaskCompletionSource<CommandResult>();
+            _taskQueue.Add(_taskSource.Task);
         }
     }
 }
@@ -1711,9 +1736,9 @@ public static class TestConfigurationExtensions
         return TestConfiguration.MakeCanonicalPath(config.GetValue("CDBHelperExtension"));
     }
 
-    public static string LLDBHelperScript(this TestConfiguration config)
+    public static string LLDBHelperExtension(this TestConfiguration config)
     {
-        return TestConfiguration.MakeCanonicalPath(config.GetValue("LLDBHelperScript"));
+        return TestConfiguration.MakeCanonicalPath(config.GetValue("LLDBHelperExtension"));
     }
 
     public static string LLDBPath(this TestConfiguration config)

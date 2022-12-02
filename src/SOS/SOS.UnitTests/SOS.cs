@@ -50,9 +50,9 @@ public static class SOSTestHelpers
         if (information.TestLive)
         {
             // Live
-            using (SOSRunner runner = await SOSRunner.StartDebugger(information, SOSRunner.DebuggerAction.Live))
+            using (SOSRunner runner = await SOSRunner.StartDebugger(information, SOSRunner.DebuggerAction.Live).ConfigureAwait(false))
             {
-                await runner.RunScript(scriptName);
+                await runner.RunScript(scriptName).ConfigureAwait(false);
             }
         }
 
@@ -63,16 +63,16 @@ public static class SOSTestHelpers
             // Generate a crash dump.
             if (information.DebuggeeDumpOutputRootDir != null)
             {
-                dumpName = await SOSRunner.CreateDump(information);
+                dumpName = await SOSRunner.CreateDump(information).ConfigureAwait(false);
             }
 
             // Test against a crash dump.
             if (information.DebuggeeDumpInputRootDir != null)
             {
                 // With cdb (Windows) or lldb (Linux)
-                using (SOSRunner runner = await SOSRunner.StartDebugger(information, SOSRunner.DebuggerAction.LoadDump))
+                using (SOSRunner runner = await SOSRunner.StartDebugger(information, SOSRunner.DebuggerAction.LoadDump).ConfigureAwait(false))
                 {
-                    await runner.RunScript(scriptName);
+                    await runner.RunScript(scriptName).ConfigureAwait(false);
                 }
 
                 // Using the dotnet-dump analyze tool if the path exists in the config file.
@@ -81,9 +81,9 @@ public static class SOSTestHelpers
                     // Don't test dotnet-dump on triage dumps when running on desktop CLR.
                     if (information.TestConfiguration.IsNETCore || information.DumpType != SOSRunner.DumpType.Triage)
                     {
-                        using (SOSRunner runner = await SOSRunner.StartDebugger(information, SOSRunner.DebuggerAction.LoadDumpWithDotNetDump))
+                        using (SOSRunner runner = await SOSRunner.StartDebugger(information, SOSRunner.DebuggerAction.LoadDumpWithDotNetDump).ConfigureAwait(false))
                         {
-                            await runner.RunScript(scriptName);
+                            await runner.RunScript(scriptName).ConfigureAwait(false);
                         }
                     }
                 }

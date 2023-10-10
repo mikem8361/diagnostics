@@ -280,9 +280,7 @@ int __cdecl _woutput(__inout FILE * _File, _In_z_ __format_string const char16_t
 int __cdecl _output_s(__inout FILE * _File, _In_z_ __format_string const char *_Format, va_list _ArgList);
 int __cdecl _output_p(__inout FILE * _File, _In_z_ __format_string const char *_Format, va_list _ArgList);
 int __cdecl _woutput_s(__inout FILE * _File, _In_z_ __format_string const char16_t *_Format, va_list _ArgList);
-int __cdecl _woutput_p(__inout FILE * _File, _In_z_ __format_string const char16_t *_Format, va_list _ArgList);
 typedef int (*OUTPUTFN)(FILE *, const char *, va_list);
-typedef int (*WOUTPUTFN)(FILE *, const char16_t *, va_list);
 
 #else  /* _SAFECRT_IMPL */
 
@@ -290,10 +288,7 @@ int __cdecl _output_l(__inout FILE * _File, _In_z_ __format_string const char *_
 int __cdecl _woutput_l(__inout FILE * _File, _In_z_ __format_string const char16_t *_Format, _In_opt_ _locale_t _Locale, va_list _ArgList);
 int __cdecl _output_s_l(__inout FILE * _File, _In_z_ __format_string const char *_Format, _In_opt_ _locale_t _Locale, va_list _ArgList);
 int __cdecl _output_p_l(__inout FILE * _File, _In_z_ __format_string const char *_Format, _In_opt_ _locale_t _Locale, va_list _ArgList);
-int __cdecl _woutput_s_l(__inout FILE * _File, _In_z_ __format_string const char16_t *_Format, _In_opt_ _locale_t _Locale, va_list _ArgList);
-int __cdecl _woutput_p_l(__inout FILE * _File, _In_z_ __format_string const char16_t *_Format, _In_opt_ _locale_t _Locale, va_list _ArgList);
 typedef int (*OUTPUTFN)(__inout FILE * _File, const char *, _locale_t, va_list);
-typedef int (*WOUTPUTFN)(__inout FILE * _File, const char16_t *, _locale_t, va_list);
 
 #endif  /* _SAFECRT_IMPL */
 
@@ -302,7 +297,6 @@ typedef int (*WOUTPUTFN)(__inout FILE * _File, const char16_t *, _locale_t, va_l
 int __cdecl _input(_In_ FILE * _File, _In_z_ __format_string const unsigned char * _Format, va_list _ArgList);
 int __cdecl _winput(_In_ FILE * _File, _In_z_ __format_string const char16_t * _Format, va_list _ArgList);
 int __cdecl _input_s(_In_ FILE * _File, _In_z_ __format_string const unsigned char * _Format, va_list _ArgList);
-int __cdecl _winput_s(_In_ FILE * _File, _In_z_ __format_string const char16_t * _Format, va_list _ArgList);
 typedef int (*INPUTFN)(FILE *, const unsigned char *, va_list);
 typedef int (*WINPUTFN)(FILE *, const char16_t *, va_list);
 
@@ -696,7 +690,7 @@ _CRTIMP
 void __cdecl _invalid_parameter_noinfo(void);
 #endif  /* _DEBUG */
 
-/* Invoke Watson if _ExpressionError is not 0; otherwise simply return _EspressionError */
+/* Invoke Watson if _ExpressionError is not 0; otherwise simply return _ExpressionError */
 __forceinline
 void _invoke_watson_if_error(
     errno_t _ExpressionError,
@@ -714,7 +708,7 @@ void _invoke_watson_if_error(
     _invoke_watson(_Expression, _Function, _File, _Line, _Reserved);
 }
 
-/* Invoke Watson if _ExpressionError is not 0 and equal to _ErrorValue1 or _ErrorValue2; otherwise simply return _EspressionError */
+/* Invoke Watson if _ExpressionError is not 0 and equal to _ErrorValue1 or _ErrorValue2; otherwise simply return _ExpressionError */
 __forceinline
 errno_t _invoke_watson_if_oneof(
     errno_t _ExpressionError,
@@ -1032,16 +1026,6 @@ _CRTIMP void * __cdecl _decode_pointer(void *);
 
 /* internal helper function for communicating with the debugger */
 BOOL DebuggerKnownHandle();
-
-/* Macros to simplify the use of Secure CRT in the CRT itself.
- * We should use [_BEGIN/_END]_SECURE_CRT_DEPRECATION_DISABLE sparingly.
- */
-#define _BEGIN_SECURE_CRT_DEPRECATION_DISABLE \
-    __pragma(warning(push)) \
-    __pragma(warning(disable:4996))
-
-#define _END_SECURE_CRT_DEPRECATION_DISABLE \
-    __pragma(warning(pop))
 
 #define _ERRCHECK(e) \
     _INVOKE_WATSON_IF_ERROR(e)

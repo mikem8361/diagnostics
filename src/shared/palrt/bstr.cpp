@@ -21,6 +21,7 @@ Revision History:
 
 #include "common.h"
 #include "intsafe.h"
+#include <dn-u16.h>
 
 #define CCH_BSTRMAX 0x7FFFFFFF  // 4 + (0x7ffffffb + 1 ) * 2 ==> 0xFFFFFFFC
 #define CB_BSTRMAX 0xFFFFFFFa   // 4 + (0xfffffff6 + 2) ==> 0xFFFFFFFC
@@ -120,7 +121,7 @@ STDAPI_(BSTR) SysAllocString(const OLECHAR* psz)
     if(psz == NULL)
       return NULL;
 
-    return SysAllocStringLen(psz, (DWORD)wcslen(psz));
+    return SysAllocStringLen(psz, (DWORD)u16_strlen(psz));
 }
 
 STDAPI_(BSTR)

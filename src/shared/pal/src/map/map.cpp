@@ -472,7 +472,7 @@ CorUnix::InternalCreateFileMapping(
         palError = ERROR_INVALID_PARAMETER;
         goto ExitInternalCreateFileMapping;
     }
-    
+
     maximumSize = ((off_t)dwMaximumSizeHigh << 32) | (off_t)dwMaximumSizeLow;
 
     palError = g_pObjectManager->AllocateObject(
@@ -784,50 +784,6 @@ ExitInternalCreateFileMapping:
     }
 
     return palError;
-}
-
-/*++
-Function:
-  OpenFileMappingW
-
-See MSDN doc.
---*/
-HANDLE
-PALAPI
-OpenFileMappingW(
-         IN DWORD dwDesiredAccess,
-         IN BOOL bInheritHandle,
-         IN LPCWSTR lpName)
-{
-    HANDLE hFileMapping = NULL;
-    PAL_ERROR palError = NO_ERROR;
-    CPalThread *pThread = NULL;
-
-    PERF_ENTRY(OpenFileMappingW);
-    ENTRY("OpenFileMappingW(dwDesiredAccess=%#x, bInheritHandle=%d, lpName=%p (%S)\n",
-          dwDesiredAccess, bInheritHandle, lpName?lpName:W16_NULLSTRING, lpName?lpName:W16_NULLSTRING);
-
-    pThread = InternalGetCurrentThread();
-
-    /* validate parameters */
-    if (lpName == nullptr)
-    {
-        ERROR("name is NULL\n");
-        palError = ERROR_INVALID_PARAMETER;
-    }
-    else
-    {
-        ASSERT("lpName: Cross-process named objects are not supported in PAL");
-        palError = ERROR_NOT_SUPPORTED;
-    }
-
-    if (NO_ERROR != palError)
-    {
-        pThread->SetLastError(palError);
-    }
-    LOGEXIT("OpenFileMappingW returning %p.\n", hFileMapping);
-    PERF_EXIT(OpenFileMappingW);
-    return hFileMapping;
 }
 
 /*++
@@ -1645,11 +1601,11 @@ static PAL_ERROR MAPGrowLocalFile( INT UnixFD, off_t NewSize )
 
     /* ftruncate is a standard function, but the behavior of enlarging files is
     non-standard.  So I will try to enlarge a file, and if that fails try the
-    less efficent way.*/
+    less efficient way.*/
     TruncateRetVal = ftruncate( UnixFD, NewSize );
     fstat( UnixFD, &FileInfo );
 
-    if ( TruncateRetVal != 0 || FileInfo.st_size != (int) NewSize )
+    if ( TruncateRetVal != 0 || FileInfo.st_size != NewSize )
     {
         INT OrigSize;
         CONST UINT  BUFFER_SIZE = 128;
@@ -1657,7 +1613,7 @@ static PAL_ERROR MAPGrowLocalFile( INT UnixFD, off_t NewSize )
         UINT x = 0;
         UINT CurrentPosition = 0;
 
-        TRACE( "Trying the less efficent way.\n" );
+        TRACE( "Trying the less efficient way.\n" );
 
         CurrentPosition = lseek( UnixFD, 0, SEEK_CUR );
         OrigSize = lseek( UnixFD, 0, SEEK_END );

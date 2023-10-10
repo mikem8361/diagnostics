@@ -14,7 +14,7 @@
    however thread safe */
 
 /* The log has a very simple structure, and it meant to be dumped from a NTSD
-   extention (eg. strike). There is no memory allocation system calls etc to purtub things */
+   extension (eg. strike). There is no memory allocation system calls etc to purtub things */
 
 // ******************************************************************************
 // WARNING!!!: This header is also used by the runtime repo.
@@ -30,12 +30,11 @@
 #include "log.h"
 
 #if defined(STRESS_LOG) && !defined(FEATURE_NO_STRESSLOG)
+#ifndef STRESS_LOG_ANALYZER
+#include "holder.h"
 #include "staticcontract.h"
 #include "mscoree.h"
 #include "clrinternal.h"
-#include "volatile.h"
-#ifndef STRESS_LOG_ANALYZER
-#include "holder.h"
 #ifdef STRESS_LOG_READONLY
 #include <stddef.h> // offsetof
 #else //STRESS_LOG_READONLY
@@ -59,11 +58,11 @@
             %pK     // The pointer is a code address (used for stack track)
 */
 
-/*  STRESS_LOG_VA was added to allow sendign GC trace output to the stress log. msg must be enclosed
-      in ()'s and contain a format string followed by 0 - 4 arguments.  The arguments must be numbers or
-      string literals.  LogMsgOL is overloaded so that all of the possible sets of parameters are covered.
-      This was done becasue GC Trace uses dprintf which dosen't contain info on how many arguments are
-      getting passed in and using va_args would require parsing the format string during the GC
+/*  STRESS_LOG_VA was added to allow sending GC trace output to the stress log. msg must be enclosed
+    in ()'s and contain a format string followed by 0 to 12 arguments. The arguments must be numbers
+     or string literals. This was done because GC Trace uses dprintf which doesn't contain info on
+    how many arguments are getting passed in and using va_args would require parsing the format
+    string during the GC
 */
 #define STRESS_LOG_VA(dprintfLevel,msg) do {                                                        \
             if (StressLog::LogOn(LF_GC, LL_ALWAYS))                                                 \
@@ -363,15 +362,18 @@ public:
     {
         size_t        headerSize;               // size of this header including size field and moduleImage
         uint32_t      magic;                    // must be 'STRL'
-        uint32_t      version;                  // must be 0x00010001
+        uint32_t      version;                  // must be >=0x00010001.
+                                                // 0x00010001 is the legacy short-offset format.
+                                                // 0x00010002 is the large-module-offset format introduced in .NET 8.
         uint8_t*      memoryBase;               // base address of the memory mapped file
         uint8_t*      memoryCur;                // highest address currently used
         uint8_t*      memoryLimit;              // limit that can be used
         Volatile<ThreadStressLog*>  logs;       // the list of logs for every thread.
         uint64_t      tickFrequency;            // number of ticks per second
         uint64_t      startTimeStamp;           // start time from when tick counter started
-        uint64_t      threadsWithNoLog;         // threads that didn't get a log
-        uint64_t      reserved[15];             // for future expansion
+        uint32_t      threadsWithNoLog;         // threads that didn't get a log
+        uint32_t      reserved1;
+        uint64_t      reserved2[15];             // for future expansion
         ModuleDesc    modules[MAX_MODULES];     // descriptor of the modules images
         uint8_t       moduleImage[64*1024*1024];// copy of the module images described by modules field
     };
@@ -534,9 +536,8 @@ inline BOOL StressLog::LogOn(unsigned facility, unsigned level)
 #pragma warning(disable:4200 4201)					// don't warn about 0 sized array below or unnamed structures
 #endif
 
-// The order of fields is important.  Keep the prefix length as the first field.
-// And make sure the timeStamp field is naturally alligned, so we don't waste
-// space on 32-bit platforms
+// The order of fields is important.  Ensure that we minimize padding
+// to fit more messages in a chunk.
 struct StressMsg
 {
 private:
@@ -602,6 +603,7 @@ public:
 };
 
 static_assert(sizeof(StressMsg) == sizeof(uint64_t) * 2, "StressMsg bitfields aren't aligned correctly");
+
 #ifdef HOST_64BIT
 #define STRESSLOG_CHUNK_SIZE (32 * 1024)
 #else //HOST_64BIT
@@ -630,14 +632,14 @@ struct StressLogChunk
 
     void * operator new (size_t size) throw()
     {
-        if (IsInCantAllocStressLogRegion ())
-        {
-            return NULL;
-        }
 #ifdef MEMORY_MAPPED_STRESSLOG
         if (s_memoryMapped)
             return StressLog::AllocMemoryMapped(size);
 #endif //MEMORY_MAPPED_STRESSLOG
+        if (IsInCantAllocStressLogRegion ())
+        {
+            return NULL;
+        }
 #ifdef HOST_WINDOWS
         _ASSERTE(s_LogChunkHeap);
         return HeapAlloc(s_LogChunkHeap, 0, size);

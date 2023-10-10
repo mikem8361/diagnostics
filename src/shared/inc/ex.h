@@ -13,7 +13,6 @@
 #include "corerror.h"
 #include "stresslog.h"
 #include "staticcontract.h"
-#include "entrypoints.h"
 
 #if !defined(_DEBUG_IMPL) && defined(_DEBUG) && !defined(DACCESS_COMPILE)
 #define _DEBUG_IMPL 1
@@ -75,6 +74,7 @@ BOOL WasThrownByUs(const EXCEPTION_RECORD *pcER, DWORD dwExceptionCode);
 // The following group wraps the basic abstracts specifically for EXCEPTION_COMPLUS.
 //-----------------------------------------------------------------------------------
 BOOL IsComPlusException(const EXCEPTION_RECORD *pcER);
+VOID RaiseComPlusException();
 
 
 //===========================================================================================
@@ -177,6 +177,10 @@ class Exception
  public:
     Exception() {LIMITED_METHOD_DAC_CONTRACT; m_innerException = NULL;}
     virtual ~Exception() {LIMITED_METHOD_DAC_CONTRACT; if (m_innerException != NULL) Exception::Delete(m_innerException); }
+#ifdef DACCESS_COMPILE
+    void * operator new(size_t size);
+    void operator delete(void* ptr);
+#endif
     virtual BOOL IsDomainBound() {return m_innerException!=NULL && m_innerException->IsDomainBound();} ;
     virtual HRESULT GetHR() = 0;
     virtual void GetMessage(SString &s);
@@ -426,18 +430,24 @@ class COMException : public HRException
  public:
     COMException();
     COMException(HRESULT hr) ;
+#ifdef FEATURE_COMINTEROP
     COMException(HRESULT hr, IErrorInfo *pErrorInfo);
     ~COMException();
 
     // Virtual overrides
     IErrorInfo *GetErrorInfo();
     void GetMessage(SString &result);
+#endif
 
  protected:
     virtual Exception *CloneHelper()
     {
         WRAPPER_NO_CONTRACT;
+#ifdef FEATURE_COMINTEROP
         return new COMException(m_hr, m_pErrorInfo);
+#else
+        return new COMException(m_hr);
+#endif
     }
 };
 
@@ -1260,12 +1270,14 @@ inline COMException::COMException(HRESULT hr)
     LIMITED_METHOD_CONTRACT;
 }
 
+#ifdef FEATURE_COMINTEROP
 inline COMException::COMException(HRESULT hr, IErrorInfo *pErrorInfo)
   : HRException(hr),
   m_pErrorInfo(pErrorInfo)
 {
     LIMITED_METHOD_CONTRACT;
 }
+#endif // FEATURE_COMINTEROP
 
 inline SEHException::SEHException()
 {
@@ -1284,6 +1296,7 @@ inline SEHException::SEHException(EXCEPTION_RECORD *pointers, T_CONTEXT *pContex
 
 void DECLSPEC_NORETURN ThrowHR(HRESULT hr);
 void DECLSPEC_NORETURN ThrowHR(HRESULT hr, SString const &msg);
+void DECLSPEC_NORETURN ThrowHR(HRESULT hr, UINT uText);
 void DECLSPEC_NORETURN ThrowWin32(DWORD err);
 void DECLSPEC_NORETURN ThrowLastError();
 void DECLSPEC_NORETURN ThrowOutOfMemory();

@@ -21,7 +21,6 @@
 #include <cordebug.h>
 #include <xcordebug.h>
 #include <mscoree.h>
-#include <tchar.h>
 #include "gcinfo.h"
 
 #ifndef STRESS_LOG
@@ -33,6 +32,7 @@
 #ifdef FEATURE_PAL
 #include <sys/stat.h>
 #include <dlfcn.h>
+#include <wctype.h>
 #endif // !FEATURE_PAL
 
 #include "coreclrhost.h"
@@ -60,9 +60,8 @@ const char * const CorElementTypeNamespace[ELEMENT_TYPE_MAX]=
 IXCLRDataProcess *g_clrData = NULL;
 ISOSDacInterface *g_sos = NULL;
 
-#ifndef IfFailRet
+#undef IfFailRet
 #define IfFailRet(EXPR) do { Status = (EXPR); if(FAILED(Status)) { return (Status); } } while (0)
-#endif
 
 // Max number of reverted rejit versions that !dumpmd and !ip2md will print
 const UINT kcMaxRevertedRejitData   = 10;
@@ -997,7 +996,7 @@ void ComposeName_s(CorElementType Type, __out_ecount(capacity_buffer) LPSTR buff
 LPWSTR FormatTypeName (__out_ecount (maxChars) LPWSTR pszName, UINT maxChars)
 {
     UINT iStart = 0;
-    UINT iLen = (int) _wcslen(pszName);
+    UINT iLen = (int) u16_strlen(pszName);
     if (iLen > maxChars)
     {
         iStart = iLen - maxChars;
@@ -1294,7 +1293,7 @@ int GetObjFieldOffset(CLRDATA_ADDRESS cdaObj, CLRDATA_ADDRESS cdaMT, __in_z LPCW
         {
             DWORD offset = vFieldDesc.dwOffset + sizeof(BaseObject);
             NameForToken_s (TokenFromRid(vFieldDesc.mb, mdtFieldDef), pImport, g_mdName, mdNameLen, false);
-            if (_wcscmp (wszFieldName, g_mdName) == 0)
+            if (u16_strcmp (wszFieldName, g_mdName) == 0)
             {
                 if (pDacpFieldDescData != NULL)
                 {
@@ -1966,7 +1965,7 @@ BOOL IsDerivedFrom(CLRDATA_ADDRESS mtObj, __in_z LPCWSTR baseString)
         }
 
         NameForMT_s(TO_TADDR(walkMT), g_mdName, mdNameLen);
-        if (_wcscmp(baseString, g_mdName) == 0)
+        if (u16_strcmp(baseString, g_mdName) == 0)
         {
             return TRUE;
         }
@@ -2476,8 +2475,8 @@ void GetInfoFromName(DWORD_PTR ModulePtr, const char* name, mdTypeDef* retMdType
     mdToken tkEnclose = mdTokenNil;
     WCHAR *pName;
     WCHAR *pHead = wszName;
-    while ( ((pName = _wcschr (pHead,L'+')) != NULL) ||
-             ((pName = _wcschr (pHead,L'/')) != NULL)) {
+    while ( ((pName = (WCHAR*)u16_strchr (pHead,L'+')) != NULL) ||
+            ((pName = (WCHAR*)u16_strchr (pHead,L'/')) != NULL)) {
         pName[0] = L'\0';
         if (FAILED(pImport->FindTypeDefByName(pHead,tkEnclose,&tkEnclose)))
             return;
@@ -2498,7 +2497,7 @@ void GetInfoFromName(DWORD_PTR ModulePtr, const char* name, mdTypeDef* retMdType
 
     // See if it is a method
     WCHAR *pwzMethod;
-    if ((pwzMethod = _wcsrchr(pName, L'.')) == NULL)
+    if ((pwzMethod = (WCHAR*)u16_strrchr(pName, L'.')) == NULL)
         return;
 
     if (pwzMethod[-1] == L'.')
@@ -3358,18 +3357,8 @@ bool IsRuntimeVersionAtLeast(VS_FIXEDFILEINFO& fileInfo, DWORD major)
             {
                 return true;
             }
-            // fall through
-
-        default:
-            if (HIWORD(fileInfo.dwFileVersionMS) >= major)
-            {
-                return true;
-            }
-            // fall through
-
-            break;
     }
-    return false;
+    return HIWORD(fileInfo.dwFileVersionMS) >= major;
 }
 
 // Returns true if there is a change in the data structures that SOS depends on like
@@ -3554,7 +3543,7 @@ void StringObjectContent(size_t obj, BOOL fLiteral, const int length)
             ULONG j,k=0;
             for (j = 0; j < wcharsRead; j ++)
             {
-                if (_iswprint (buffer[j])) {
+                if (iswprint (buffer[j])) {
                     out[k] = buffer[j];
                     k ++;
                 }
@@ -4694,7 +4683,7 @@ CachedString Output::BuildManagedVarValue(__in_z LPCWSTR expansionName, ULONG fr
         numFrameDigits = 1;
     }
 
-    size_t totalStringLength = strlen(DMLFormats[type]) + _wcslen(expansionName) + numFrameDigits + _wcslen(simpleName) + 1;
+    size_t totalStringLength = strlen(DMLFormats[type]) + u16_strlen(expansionName) + numFrameDigits + u16_strlen(simpleName) + 1;
     if (totalStringLength > ret.GetStrLen())
     {
         ret.Allocate(static_cast<int>(totalStringLength));
@@ -5218,7 +5207,7 @@ static void AddAssemblyName(WString& methodOutput, CLRDATA_ADDRESS mdesc)
                 {
                     if (wszFileName[0] != W('\0'))
                     {
-                        WCHAR *pJustName = _wcsrchr(wszFileName, GetTargetDirectorySeparatorW());
+                        const WCHAR *pJustName = u16_strrchr(wszFileName, GetTargetDirectorySeparatorW());
                         if (pJustName == NULL)
                             pJustName = wszFileName - 1;
                         methodOutput += (pJustName + 1);

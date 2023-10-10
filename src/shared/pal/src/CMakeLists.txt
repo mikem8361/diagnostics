@@ -38,12 +38,16 @@ elseif(CLR_CMAKE_HOST_ARCH_ARMV6)
   add_definitions(-D__armv6__)
 elseif(CLR_CMAKE_HOST_ARCH_ARM64)
   set(PAL_ARCH_SOURCES_DIR arm64)
+elseif(CLR_CMAKE_HOST_ARCH_LOONGARCH64)
+  set(PAL_ARCH_SOURCES_DIR loongarch64)
+elseif(CLR_CMAKE_HOST_ARCH_RISCV64)
+  set(PAL_ARCH_SOURCES_DIR riscv64)
 elseif(CLR_CMAKE_HOST_ARCH_I386)
   set(PAL_ARCH_SOURCES_DIR i386)
 elseif(CLR_CMAKE_HOST_ARCH_S390X)
   set(PAL_ARCH_SOURCES_DIR s390x)
-elseif(CLR_CMAKE_HOST_ARCH_RISCV64)
-  set(PAL_ARCH_SOURCES_DIR riscv64)
+elseif(CLR_CMAKE_HOST_ARCH_POWERPC64)
+  set(PAL_ARCH_SOURCES_DIR ppc64le)
 endif()
 
 if(CLR_CMAKE_TARGET_OSX)
@@ -63,25 +67,24 @@ add_definitions(-DLP64COMPATIBLE)
 add_definitions(-DCORECLR)
 add_definitions(-DPIC)
 
-if(CLR_CMAKE_HOST_ARCH_AMD64 AND CLR_CMAKE_TARGET_LINUX AND NOT CLR_CMAKE_HOST_LINUX_MUSL)
-  # Currently the _xstate is not available on linux-musl
+if(CLR_CMAKE_HOST_ARCH_AMD64 AND CLR_CMAKE_TARGET_LINUX AND NOT CLR_CMAKE_TARGET_LINUX_MUSL)
+  # Currently the _xstate is not available on Alpine Linux
   add_definitions(-DXSTATE_SUPPORTED)
-endif(CLR_CMAKE_HOST_ARCH_AMD64 AND CLR_CMAKE_TARGET_LINUX AND NOT CLR_CMAKE_HOST_LINUX_MUSL)
+endif(CLR_CMAKE_HOST_ARCH_AMD64 AND CLR_CMAKE_TARGET_LINUX AND NOT CLR_CMAKE_TARGET_LINUX_MUSL)
 
-if(CLR_CMAKE_HOST_LINUX_MUSL)
-  # Setting RLIMIT_NOFILE breaks debugging of coreclr on linux-musl for some reason
+if(CLR_CMAKE_TARGET_LINUX_MUSL)
+  # Setting RLIMIT_NOFILE breaks debugging of coreclr on Alpine Linux for some reason
   add_definitions(-DDONT_SET_RLIMIT_NOFILE)
-  # On linux-musl, we need to ensure that the reported stack range for the primary thread is
+  # On Alpine Linux, we need to ensure that the reported stack range for the primary thread is
   # larger than the initial committed stack size.
   add_definitions(-DENSURE_PRIMARY_STACK_SIZE)
-endif(CLR_CMAKE_HOST_LINUX_MUSL)
+endif(CLR_CMAKE_TARGET_LINUX_MUSL)
 
 # turn off capability to remove unused functions (which was enabled in debug build with sanitizers)
 set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "${CMAKE_SHARED_LINKER_FLAGS_DEBUG} -Wl,--no-gc-sections")
 
 set(ARCH_SOURCES
   arch/${PAL_ARCH_SOURCES_DIR}/debugbreak.S
-  arch/${PAL_ARCH_SOURCES_DIR}/processor.cpp
 )
 if(CLR_CMAKE_HOST_ARCH_ARM)
   if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -99,9 +102,7 @@ set(SOURCES
   cruntime/malloc.cpp
   cruntime/math.cpp
   cruntime/misc.cpp
-  cruntime/printf.cpp
   cruntime/printfcpp.cpp
-  cruntime/silent_printf.cpp
   cruntime/string.cpp
   cruntime/stringtls.cpp
   cruntime/wchar.cpp
@@ -118,7 +119,7 @@ set(SOURCES
   loader/module.cpp
   locale/unicode.cpp
   locale/unicodedata.cpp
-  locale/utf8.cpp
+  ${CLR_SRC_NATIVE_DIR}/minipal/utf8.c
   map/common.cpp
   map/map.cpp
   map/virtual.cpp
@@ -163,7 +164,6 @@ set(SOURCES
   safecrt/wcsncpy_s.cpp
   safecrt/wcstok_s.cpp
   safecrt/wmakepath_s.cpp
-  safecrt/wsplitpath_s.cpp
   safecrt/xtoa_s.cpp
   safecrt/xtow_s.cpp
   shmemory/shmemory.cpp

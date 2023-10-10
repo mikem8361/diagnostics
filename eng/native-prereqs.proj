@@ -1,0 +1,21 @@
+<Project>
+  <Import Project="Sdk.props" Sdk="Microsoft.Build.NoTargets" />
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    <SkipGetTargetFrameworkProperties>false</SkipGetTargetFrameworkProperties>
+  </PropertyGroup>  
+
+  <PropertyGroup>
+    <NativeVersionFile Condition="$([MSBuild]::IsOsPlatform(Windows))">$(ArtifactsObjDir)_version.h</NativeVersionFile>
+    <NativeVersionFile Condition="!$([MSBuild]::IsOsPlatform(Windows))">$(ArtifactsObjDir)_version.c</NativeVersionFile>
+    <RuntimeVersionFile>$(ArtifactsObjDir)runtime_version.h</RuntimeVersionFile>
+    <AssemblyName>.NET Diagnostics</AssemblyName>
+  </PropertyGroup>
+
+  <Import Project="$(RepositoryEngineeringDir)versioning.targets" />
+
+  <Target Name="BuildPrereqs" BeforeTargets="Build" DependsOnTargets="GenerateRuntimeVersionFile" />
+  <Import Project="Sdk.targets" Sdk="Microsoft.Build.NoTargets" />
+</Project>

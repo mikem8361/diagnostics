@@ -390,7 +390,7 @@ void HandleCall(TADDR callee, Register *reg)
 #ifdef _TARGET_AMD64_
     // A jump thunk?
 
-    CONTEXT ctx = {0};
+    CONTEXT ctx;
     ctx.ContextFlags = (DT_CONTEXT_AMD64 | DT_CONTEXT_CONTROL | DT_CONTEXT_INTEGER);
 
     for (unsigned ireg = 0; ireg < 16; ireg++)
@@ -823,7 +823,7 @@ eTargetType GetFinalTarget(TADDR callee, TADDR* finalMDorIP)
 #ifdef _TARGET_AMD64_
     // A jump thunk?
 
-    CONTEXT ctx = {0};
+    CONTEXT ctx;
     ctx.ContextFlags = (DT_CONTEXT_AMD64 | DT_CONTEXT_CONTROL | DT_CONTEXT_INTEGER);
     ctx.Rip = callee;
 

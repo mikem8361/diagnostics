@@ -33,8 +33,6 @@ namespace X86GCDump
 #undef CONTRACTL_END
 #undef NOTHROW
 #undef GC_NOTRIGGER
-#undef _ASSERTE
-#define _ASSERTE(a) do {} while (0)
 
 #include "gcdump.cpp"
 #include "i386/gcdumpx86.cpp"
@@ -126,7 +124,7 @@ GenOpenMapping(
         return NULL;
     }
     
-    hMappedFile = CreateFileMapping (
+    hMappedFile = CreateFileMappingA (
                         hFile,
                         NULL,
                         PAGE_READONLY,

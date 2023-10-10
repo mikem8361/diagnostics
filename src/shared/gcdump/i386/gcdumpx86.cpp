@@ -8,6 +8,9 @@
 #ifdef TARGET_X86
 /*****************************************************************************/
 
+#ifndef TARGET_UNIX
+#include "utilcode.h"           // For _ASSERTE()
+#endif //!TARGET_UNIX
 #include "gcdump.h"
 
 
@@ -36,7 +39,7 @@ const char *        RegName(unsigned reg)
         "EDI"
     };
 
-    _ASSERTE(reg < ARRAY_SIZE(regNames));
+    _ASSERTE(reg < (sizeof(regNames)/sizeof(regNames[0])));
 
     return regNames[reg];
 }
@@ -51,7 +54,7 @@ const char *        CalleeSavedRegName(unsigned reg)
         "EBP"
     };
 
-    _ASSERTE(reg < ARRAY_SIZE(regNames));
+    _ASSERTE(reg < (sizeof(regNames)/sizeof(regNames[0])));
 
     return regNames[reg];
 }

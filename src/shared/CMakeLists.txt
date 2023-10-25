@@ -12,7 +12,7 @@ add_subdirectory(minipal)
 
 if (CLR_CMAKE_HOST_UNIX)
   # Include the dummy c++ include files
-  include_directories(${CLR_SHARED_DIR}/pal/inc/rt/cpp)
+  include_directories(pal/inc/rt/cpp)
 
   # This prevents inclusion of standard C compiler headers
   add_compile_options(-nostdinc)

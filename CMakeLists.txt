@@ -45,7 +45,7 @@ endif(CLR_CMAKE_HOST_UNIX)
 
 # Where _version.h for Windows is generated
 if(CLR_CMAKE_HOST_WIN32)
-include_directories(${CLR_ARTIFACTS_OBJ_DIR})
+  include_directories(${CLR_ARTIFACTS_OBJ_DIR})
 endif(CLR_CMAKE_HOST_WIN32)
 
 set(CORECLR_SET_RPATH ON)

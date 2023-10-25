@@ -1,3 +1,10 @@
+#-------------------------
+# Enable C++ EH with SEH
+#-------------------------
+if (MSVC)
+  set_property(DIRECTORY PROPERTY CLR_EH_OPTION /EHa) # enable C++ EH (w/ SEH exceptions)
+endif()
+
 include_directories(${CLR_SRC_NATIVE_DIR})
 include_directories(${CLR_SHARED_DIR}/pal/prebuilt/inc)
 

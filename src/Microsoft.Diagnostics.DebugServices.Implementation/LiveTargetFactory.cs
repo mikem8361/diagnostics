@@ -7,16 +7,11 @@ using Microsoft.Diagnostics.Runtime;
 
 namespace Microsoft.Diagnostics.DebugServices.Implementation
 {
-    public sealed class LiveTargetFactory : ILiveTargetFactory
+    public sealed class LiveTargetFactory(IHost host) : ILiveTargetFactory
     {
-        private readonly IHost _host;
+        private readonly IHost _host = host;
 
-        public LiveTargetFactory (IHost host)
-        {
-            _host = host;
-        }
-
-        public ITarget Attach (int processId)
+        public ITarget Attach(int processId)
         {
             DataTarget dataTarget;
             OSPlatform targetPlatform;

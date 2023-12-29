@@ -9,14 +9,9 @@ using Microsoft.Diagnostics.Runtime;
 
 namespace Microsoft.Diagnostics.DebugServices.Implementation
 {
-    public sealed class DumpTargetFactory : IDumpTargetFactory
+    public sealed class DumpTargetFactory(IHost host) : IDumpTargetFactory
     {
-        private readonly IHost _host;
-
-        public DumpTargetFactory (IHost host)
-        {
-            _host = host;
-        }
+        private readonly IHost _host = host;
 
         public ITarget OpenDump(string fileName)
         {

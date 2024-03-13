@@ -149,7 +149,7 @@ namespace SOS.Extensions
 
         public IReadOnlyList<string> ExecuteCommand(string commandLine) => _commandService.ExecuteAndCapture(commandLine, _contextService.Services);
 
-        public IReadOnlyList<string> ExecuteHostCommand(string commandLine) => DebuggerServices.ExecuteHostCommand(commandLine, DEBUG_OUTPUT.NORMAL | DEBUG_OUTPUT.ERROR);
+        public IReadOnlyList<string> ExecuteHostCommand(string commandLine) => DebuggerServices.ExecuteHostCommand(commandLine, normal: true, error: true);
 
         #region IHost
 
@@ -188,7 +188,17 @@ namespace SOS.Extensions
             // Create the wrapper for the host debugger services
             try
             {
-                DebuggerServices = new DebuggerServices(iunk, HostType);
+                DebuggerServices = new(iunk, HostType);
+            }
+            catch (InvalidCastException ex)
+            {
+                Trace.TraceError(ex.Message);
+                return HResult.E_NOINTERFACE;
+            }
+            DebuggerOutputService outputService;
+            try
+            {
+                outputService = new(iunk);
             }
             catch (InvalidCastException ex)
             {
@@ -198,7 +208,7 @@ namespace SOS.Extensions
             HResult hr;
             try
             {
-                ConsoleServiceFromDebuggerServices consoleService = new(DebuggerServices);
+                ConsoleServiceFromDebuggerServices consoleService = new(outputService);
                 FileLoggingConsoleService fileLoggingConsoleService = new(consoleService);
                 DiagnosticLoggingService.Instance.SetConsole(consoleService, fileLoggingConsoleService);
 

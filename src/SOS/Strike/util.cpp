@@ -4512,75 +4512,47 @@ size_t CountHexCharacters(CLRDATA_ADDRESS val)
     return ret;
 }
 
-// SOS is single threaded so a global buffer doesn't need any locking
-char g_printBuffer[8192];
-
-//---------------------------------------------------------------------
-// Because debuggers and hosts SOS runs on now output formatting always
-// happens with the C++ runtime functions and not dbgeng. This means
-// the special dbgeng formatting charaters are not supported: %N, %I,
-// %ma, %mu, %msa, %msu, %y, %ly and %p takes an architecture size
-// pointer (size_t) instead of always a 64bit one.
-//---------------------------------------------------------------------
-
-HRESULT
-OutputVaList(
-    ULONG mask,
-    PCSTR format,
-    va_list args)
+void OutputVaList(IOutputService::OutputType type, PCSTR format, va_list args)
 {
-    int length = _vsnprintf_s((char* const)&g_printBuffer, sizeof(g_printBuffer), _TRUNCATE, format, args);
+    char str[1024];
+    va_list argsCopy;
+    va_copy(argsCopy, args);
+
+    // Try and format our string into a fixed buffer first and see if it fits
+    int length = _vsnprintf_s(str, sizeof(str), _TRUNCATE, format, args);
     if (length > 0)
     {
-#ifdef HOST_WINDOWS
-        if (IsInitializedByDbgEng())
+        if (length < sizeof(str))
         {
-            return g_ExtControl->Output(mask, "%s", g_printBuffer);
+            GetOutputService()->OutputString(type, str);
         }
         else
-#endif
         {
-            return g_ExtControl->OutputVaList(mask, (char* const)&g_printBuffer, args);
+            // Our stack buffer wasn't big enough to contain the entire formatted string
+            char *str_ptr = (char*)::malloc(length + 1);
+            if (str_ptr != nullptr)
+            {
+                if (_vsnprintf_s(str_ptr, length + 1, _TRUNCATE, format, argsCopy) > 0)
+                {
+                    GetOutputService()->OutputString(type, str_ptr);
+                }
+                ::free(str_ptr);
+            }
         }
     }
-    return E_FAIL;
-}
-
-HRESULT
-ControlledOutputVaList(
-    ULONG outputControl,
-    ULONG mask,
-    PCSTR format,
-    va_list args)
-{
-    int length = _vsnprintf_s((char* const)&g_printBuffer, sizeof(g_printBuffer), _TRUNCATE, format, args);
-    if (length > 0)
+    else
     {
-#ifdef HOST_WINDOWS
-        if (IsInitializedByDbgEng())
-        {
-            return g_ExtControl->ControlledOutput(outputControl, mask, "%s", g_printBuffer);
-        }
-        else
-#endif
-        {
-            return g_ExtControl->ControlledOutputVaList(outputControl, mask, (char* const)&g_printBuffer, args);
-        }
+        GetOutputService()->OutputString(type, "FORMATING ERROR: ");
+        GetOutputService()->OutputString(type, format);
     }
-    return E_FAIL;
 }
 
-HRESULT
-OutputText(
-    ULONG mask,
-    PCSTR format,
-    ...)
+void OutputText(PCSTR format, ...)
 {
     va_list args;
     va_start (args, format);
-    HRESULT result = OutputVaList(mask, format, args);
+    OutputVaList(IOutputService::OutputType::Normal, format, args);
     va_end (args);
-    return result;
 }
 
 void WhitespaceOut(int count)
@@ -4588,7 +4560,6 @@ void WhitespaceOut(int count)
     static const int FixedIndentWidth = 0x40;
     static const char FixedIndentString[FixedIndentWidth+1] =
         "                                                                ";
-
     if (count <= 0)
         return;
 
@@ -4596,10 +4567,10 @@ void WhitespaceOut(int count)
     count &= ~0x3F;
 
     if (mod > 0)
-        OutputText(DEBUG_OUTPUT_NORMAL, "%.*s", mod, FixedIndentString);
+        OutputText("%.*s", mod, FixedIndentString);
 
     for ( ; count > 0; count -= FixedIndentWidth)
-        OutputText(DEBUG_OUTPUT_NORMAL, FixedIndentString);
+        OutputText(FixedIndentString);
 }
 
 void DMLOut(PCSTR format, ...)
@@ -4613,13 +4584,12 @@ void DMLOut(PCSTR format, ...)
 
     if (IsDMLEnabled() && !Output::IsDMLExposed())
     {
-        ControlledOutputVaList(DEBUG_OUTCTL_AMBIENT_DML, DEBUG_OUTPUT_NORMAL, format, args);
+        OutputVaList(IOutputService::OutputType::Dml, format, args);
     }
     else
     {
-        OutputVaList(DEBUG_OUTPUT_NORMAL, format, args);
+        OutputVaList(IOutputService::OutputType::Normal, format, args);
     }
-
     va_end(args);
 }
 
@@ -4629,56 +4599,52 @@ void IfDMLOut(PCSTR format, ...)
         return;
 
     va_list args;
-
     va_start(args, format);
     ExtOutIndent();
-    g_ExtControl->ControlledOutputVaList(DEBUG_OUTCTL_AMBIENT_DML, DEBUG_OUTPUT_NORMAL, format, args);
+    OutputVaList(IOutputService::OutputType::Dml, format, args);
     va_end(args);
 }
 
-void ExtOut(PCSTR Format, ...)
+void ExtOut(PCSTR format, ...)
 {
     if (Output::IsOutputSuppressed())
         return;
 
-    va_list Args;
-
-    va_start(Args, Format);
+    va_list args;
+    va_start(args, format);
     ExtOutIndent();
-    OutputVaList(DEBUG_OUTPUT_NORMAL, Format, Args);
-    va_end(Args);
+    OutputVaList(IOutputService::OutputType::Normal, format, args);
+    va_end(args);
 }
 
-void ExtWarn(PCSTR Format, ...)
+void ExtWarn(PCSTR format, ...)
 {
     if (Output::IsOutputSuppressed())
         return;
 
-    va_list Args;
-
-    va_start(Args, Format);
-    OutputVaList(DEBUG_OUTPUT_WARNING, Format, Args);
-    va_end(Args);
+    va_list args;
+    va_start(args, format);
+    OutputVaList(IOutputService::OutputType::Warning, format, args);
+    va_end(args);
 }
 
-void ExtErr(PCSTR Format, ...)
+void ExtErr(PCSTR format, ...)
 {
-    va_list Args;
-
-    va_start(Args, Format);
-    OutputVaList(DEBUG_OUTPUT_ERROR, Format, Args);
-    va_end(Args);
+    va_list args;
+    va_start(args, format);
+    OutputVaList(IOutputService::OutputType::Error, format, args);
+    va_end(args);
 }
 
-void ExtDbgOut(PCSTR Format, ...)
+void ExtDbgOut(PCSTR format, ...)
 {
     if (Output::g_bDbgOutput)
     {
-        va_list Args;
-        va_start(Args, Format);
+        va_list args;
+        va_start(args, format);
         ExtOutIndent();
-        OutputVaList(DEBUG_OUTPUT_NORMAL, Format, Args);
-        va_end(Args);
+        InternalWriteTraceVaList(IHost::TraceType::Information, format, args);
+        va_end(args);
     }
 }
 
@@ -5678,200 +5644,6 @@ HRESULT InternalFrameManager::PrintCurrentInternalFrame()
 
     return S_OK;
 }
-
-#ifdef FEATURE_PAL
-
-struct MemoryRegion
-{
-private:
-    uint64_t m_startAddress;
-    uint64_t m_endAddress;
-    CLRDATA_ADDRESS m_peFile;
-    BYTE* m_metadataMemory;
-    volatile LONG m_busy;
-
-    HRESULT CacheMetadata()
-    {
-        if (m_metadataMemory == nullptr)
-        {
-            HRESULT hr;
-            CLRDATA_ADDRESS baseAddress;
-            if (FAILED(hr = g_sos->GetPEFileBase(m_peFile, &baseAddress))) {
-                return hr;
-            }
-            ArrayHolder<WCHAR> imagePath = new WCHAR[MAX_LONGPATH];
-            if (FAILED(hr = g_sos->GetPEFileName(m_peFile, MAX_LONGPATH, imagePath.GetPtr(), NULL))) {
-                return hr;
-            }
-            IMAGE_DOS_HEADER DosHeader;
-            if (FAILED(hr = g_ExtData->ReadVirtual(baseAddress, &DosHeader, sizeof(DosHeader), NULL))) {
-                return hr;
-            }
-            IMAGE_NT_HEADERS Header;
-            if (FAILED(hr = g_ExtData->ReadVirtual(baseAddress + DosHeader.e_lfanew, &Header, sizeof(Header), NULL))) {
-                return hr;
-            }
-            // If there is no COMHeader, this can not be managed code.
-            if (Header.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_COMHEADER].VirtualAddress == 0) {
-                return E_ACCESSDENIED;
-            }
-            ULONG32 imageSize = Header.OptionalHeader.SizeOfImage;
-            ULONG32 timeStamp = Header.FileHeader.TimeDateStamp;
-            ULONG32 bufferSize = (ULONG32)Size();
-
-            ArrayHolder<BYTE> buffer = new NOTHROW BYTE[bufferSize];
-            if (buffer == nullptr) {
-                return E_OUTOFMEMORY;
-            }
-            ULONG32 actualSize = 0;
-            if (FAILED(hr = GetMetadataLocator(imagePath, timeStamp, imageSize, nullptr, 0, 0, bufferSize, buffer, &actualSize))) {
-                return hr;
-            }
-            m_metadataMemory = buffer.Detach();
-        }
-        return S_OK;
-    }
-
-public:
-    MemoryRegion(uint64_t start, uint64_t end, CLRDATA_ADDRESS peFile) :
-        m_startAddress(start),
-        m_endAddress(end),
-        m_peFile(peFile),
-        m_metadataMemory(nullptr),
-        m_busy(0)
-    {
-    }
-
-    uint64_t StartAddress() const { return m_startAddress; }
-    uint64_t EndAddress() const { return m_endAddress; }
-    uint64_t Size() const { return m_endAddress - m_startAddress; }
-
-    CLRDATA_ADDRESS const PEFile() { return m_peFile; }
-
-    bool operator<(const MemoryRegion& rhs) const
-    {
-        return (m_startAddress < rhs.m_startAddress) && (m_endAddress <= rhs.m_startAddress);
-    }
-
-    // Returns true if "rhs" is wholly contained in this one
-    bool Contains(const MemoryRegion& rhs) const
-    {
-        return (m_startAddress <= rhs.m_startAddress) && (m_endAddress >= rhs.m_endAddress);
-    }
-
-    HRESULT ReadMetadata(CLRDATA_ADDRESS address, ULONG32 bufferSize, BYTE* buffer)
-    {
-        _ASSERTE((m_startAddress <= address) && (m_endAddress >= (address + bufferSize)));
-
-        HRESULT hr = E_ACCESSDENIED;
-
-        // Skip in-memory and dynamic modules or if CacheMetadata failed
-        if (m_peFile != 0)
-        {
-            if (InterlockedIncrement(&m_busy) == 1)
-            {
-                // Attempt to get the assembly metadata from local file or by downloading from a symbol server
-                hr = CacheMetadata();
-                if (FAILED(hr)) {
-                    // If we can get the metadata from the assembly, mark this region to always fail.
-                    m_peFile = 0;
-                }
-            }
-            InterlockedDecrement(&m_busy);
-        }
-
-        if (FAILED(hr)) {
-            return hr;
-        }
-
-        // Read the memory from the cached metadata blob
-        _ASSERTE(m_metadataMemory != nullptr);
-        uint64_t offset = address - m_startAddress;
-        memcpy(buffer, m_metadataMemory + offset, bufferSize);
-        return S_OK;
-    }
-
-    void Dispose()
-    {
-        if (m_metadataMemory != nullptr)
-        {
-            delete[] m_metadataMemory;
-            m_metadataMemory = nullptr;
-        }
-    }
-};
-
-std::set<MemoryRegion> g_metadataRegions;
-bool g_metadataRegionsPopulated = false;
-
-void FlushMetadataRegions()
-{
-    for (const MemoryRegion& region : g_metadataRegions)
-    {
-        const_cast<MemoryRegion&>(region).Dispose();
-    }
-    g_metadataRegions.clear();
-    g_metadataRegionsPopulated = false;
-}
-
-void PopulateMetadataRegions()
-{
-    g_metadataRegions.clear();
-
-    // Only populate the metadata regions if core dump
-    if (IsDumpFile())
-    {
-        int numModule;
-        ArrayHolder<DWORD_PTR> moduleList = ModuleFromName(NULL, &numModule);
-        if (moduleList != nullptr)
-        {
-            for (int i = 0; i < numModule; i++)
-            {
-                DacpModuleData moduleData;
-                if (SUCCEEDED(moduleData.Request(g_sos, moduleList[i])))
-                {
-                    if (moduleData.metadataStart != 0)
-                    {
-                        MemoryRegion region(moduleData.metadataStart, moduleData.metadataStart + moduleData.metadataSize, moduleData.PEAssembly);
-                        g_metadataRegions.insert(region);
-#ifdef DUMP_METADATA_INFO
-                        ArrayHolder<WCHAR> name = new WCHAR[MAX_LONGPATH];
-                        name[0] = '\0';
-                        if (moduleData.File != 0)
-                        {
-                            g_sos->GetPEFileName(moduleData.File, MAX_LONGPATH, name.GetPtr(), NULL);
-                        }
-                        ExtOut("%016x %016x %016x %S\n", moduleData.metadataStart, moduleData.metadataStart + moduleData.metadataSize, moduleData.metadataSize, name.GetPtr());
-#endif
-                    }
-                }
-            }
-        }
-        else
-        {
-            ExtDbgOut("PopulateMetadataRegions ModuleFromName returns null\n");
-        }
-    }
-}
-
-HRESULT GetMetadataMemory(CLRDATA_ADDRESS address, ULONG32 bufferSize, BYTE* buffer)
-{
-    // Populate the metadata memory region map
-    if (!g_metadataRegionsPopulated)
-    {
-        g_metadataRegionsPopulated = true;
-        PopulateMetadataRegions();
-    }
-    // Check if the memory address is in a metadata memory region
-    MemoryRegion region(address, address + bufferSize, 0);
-    const auto& found = g_metadataRegions.find(region);
-    if (found != g_metadataRegions.end() && found->Contains(region)) {
-        return const_cast<MemoryRegion&>(*found).ReadMetadata(address, bufferSize, buffer);
-    }
-    return E_ACCESSDENIED;
-}
-
-#endif // FEATURE_PAL
 
 /**********************************************************************\
 * Routine Description:                                                 *

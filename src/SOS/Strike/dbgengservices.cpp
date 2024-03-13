@@ -118,6 +118,12 @@ DbgEngServices::QueryInterface(
         AddRef();
         return S_OK;
     }
+    else if (InterfaceId == __uuidof(IOutputService))
+    {
+        *Interface = static_cast<IOutputService*>(this);
+        AddRef();
+        return S_OK;
+    }
     else if (InterfaceId == __uuidof(IRemoteMemoryService))
     {
         *Interface = static_cast<IRemoteMemoryService*>(this);
@@ -217,14 +223,6 @@ DbgEngServices::AddCommand(
     int numberOfAliases)
 {
     return S_OK;
-}
-
-void
-DbgEngServices::OutputString(
-    ULONG mask,
-    PCSTR message)
-{
-    m_control->Output(mask, "%s", message);
 }
 
 HRESULT
@@ -515,30 +513,6 @@ DbgEngServices::GetFieldOffset(
     return m_symbols->GetFieldOffset(moduleBase, (ULONG)typeId, fieldName, offset);
 }
 
-ULONG
-DbgEngServices::GetOutputWidth()
-{
-    // m_client->GetOutputWidth() always returns 80 as the width under windbg, windbgx and cdb so just return the max.
-    return INT_MAX;
-}
-
-HRESULT
-DbgEngServices::SupportsDml(PULONG supported)
-{
-    ULONG opts = 0;
-    HRESULT hr = m_control->GetEngineOptions(&opts);
-    *supported = (SUCCEEDED(hr) && (opts & DEBUG_ENGOPT_PREFER_DML) == DEBUG_ENGOPT_PREFER_DML) ? 1 : 0;
-    return hr;
-}
-
-void
-DbgEngServices::OutputDmlString(
-    ULONG mask,
-    PCSTR message)
-{
-    m_control->ControlledOutput(DEBUG_OUTCTL_AMBIENT_DML, mask, "%s", message);
-}
-
 HRESULT 
 DbgEngServices::AddModuleSymbol(
     void* param,
@@ -589,6 +563,53 @@ DbgEngServices::ExecuteHostCommand(
 {
     OutputCaptureHolder holder(m_client, callback);
     return m_control->Execute(DEBUG_OUTCTL_THIS_CLIENT, commandLine, DEBUG_EXECUTE_NO_REPEAT);
+}
+
+//----------------------------------------------------------------------------
+// IOutputService (global)
+//----------------------------------------------------------------------------
+
+ULONG
+DbgEngServices::GetOutputWidth()
+{
+    // m_client->GetOutputWidth() always returns 80 as the width under windbg, windbgx and cdb so just return the max.
+    return INT_MAX;
+}
+
+ULONG
+DbgEngServices::SupportsDml()
+{
+    ULONG opts = 0;
+    HRESULT hr = m_control->GetEngineOptions(&opts);
+    return (SUCCEEDED(hr) && (opts & DEBUG_ENGOPT_PREFER_DML) == DEBUG_ENGOPT_PREFER_DML) ? 1 : 0;
+}
+
+void
+DbgEngServices::OutputString(
+    IOutputService::OutputType type,
+    PCSTR message)
+{
+    ULONG mask;
+    switch (type)
+    {
+        case IOutputService::OutputType::Normal:
+        case IOutputService::OutputType::Logging:
+            mask = DEBUG_OUTPUT_NORMAL;
+            break;
+        case IOutputService::OutputType::Error:
+            mask = DEBUG_OUTPUT_ERROR;
+            break;
+        case IOutputService::OutputType::Warning:
+            mask = DEBUG_OUTPUT_WARNING;
+            break;
+        case IOutputService::OutputType::Dml:
+            m_control->ControlledOutput(DEBUG_OUTCTL_AMBIENT_DML, DEBUG_OUTPUT_NORMAL, "%s", message);
+            return;
+        default:
+            // ignore any invalid output type
+            return;
+    }
+    m_control->Output(mask, "%s", message);
 }
 
 //----------------------------------------------------------------------------

@@ -3,12 +3,25 @@
 
 #pragma once
 
+#include <minipal/utils.h>
+#include <cor.h>
+#include <corsym.h>
+#include <clrdata.h>
 #include <corhdr.h>
+#include <cordebug.h>
+#include <xcordebug.h>
+#include <xclrdata.h>
 #include <string>
-#include "host.h"
-#include "hostservices.h"
-#include "debuggerservices.h"
-#include "symbolservice.h"
+#include <host.h>
+#include <hostservices.h>
+#include <debuggerservices.h>
+#include <outputservice.h>
+#include <symbolservice.h>
+#include <releaseholder.h>
+#include <arrayholder.h>
+#include <ntimageex.h>
+
+#define CONVERT_FROM_SIGN_EXTENDED(offset) ((ULONG_PTR)(offset))
 
 #ifndef HOST_WINDOWS
 #define _strdup       strdup
@@ -29,6 +42,8 @@ extern bool SetHostRuntime(HostRuntimeFlavor flavor, int major, int minor, LPCST
 extern void GetHostRuntime(HostRuntimeFlavor& flavor, int& major, int& minor, LPCSTR& hostRuntimeDirectory);
 extern bool GetAbsolutePath(const char* path, std::string& absolutePath);
 extern const std::string GetFileName(const std::string& filePath);
+extern void InternalOutputVaList(IOutputService::OutputType type, PCSTR format, va_list args);
+extern void InternalWriteTraceVaList(IHost::TraceType type, PCSTR format, va_list args);
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,12 +57,16 @@ protected:
     IHost* m_pHost;
     ITarget* m_pTarget;
     IDebuggerServices* m_pDebuggerServices;
+    IOutputService* m_pOutputService;
     IHostServices* m_pHostServices;
     ISymbolService* m_pSymbolService;
 
 public:
-    Extensions(IDebuggerServices* pDebuggerServices);
+    Extensions(IDebuggerServices* pDebuggerServices, IOutputService* pOutputService);
     virtual ~Extensions();
+
+    static void Initialize(IDebuggerServices* debuggerServices, IOutputService* outputService);
+    static void Uninitialize();
 
     /// <summary>
     /// Return the singleton extensions instance
@@ -74,9 +93,17 @@ public:
     }
 
     /// <summary>
+    /// Returns the output service instance
+    /// </summary>
+    IOutputService* GetOutputService()
+    {
+        return m_pOutputService;
+    }
+
+    /// <summary>
     /// Returns the host service provider or null
     /// </summary>
-    virtual IHost* GetHost() = 0;
+    IHost* GetHost();
 
     /// <summary>
     /// Returns the extension service interface or null
@@ -132,11 +159,6 @@ inline IHost* GetHost()
     return Extensions::GetInstance()->GetHost();
 }
 
-inline IDebuggerServices* GetDebuggerServices()
-{
-    return Extensions::GetInstance()->GetDebuggerServices();
-}
-
 inline ITarget* GetTarget()
 {
     return Extensions::GetInstance()->GetTarget();
@@ -150,6 +172,16 @@ inline void ReleaseTarget()
 inline IHostServices* GetHostServices()
 {
     return Extensions::GetInstance()->GetHostServices();
+}
+
+inline IDebuggerServices* GetDebuggerServices()
+{
+    return Extensions::GetInstance()->GetDebuggerServices();
+}
+
+inline IOutputService* GetOutputService()
+{
+    return Extensions::GetInstance()->GetOutputService();
 }
 
 inline ISymbolService* GetSymbolService()

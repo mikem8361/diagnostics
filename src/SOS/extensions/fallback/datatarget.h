@@ -1,21 +1,26 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-class DataTarget : public ICLRDataTarget2, ICorDebugDataTarget4, ICLRMetadataLocator, ICLRRuntimeLocator
+#pragma once
+
+#include <extensions.h>
+
+class DataTarget : public ICLRDataTarget2, ICorDebugDataTarget4, ICLRRuntimeLocator
 {
 private:
     LONG m_ref;                         // Reference count.
+    IDebuggerServices* m_debuggerServices;
     ULONG64 m_baseAddress;              // Runtime base address
 
 public:
-    DataTarget(ULONG64 baseAddress);
+    DataTarget(IDebuggerServices* debuggerServices, ULONG64 baseAddress);
     virtual ~DataTarget() {}
     
     // IUnknown.
     STDMETHOD(QueryInterface)(
         THIS_
-        ___in REFIID InterfaceId,
-        ___out PVOID* Interface
+        REFIID InterfaceId,
+        PVOID* Interface
         );
     STDMETHOD_(ULONG, AddRef)(
         THIS
@@ -84,16 +89,16 @@ public:
     // ICLRDataTarget2
 
     virtual HRESULT STDMETHODCALLTYPE AllocVirtual( 
-            /* [in] */ CLRDATA_ADDRESS addr,
-            /* [in] */ ULONG32 size,
-            /* [in] */ ULONG32 typeFlags,
-            /* [in] */ ULONG32 protectFlags,
-            /* [out] */ CLRDATA_ADDRESS *virt);
+        /* [in] */ CLRDATA_ADDRESS addr,
+        /* [in] */ ULONG32 size,
+        /* [in] */ ULONG32 typeFlags,
+        /* [in] */ ULONG32 protectFlags,
+        /* [out] */ CLRDATA_ADDRESS *virt);
         
     virtual HRESULT STDMETHODCALLTYPE FreeVirtual( 
-            /* [in] */ CLRDATA_ADDRESS addr,
-            /* [in] */ ULONG32 size,
-            /* [in] */ ULONG32 typeFlags);
+        /* [in] */ CLRDATA_ADDRESS addr,
+        /* [in] */ ULONG32 size,
+        /* [in] */ ULONG32 typeFlags);
 
     // ICorDebugDataTarget4
 
@@ -101,20 +106,6 @@ public:
         /* [in] */ DWORD threadId,
         /* [in] */ ULONG32 contextSize,
         /* [in, out, size_is(contextSize)] */ PBYTE context);
-
-    // ICLRMetadataLocator
-
-    virtual HRESULT STDMETHODCALLTYPE GetMetadata(
-        /* [in] */ LPCWSTR imagePath,
-        /* [in] */ ULONG32 imageTimestamp,
-        /* [in] */ ULONG32 imageSize,
-        /* [in] */ GUID* mvid,
-        /* [in] */ ULONG32 mdRva,
-        /* [in] */ ULONG32 flags,
-        /* [in] */ ULONG32 bufferSize,
-        /* [out, size_is(bufferSize), length_is(*dataSize)] */
-        BYTE* buffer,
-        /* [out] */ ULONG32* dataSize);
 
     // ICLRRuntimeLocator
 

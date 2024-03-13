@@ -138,7 +138,6 @@ IsInitializedByDbgEng();
 #else // FEATURE_PAL
 
 extern ILLDBServices*        g_ExtServices;    
-extern ILLDBServices2*       g_ExtServices2;    
 extern BOOL InitializePAL();
 
 #define IsInitializedByDbgEng() false

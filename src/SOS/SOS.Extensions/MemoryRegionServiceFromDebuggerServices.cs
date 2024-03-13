@@ -14,6 +14,7 @@ namespace SOS.Extensions
     internal sealed class MemoryRegionServiceFromDebuggerServices : IMemoryRegionService
     {
         private const string AddressCommand = "!address";
+
         private readonly DebuggerServices _debuggerServices;
 
         public MemoryRegionServiceFromDebuggerServices(DebuggerServices debuggerServices)
@@ -26,7 +27,7 @@ namespace SOS.Extensions
             bool foundHeader = false;
             bool skipped = false;
 
-            IReadOnlyList<string> lines = _debuggerServices.ExecuteHostCommand(AddressCommand);
+            IReadOnlyList<string> lines = _debuggerServices.ExecuteHostCommand(AddressCommand, normal: true, error: false);
             foreach (string line in lines)
             {
                 if (line.Length == 0)

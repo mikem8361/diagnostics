@@ -66,8 +66,8 @@ add_definitions(-DSTRIKE)
 
 include_directories(${ROOT_DIR}/src/SOS/inc)
 include_directories(${ROOT_DIR}/src/SOS/extensions)
+include_directories(${ROOT_DIR}/src/SOS/extensions/fallback)
 include_directories(${CLR_SHARED_DIR}/gcdump)
-include_directories(platform)
 
 if (CLR_CMAKE_HOST_WIN32)
   add_definitions(-DUSE_STL)
@@ -98,10 +98,6 @@ if (CLR_CMAKE_HOST_WIN32)
     clrma/managedanalysis.cpp
     clrma/exception.cpp
     clrma/thread.cpp
-    platform/datatarget.cpp
-    platform/hostimpl.cpp
-    platform/targetimpl.cpp
-    platform/runtimeimpl.cpp
   )
   
   add_definitions(-DFX_VER_INTERNALNAME_STR=SOS.dll)
@@ -158,10 +154,6 @@ else(CLR_CMAKE_HOST_WIN32)
     sos.cpp
     sosextensions.cpp
     util.cpp
-    platform/datatarget.cpp
-    platform/hostimpl.cpp
-    platform/targetimpl.cpp
-    platform/runtimeimpl.cpp
   )
 
   set(DEF_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/sos_unixexports.src)

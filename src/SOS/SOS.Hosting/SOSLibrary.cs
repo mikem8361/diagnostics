@@ -40,7 +40,8 @@ namespace SOS.Hosting
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]
         private delegate int SOSInitializeDelegate(
             IntPtr IHost,
-            IntPtr IDebuggerServices);
+            IntPtr IDebuggerServices,
+            IntPtr IOutputService);
 
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]
         private delegate void SOSUninitializeDelegate();
@@ -58,6 +59,7 @@ namespace SOS.Hosting
         private const string SOSUninitialize = "SOSUninitializeByHost";
 
         private readonly HostWrapper _hostWrapper;
+        private readonly OutputServiceWrapper _outputServiceWrapper;
         private readonly bool _uninitializeLibrary;
         private IntPtr _sosLibrary = IntPtr.Zero;
 
@@ -67,12 +69,12 @@ namespace SOS.Hosting
         public string SOSPath { get; set; }
 
         [ServiceExport(Scope = ServiceScope.Global)]
-        public static SOSLibrary TryCreate(IHost host, [ServiceImport(Optional = true)] ISOSModule sosModule)
+        public static SOSLibrary TryCreate(IHost host, IConsoleService consoleService, [ServiceImport(Optional = true)] ISOSModule sosModule)
         {
             SOSLibrary sosLibrary = null;
             try
             {
-                sosLibrary = new SOSLibrary(host, sosModule);
+                sosLibrary = new SOSLibrary(host, consoleService, sosModule);
                 sosLibrary.Initialize();
             }
             catch
@@ -86,9 +88,10 @@ namespace SOS.Hosting
         /// <summary>
         /// Create an instance of the hosting class
         /// </summary>
-        /// <param name="target">target instance</param>
         /// <param name="host">sos library info or null</param>
-        private SOSLibrary(IHost host, ISOSModule sosModule)
+        /// <param name="consoleService">global console service</param>
+        /// <param name="sosModule">optional SOS module info from the SOS.Extensions host</param>
+        private SOSLibrary(IHost host, IConsoleService consoleService, ISOSModule sosModule)
         {
             if (sosModule is not null)
             {
@@ -101,7 +104,8 @@ namespace SOS.Hosting
                 SOSPath = Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), rid);
                 _uninitializeLibrary = true;
             }
-            _hostWrapper = new HostWrapper(host);
+            _outputServiceWrapper = new(consoleService);
+            _hostWrapper = new(host);
         }
 
         void IDisposable.Dispose() => Uninitialize();
@@ -153,7 +157,7 @@ namespace SOS.Hosting
                 {
                     throw new EntryPointNotFoundException($"Can not find SOS module initialization function: {SOSInitialize}");
                 }
-                int result = initializeFunc(_hostWrapper.IHost, IntPtr.Zero);
+                int result = initializeFunc(_hostWrapper.IHost, IntPtr.Zero, _outputServiceWrapper.IOutputService);
                 if (result != 0)
                 {
                     throw new InvalidOperationException($"SOS initialization FAILED 0x{result:X8}");
@@ -176,6 +180,7 @@ namespace SOS.Hosting
                 Microsoft.Diagnostics.Runtime.DataTarget.PlatformFunctions.FreeLibrary(_sosLibrary);
             }
             _sosLibrary = IntPtr.Zero;
+            _outputServiceWrapper.ReleaseWithCheck();
             _hostWrapper.ReleaseWithCheck();
         }
 

@@ -11,7 +11,8 @@ extern "C" {
 #endif
 
 /// <summary>
-/// IRuntime - the native interface 
+/// Provides runtime services to the native SOS code. It is normally implemented managed code
+/// except for the fallback case when there isn't .NET hosting runtime available.
 /// </summary>
 MIDL_INTERFACE("A5F152B9-BA78-4512-9228-5091A4CB7E35")
 IRuntime : public IUnknown

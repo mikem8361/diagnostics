@@ -13,7 +13,8 @@ extern "C" {
 struct IRuntime;
 
 /// <summary>
-/// ITarget - the native target interface
+/// Provides target services to the native SOS code. It is normally implemented managed code
+/// except for the fallback case when there isn't .NET hosting runtime available.
 /// </summary>
 MIDL_INTERFACE("B4640016-6CA0-468E-BA2C-1FFF28DE7B72")
 ITarget : public IUnknown

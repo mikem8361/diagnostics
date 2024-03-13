@@ -4,73 +4,29 @@
 #pragma once
 
 #include <lldb/API/LLDB.h>
-#include "mstypes.h"
+#include <mstypes.h>
 #define DEFINE_EXCEPTION_RECORD
-#include "lldbservices.h"
-#include "extensions.h"
-#include "dbgtargetcontext.h"
-#include "specialdiaginfo.h"
-#include "specialthreadinfo.h"
+#include <lldbservices.h>
+#include <outputservice.h>
+#include <extensions.h>
+#include <dbgtargetcontext.h>
+#include <specialdiaginfo.h>
+#include <specialthreadinfo.h>
 #include "services.h"
 
 #define SOSInitialize "SOSInitializeByHost"
 
 typedef HRESULT (*CommandFunc)(ILLDBServices* services, const char* args);
-typedef HRESULT (*InitializeFunc)(IUnknown* punk, IDebuggerServices* debuggerServices);
+typedef HRESULT (*InitializeFunc)(IUnknown* punk, IDebuggerServices* debuggerServices, IOutputService* outputService);
 
 extern char *g_coreclrDirectory;
 extern LLDBServices* g_services;
 
 bool 
-sosCommandInitialize(lldb::SBDebugger debugger);
+sosCommandInitialize(LLDBServices* services);
 
 bool
-setsostidCommandInitialize(lldb::SBDebugger debugger);
+setsostidCommandInitialize(LLDBServices* services);
 
 bool
-sethostruntimeCommandInitialize(lldb::SBDebugger debugger);
-
-//-----------------------------------------------------------------------------------------
-// Extension helper class
-//-----------------------------------------------------------------------------------------
-class PluginExtensions : public Extensions
-{
-    PluginExtensions(IDebuggerServices* debuggerServices) :
-        Extensions(debuggerServices)
-    {
-    }
-
-public:
-    static void Initialize()
-    {
-        if (s_extensions == nullptr)
-        {
-            s_extensions = new PluginExtensions(g_services);
-        }
-    }
-
-    static bool Uninitialize(void* baton, const char** argv)
-    {
-        if (s_extensions != nullptr)
-        {
-            s_extensions->DestroyTarget();
-        }
-        return false;
-    }
-
-    /// <summary>
-    /// Returns the host instance or null
-    /// 
-    /// SOS.Extensions provides the instance via the InitializeHostServices callback
-    /// </summary>
-    IHost* GetHost()
-    {
-        if (m_pHost == nullptr)
-        {
-            // If we can get the host instance from the client, initialize the hosting runtime which will
-            // call InitializeHostServices and give us a host instance.
-            InitializeHosting();
-        }
-        return m_pHost;
-    }
-};
+sethostruntimeCommandInitialize(LLDBServices* services);

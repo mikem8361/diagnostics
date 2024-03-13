@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "extensions.h"
-#include "runtime.h"
-#include "runtimeinfo.h"
+#include <extensions.h>
+#include <runtime.h>
+#include <runtimeinfo.h>
 
 #ifdef FEATURE_PAL
 
@@ -113,6 +113,7 @@ class Runtime : public IRuntime
 private:
     LONG m_ref;
     ITarget* m_target;
+    IDebuggerServices* m_debuggerServices;
     RuntimeConfiguration m_configuration;
     ULONG m_index;
     ULONG64 m_address;
@@ -125,7 +126,7 @@ private:
     IXCLRDataProcess* m_clrDataProcess;
     ICorDebugProcess* m_pCorDebugProcess;
 
-    Runtime(ITarget* target, RuntimeConfiguration configuration, ULONG index, ULONG64 address, ULONG64 size, RuntimeInfo* runtimeInfo);
+    Runtime(ITarget* target, IDebuggerServices* debuggerServices, RuntimeConfiguration configuration, ULONG index, ULONG64 address, ULONG64 size, RuntimeInfo* runtimeInfo);
 
     virtual ~Runtime();
 
@@ -144,7 +145,7 @@ private:
     }
 
 public:
-    static HRESULT CreateInstance(ITarget* target, RuntimeConfiguration configuration, Runtime** ppRuntime);
+    static HRESULT CreateInstance(ITarget* target, IDebuggerServices* debuggerServices, RuntimeConfiguration configuration, Runtime** ppRuntime);
 
     void Flush();
 

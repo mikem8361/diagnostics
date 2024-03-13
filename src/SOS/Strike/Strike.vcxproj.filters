@@ -20,18 +20,6 @@
     <ClCompile Include="disasmARM64.cpp" />
     <ClCompile Include="symbols.cpp" />
     <ClCompile Include="dbgengservices.cpp" />
-    <ClCompile Include="platform\datatarget.cpp">
-      <Filter>platform</Filter>
-    </ClCompile>
-    <ClCompile Include="platform\hostimpl.cpp">
-      <Filter>platform</Filter>
-    </ClCompile>
-    <ClCompile Include="platform\runtimeimpl.cpp">
-      <Filter>platform</Filter>
-    </ClCompile>
-    <ClCompile Include="platform\targetimpl.cpp">
-      <Filter>platform</Filter>
-    </ClCompile>
     <ClCompile Include="managedcommands.cpp" />
     <ClCompile Include="clrma\clrma.cpp">
       <Filter>clrma</Filter>
@@ -74,21 +62,6 @@
     </ClInclude>
     <ClInclude Include="symbols.h" />
     <ClInclude Include="dbgengservices.h" />
-    <ClInclude Include="platform\cordebugdatatarget.h">
-      <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="platform\datatarget.h">
-      <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="platform\hostimpl.h">
-      <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="platform\runtimeimpl.h">
-      <Filter>platform</Filter>
-    </ClInclude>
-    <ClInclude Include="platform\targetimpl.h">
-      <Filter>platform</Filter>
-    </ClInclude>
     <ClInclude Include="clrma\managedanalysis.h">
       <Filter>clrma</Filter>
     </ClInclude>
@@ -110,9 +83,6 @@
   <ItemGroup>
     <Filter Include="xplat">
       <UniqueIdentifier>{b766b3f8-a753-4134-bf7f-50c4f05b59b1}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="platform">
-      <UniqueIdentifier>{8340fe5a-df30-45ca-8a4e-7811ac6ebbd2}</UniqueIdentifier>
     </Filter>
     <Filter Include="clrma">
       <UniqueIdentifier>{e8809ec7-01fb-4c2b-b1fe-6be4f9c1a91a}</UniqueIdentifier>

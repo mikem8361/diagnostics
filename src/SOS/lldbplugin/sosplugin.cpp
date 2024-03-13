@@ -14,13 +14,19 @@ bool g_arm64_atomics_present = false;
 
 LLDBServices* g_services = nullptr;
 
+bool Uninitialize(void* baton, const char** argv)
+{
+    Extensions::Uninitialize();
+    return false;
+}
+
 bool lldb::PluginInitialize(lldb::SBDebugger debugger)
 {
     g_services = new LLDBServices(debugger);
-    PluginExtensions::Initialize();
-    debugger.GetCommandInterpreter().SetCommandOverrideCallback("quit", PluginExtensions::Uninitialize, nullptr);
-    sosCommandInitialize(debugger);
-    setsostidCommandInitialize(debugger);
-    sethostruntimeCommandInitialize(debugger);
+    Extensions::Initialize(g_services, g_services);
+    debugger.GetCommandInterpreter().SetCommandOverrideCallback("quit", Uninitialize, nullptr);
+    sosCommandInitialize(g_services);
+    setsostidCommandInitialize(g_services);
+    sethostruntimeCommandInitialize(g_services);
     return true;
 }

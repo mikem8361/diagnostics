@@ -125,6 +125,10 @@ set(SOURCES
 
 set(LIBRARIES
     extensions
+    corguids
+    dbgutil
+    palrt
+    coreclrpal
 )
 
 if(NOT ${LLDB_LIB} STREQUAL "")

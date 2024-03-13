@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+typedef bool (*PEXECUTE_COMMAND_OUTPUT_CALLBACK)(ULONG mask, const char *text);
+
 /// <summary>
 /// IDebuggerServices 
 /// 
@@ -44,10 +46,6 @@ public:
         PCSTR aliases[],
         int numberOfAliases) = 0;
 
-    virtual void STDMETHODCALLTYPE OutputString(
-        ULONG mask,
-        PCSTR message) = 0;
-
     virtual HRESULT STDMETHODCALLTYPE ReadVirtual(
         ULONG64 offset,
         PVOID buffer,
@@ -63,6 +61,10 @@ public:
     virtual HRESULT STDMETHODCALLTYPE GetNumberModules(
         PULONG loaded,
         PULONG unloaded) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE GetModuleByIndex(
+        ULONG index,
+        PULONG64 base) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetModuleNames(
         ULONG index,
@@ -91,6 +93,12 @@ public:
         PVOID buffer,
         ULONG bufferSize,
         PULONG versionInfoSize) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE GetModuleByModuleName(
+        PCSTR name,
+        ULONG startIndex,
+        PULONG index,
+        PULONG64 base) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetNumberThreads(
         PULONG number) = 0;
@@ -155,14 +163,6 @@ public:
         PCSTR fieldName,
         PULONG offset) = 0;
 
-    virtual ULONG STDMETHODCALLTYPE GetOutputWidth() = 0;
-
-    virtual HRESULT STDMETHODCALLTYPE SupportsDml(PULONG supported) = 0;
-
-    virtual void STDMETHODCALLTYPE OutputDmlString(
-        ULONG mask,
-        PCSTR message) = 0;
-
     virtual HRESULT STDMETHODCALLTYPE AddModuleSymbol(
         void* param,
         const char* symbolFileName) = 0;
@@ -177,6 +177,12 @@ public:
         PSTR description,
         ULONG descriptionSize,
         PULONG descriptionUsed) = 0;
+
+    virtual void STDMETHODCALLTYPE FlushCheck() = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE ExecuteHostCommand(
+        PCSTR commandLine,
+        PEXECUTE_COMMAND_OUTPUT_CALLBACK callback) = 0;
 };
 
 #ifdef __cplusplus

@@ -3,10 +3,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 using Microsoft.Diagnostics.DebugServices;
 using Microsoft.Diagnostics.DebugServices.Implementation;
 using Microsoft.Diagnostics.ExtensionCommands;
@@ -145,6 +147,10 @@ namespace SOS.Extensions
             _hostWrapper.ReleaseWithCheck();
         }
 
+        public ImmutableArray<string> ExecuteCommand(string commandLine) => _commandService.ExecuteAndCapture(commandLine, _contextService.Services);
+
+        public ImmutableArray<string> ExecuteHostCommand(string commandLine) => DebuggerServices.ExecuteHostCommand(commandLine, DEBUG_OUTPUT.NORMAL | DEBUG_OUTPUT.ERROR);
+
         #region IHost
 
         public IServiceEvent OnShutdownEvent { get; } = new ServiceEvent();
@@ -182,7 +188,17 @@ namespace SOS.Extensions
             // Create the wrapper for the host debugger services
             try
             {
-                DebuggerServices = new DebuggerServices(iunk, HostType);
+                DebuggerServices = new(iunk, HostType);
+            }
+            catch (InvalidCastException ex)
+            {
+                Trace.TraceError(ex.Message);
+                return HResult.E_NOINTERFACE;
+            }
+            DebuggerOutputService outputService;
+            try
+            {
+                outputService = new(iunk);
             }
             catch (InvalidCastException ex)
             {
@@ -192,7 +208,7 @@ namespace SOS.Extensions
             HResult hr;
             try
             {
-                ConsoleServiceFromDebuggerServices consoleService = new(DebuggerServices);
+                ConsoleServiceFromDebuggerServices consoleService = new(outputService);
                 FileLoggingConsoleService fileLoggingConsoleService = new(consoleService);
                 DiagnosticLoggingService.Instance.SetConsole(consoleService, fileLoggingConsoleService);
 

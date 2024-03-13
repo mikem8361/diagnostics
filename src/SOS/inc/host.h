@@ -31,6 +31,16 @@ public:
     };
 
     /// <summary>
+    /// The type of trace logging
+    /// </summary>
+    enum TraceType
+    {
+        Information = 1,            // Trace.TraceInformation
+        Warning = 2,                // Trace.TraceWarning
+        Error = 3                   // Trace.TraceError
+    };
+
+    /// <summary>
     /// Returns the host type
     /// </summary>
     virtual HostType STDMETHODCALLTYPE GetHostType() = 0;
@@ -51,6 +61,13 @@ public:
     /// <param name="ppTarget">pointer to write current target instance</param>
     /// <returns>error code</returns>
     virtual HRESULT STDMETHODCALLTYPE GetCurrentTarget(ITarget** ppTarget) = 0;
+
+    /// <summary>
+    /// Write to managed logging support.
+    /// </summary>
+    /// <param name="type">type of tracing</param>
+    /// <param name="message">text to log</param>
+    virtual void STDMETHODCALLTYPE WriteTrace(TraceType type, PCSTR message) = 0;
 };
 
 #ifdef __cplusplus

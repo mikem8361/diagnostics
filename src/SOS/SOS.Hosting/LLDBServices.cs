@@ -16,7 +16,6 @@ namespace SOS.Hosting
     public sealed unsafe class LLDBServices : COMCallableIUnknown
     {
         public static readonly Guid IID_ILLDBServices = new("2E6C569A-9E14-4DA4-9DFC-CDB73A532566");
-        public static readonly Guid IID_ILLDBServices2 = new("012F32F0-33BA-4E8E-BC01-037D382D8A5E");
 
         public IntPtr ILLDBServices { get; }
 
@@ -39,7 +38,6 @@ namespace SOS.Hosting
             builder.AddMethod(new ClearExceptionCallbackDelegate(ClearExceptionCallback));
 
             builder.AddMethod(new GetInterruptDelegate(soshost.GetInterrupt));
-            builder.AddMethod(new OutputVaListDelegate(soshost.OutputVaList));
             builder.AddMethod(new GetDebuggeeTypeDelegate(soshost.GetDebuggeeType));
             builder.AddMethod(new GetPageSizeDelegate(soshost.GetPageSize));
             builder.AddMethod(new GetExecutingProcessorTypeDelegate(soshost.GetExecutingProcessorType));
@@ -74,10 +72,7 @@ namespace SOS.Hosting
             builder.AddMethod(new GetStackOffsetDelegate(soshost.GetStackOffset));
             builder.AddMethod(new GetFrameOffsetDelegate(soshost.GetFrameOffset));
 
-            ILLDBServices = builder.Complete();
-
-            builder = AddInterface(IID_ILLDBServices2, validate: false);
-            builder.AddMethod(new LoadNativeSymbolsDelegate2(LoadNativeSymbols2));
+            builder.AddMethod(new LoadNativeSymbolsDelegate(LoadNativeSymbols));
             builder.AddMethod(new AddModuleSymbolDelegate(AddModuleSymbol));
             builder.AddMethod(new GetModuleInfoDelegate(GetModuleInfo));
             builder.AddMethod(new GetModuleVersionInformationDelegate(soshost.GetModuleVersionInformation));
@@ -152,11 +147,7 @@ namespace SOS.Hosting
             return hr;
         }
 
-        #endregion
-
-        #region ILLDBServices2
-
-        private int LoadNativeSymbols2(
+        private int LoadNativeSymbols(
             IntPtr self,
             bool runtimeOnly,
             ModuleLoadCallback callback)
@@ -244,13 +235,6 @@ namespace SOS.Hosting
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]
         private delegate int GetInterruptDelegate(
             IntPtr self);
-
-        [UnmanagedFunctionPointer(CallingConvention.Winapi)]
-        private delegate int OutputVaListDelegate(
-            IntPtr self,
-            DEBUG_OUTPUT mask,
-            [In, MarshalAs(UnmanagedType.LPStr)] string format,
-            IntPtr va_list);
 
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]
         private delegate int GetDebuggeeTypeDelegate(
@@ -467,12 +451,8 @@ namespace SOS.Hosting
             IntPtr self,
             [Out] out ulong offset);
 
-        #endregion
-
-        #region ILLDBServices2 delegates
-
         /// <summary>
-        /// The LoadNativeSymbolsDelegate2 callback
+        /// The LoadNativeSymbolsDelegate callback
         /// </summary>
         private delegate void ModuleLoadCallback(
             IntPtr parameter,
@@ -481,7 +461,7 @@ namespace SOS.Hosting
             [In] uint moduleSize);
 
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]
-        private delegate int LoadNativeSymbolsDelegate2(
+        private delegate int LoadNativeSymbolsDelegate(
             IntPtr self,
             [In] bool runtimeOnly,
             [In] ModuleLoadCallback callback);

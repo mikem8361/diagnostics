@@ -42,4 +42,6 @@ public:
     HRESULT STDMETHODCALLTYPE GetService(REFIID serviceId, PVOID* ppService);
 
     HRESULT STDMETHODCALLTYPE GetCurrentTarget(ITarget** ppTarget);
+
+    void STDMETHODCALLTYPE WriteTrace(TraceType type, PCSTR message);
 };

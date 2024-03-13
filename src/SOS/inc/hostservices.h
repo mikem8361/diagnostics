@@ -60,7 +60,8 @@ public:
     /// </summary>
     /// <param name="processId">process id or 0 if none</param>
     /// <returns>error code</returns>
-    virtual HRESULT STDMETHODCALLTYPE UpdateTarget(ULONG processId) = 0;
+    virtual HRESULT STDMETHODCALLTYPE UpdateTarget(
+        ULONG processId) = 0;
 
     /// <summary>
     /// Flushes the target instance.

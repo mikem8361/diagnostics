@@ -3943,23 +3943,11 @@ HRESULT LoadClrDebugDll(void)
     HRESULT hr = g_pRuntime->GetClrDataProcess(&g_clrData);
     if (FAILED(hr))
     {
-#ifdef FEATURE_PAL
-        return hr;
-#else
-        // Fail if ExtensionApis wasn't initialized because we are hosted under dotnet-dump
-        if (Ioctl == nullptr) {
+        g_clrData = GetClrDataFromDbgEng();
+        if (g_clrData == nullptr)
+        {
             return hr;
         }
-        // Try getting the DAC interface from dbgeng if the above fails on Windows
-        WDBGEXTS_CLR_DATA_INTERFACE Query;
-
-        Query.Iid = &__uuidof(IXCLRDataProcess);
-        if (!Ioctl(IG_GET_CLR_DATA_INTERFACE, &Query, sizeof(Query))) {
-            return hr;
-        }
-        g_clrData = (IXCLRDataProcess*)Query.Iface;
-        g_clrData->Flush();
-#endif
     }
     else
     {
@@ -4361,75 +4349,16 @@ size_t CountHexCharacters(CLRDATA_ADDRESS val)
     return ret;
 }
 
-// SOS is single threaded so a global buffer doesn't need any locking
-char g_printBuffer[8192];
-
-//---------------------------------------------------------------------
-// Because debuggers and hosts SOS runs on now output formatting always
-// happens with the C++ runtime functions and not dbgeng. This means
-// the special dbgeng formatting charaters are not supported: %N, %I,
-// %ma, %mu, %msa, %msu, %y, %ly and %p takes an architecture size
-// pointer (size_t) instead of always a 64bit one.
-//---------------------------------------------------------------------
-
-HRESULT
-OutputVaList(
-    ULONG mask,
-    PCSTR format,
-    va_list args)
-{
-    int length = _vsnprintf_s((char* const)&g_printBuffer, sizeof(g_printBuffer), _TRUNCATE, format, args);
-    if (length > 0)
-    {
-#ifdef HOST_WINDOWS
-        if (IsInitializedByDbgEng())
-        {
-            return g_ExtControl->Output(mask, "%s", g_printBuffer);
-        }
-        else
-#endif
-        {
-            return g_ExtControl->OutputVaList(mask, (char* const)&g_printBuffer, args);
-        }
-    }
-    return E_FAIL;
-}
-
-HRESULT
-ControlledOutputVaList(
-    ULONG outputControl,
-    ULONG mask,
-    PCSTR format,
-    va_list args)
-{
-    int length = _vsnprintf_s((char* const)&g_printBuffer, sizeof(g_printBuffer), _TRUNCATE, format, args);
-    if (length > 0)
-    {
-#ifdef HOST_WINDOWS
-        if (IsInitializedByDbgEng())
-        {
-            return g_ExtControl->ControlledOutput(outputControl, mask, "%s", g_printBuffer);
-        }
-        else
-#endif
-        {
-            return g_ExtControl->ControlledOutputVaList(outputControl, mask, (char* const)&g_printBuffer, args);
-        }
-    }
-    return E_FAIL;
-}
-
 HRESULT
 OutputText(
-    ULONG mask,
     PCSTR format,
     ...)
 {
     va_list args;
     va_start (args, format);
-    HRESULT result = OutputVaList(mask, format, args);
+    InternalOutputVaList(IOutputService::OutputType::Normal, format, args);
     va_end (args);
-    return result;
+    return S_OK;
 }
 
 void WhitespaceOut(int count)
@@ -4437,7 +4366,6 @@ void WhitespaceOut(int count)
     static const int FixedIndentWidth = 0x40;
     static const char FixedIndentString[FixedIndentWidth+1] =
         "                                                                ";
-
     if (count <= 0)
         return;
 
@@ -4445,10 +4373,10 @@ void WhitespaceOut(int count)
     count &= ~0x3F;
 
     if (mod > 0)
-        OutputText(DEBUG_OUTPUT_NORMAL, "%.*s", mod, FixedIndentString);
+        OutputText("%.*s", mod, FixedIndentString);
 
     for ( ; count > 0; count -= FixedIndentWidth)
-        OutputText(DEBUG_OUTPUT_NORMAL, FixedIndentString);
+        OutputText(FixedIndentString);
 }
 
 void DMLOut(PCSTR format, ...)
@@ -4462,13 +4390,12 @@ void DMLOut(PCSTR format, ...)
 
     if (IsDMLEnabled() && !Output::IsDMLExposed())
     {
-        ControlledOutputVaList(DEBUG_OUTCTL_AMBIENT_DML, DEBUG_OUTPUT_NORMAL, format, args);
+        InternalOutputVaList(IOutputService::OutputType::Dml, format, args);
     }
     else
     {
-        OutputVaList(DEBUG_OUTPUT_NORMAL, format, args);
+        InternalOutputVaList(IOutputService::OutputType::Normal, format, args);
     }
-
     va_end(args);
 }
 
@@ -4478,56 +4405,52 @@ void IfDMLOut(PCSTR format, ...)
         return;
 
     va_list args;
-
     va_start(args, format);
     ExtOutIndent();
-    g_ExtControl->ControlledOutputVaList(DEBUG_OUTCTL_AMBIENT_DML, DEBUG_OUTPUT_NORMAL, format, args);
+    InternalOutputVaList(IOutputService::OutputType::Dml, format, args);
     va_end(args);
 }
 
-void ExtOut(PCSTR Format, ...)
+void ExtOut(PCSTR format, ...)
 {
     if (Output::IsOutputSuppressed())
         return;
 
-    va_list Args;
-
-    va_start(Args, Format);
+    va_list args;
+    va_start(args, format);
     ExtOutIndent();
-    OutputVaList(DEBUG_OUTPUT_NORMAL, Format, Args);
-    va_end(Args);
+    InternalOutputVaList(IOutputService::OutputType::Normal, format, args);
+    va_end(args);
 }
 
-void ExtWarn(PCSTR Format, ...)
+void ExtWarn(PCSTR format, ...)
 {
     if (Output::IsOutputSuppressed())
         return;
 
-    va_list Args;
-
-    va_start(Args, Format);
-    OutputVaList(DEBUG_OUTPUT_WARNING, Format, Args);
-    va_end(Args);
+    va_list args;
+    va_start(args, format);
+    InternalOutputVaList(IOutputService::OutputType::Warning, format, args);
+    va_end(args);
 }
 
-void ExtErr(PCSTR Format, ...)
+void ExtErr(PCSTR format, ...)
 {
-    va_list Args;
-
-    va_start(Args, Format);
-    OutputVaList(DEBUG_OUTPUT_ERROR, Format, Args);
-    va_end(Args);
+    va_list args;
+    va_start(args, format);
+    InternalOutputVaList(IOutputService::OutputType::Error, format, args);
+    va_end(args);
 }
 
-void ExtDbgOut(PCSTR Format, ...)
+void ExtDbgOut(PCSTR format, ...)
 {
     if (Output::g_bDbgOutput)
     {
-        va_list Args;
-        va_start(Args, Format);
+        va_list args;
+        va_start(args, format);
         ExtOutIndent();
-        OutputVaList(DEBUG_OUTPUT_NORMAL, Format, Args);
-        va_end(Args);
+        InternalWriteTraceVaList(IHost::TraceType::Information, format, args);
+        va_end(args);
     }
 }
 

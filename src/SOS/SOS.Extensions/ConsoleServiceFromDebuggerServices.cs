@@ -4,29 +4,30 @@
 using System.Threading;
 using System.Xml.Linq;
 using Microsoft.Diagnostics.DebugServices;
+using SOS.Hosting;
 using SOS.Hosting.DbgEng.Interop;
 
 namespace SOS.Extensions
 {
     internal sealed class ConsoleServiceFromDebuggerServices : IConsoleService
     {
-        private readonly DebuggerServices _debuggerServices;
+        private readonly DebuggerOutputService _outputService;
         private bool? _supportsDml;
 
-        public ConsoleServiceFromDebuggerServices(DebuggerServices debuggerServices)
+        public ConsoleServiceFromDebuggerServices(DebuggerOutputService outputService)
         {
-            _debuggerServices = debuggerServices;
+            _outputService = outputService;
         }
 
         #region IConsoleService
 
-        public void Write(string text) => _debuggerServices.OutputString(DEBUG_OUTPUT.NORMAL, text);
+        public void Write(string text) => _outputService.OutputString(DebuggerOutputService.OutputType.Normal, text);
 
-        public void WriteWarning(string text) => _debuggerServices.OutputString(DEBUG_OUTPUT.WARNING, text);
+        public void WriteWarning(string text) => _outputService.OutputString(DebuggerOutputService.OutputType.Warning, text);
 
-        public void WriteError(string text) => _debuggerServices.OutputString(DEBUG_OUTPUT.ERROR, text);
+        public void WriteError(string text) => _outputService.OutputString(DebuggerOutputService.OutputType.Error, text);
 
-        public void WriteDml(string text) => _debuggerServices.OutputDmlString(DEBUG_OUTPUT.NORMAL, text);
+        public void WriteDml(string text) => _outputService.OutputString(DebuggerOutputService.OutputType.Dml, text);
 
         public void WriteDmlExec(string text, string cmd)
         {
@@ -41,11 +42,11 @@ namespace SOS.Extensions
             }
         }
 
-        public bool SupportsDml => _supportsDml ??= _debuggerServices.SupportsDml;
+        int IConsoleService.WindowWidth => _outputService.GetOutputWidth();
+
+        public bool SupportsDml => _supportsDml ??= _outputService.SupportsDml;
 
         public CancellationToken CancellationToken { get; set; }
-
-        int IConsoleService.WindowWidth => _debuggerServices.GetOutputWidth();
 
         #endregion
 

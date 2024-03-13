@@ -119,6 +119,12 @@ DbgEngServices::QueryInterface(
         AddRef();
         return S_OK;
     }
+    else if (InterfaceId == __uuidof(IOutputService))
+    {
+        *Interface = static_cast<IOutputService*>(this);
+        AddRef();
+        return S_OK;
+    }
     else if (InterfaceId == __uuidof(IRemoteMemoryService))
     {
         *Interface = static_cast<IRemoteMemoryService*>(this);
@@ -206,14 +212,6 @@ DbgEngServices::AddCommand(
     return S_OK;
 }
 
-void
-DbgEngServices::OutputString(
-    ULONG mask,
-    PCSTR message)
-{
-    m_control->Output(mask, "%s", message);
-}
-
 HRESULT
 DbgEngServices::ReadVirtual(
     ULONG64 offset,
@@ -242,6 +240,14 @@ DbgEngServices::GetNumberModules(
     return m_symbols->GetNumberModules(loaded, unloaded);
 }
 
+HRESULT
+DbgEngServices::GetModuleByIndex(
+    ULONG index,
+    PULONG64 base)
+{
+    return m_symbols->GetModuleByIndex(index, base);
+}
+
 HRESULT 
 DbgEngServices::GetModuleNames(
     ULONG index,
@@ -268,14 +274,18 @@ DbgEngServices::GetModuleInfo(
     PULONG timestamp,
     PULONG checksum)
 {
-    HRESULT hr = m_symbols->GetModuleByIndex(index, moduleBase);
+    ULONG64 base;
+    HRESULT hr = m_symbols->GetModuleByIndex(index, &base);
     if (FAILED(hr)) {
         return hr;
     }
     DEBUG_MODULE_PARAMETERS params;
-    hr = m_symbols->GetModuleParameters(1, moduleBase, 0, &params);
+    hr = m_symbols->GetModuleParameters(1, &base, 0, &params);
     if (FAILED(hr)) {
         return hr;
+    }
+    if (moduleBase) {
+        *moduleBase = base;
     }
     if (moduleSize) {
         *moduleSize = params.Size;
@@ -299,6 +309,16 @@ DbgEngServices::GetModuleVersionInformation(
     PULONG versionInfoSize)
 {
     return m_symbols->GetModuleVersionInformation(index, base, item, buffer, bufferSize, versionInfoSize);
+}
+
+HRESULT
+DbgEngServices::GetModuleByModuleName(
+    PCSTR name,
+    ULONG startIndex,
+    PULONG index,
+    PULONG64 base)
+{
+    return m_symbols->GetModuleByModuleName(name, startIndex, index, base);
 }
 
 HRESULT 
@@ -480,30 +500,6 @@ DbgEngServices::GetFieldOffset(
     return m_symbols->GetFieldOffset(moduleBase, (ULONG)typeId, fieldName, offset);
 }
 
-ULONG
-DbgEngServices::GetOutputWidth()
-{
-    // m_client->GetOutputWidth() always returns 80 as the width under windbg, windbgx and cdb so just return the max.
-    return INT_MAX;
-}
-
-HRESULT
-DbgEngServices::SupportsDml(PULONG supported)
-{
-    ULONG opts = 0;
-    HRESULT hr = m_control->GetEngineOptions(&opts);
-    *supported = (SUCCEEDED(hr) && (opts & DEBUG_ENGOPT_PREFER_DML) == DEBUG_ENGOPT_PREFER_DML) ? 1 : 0;
-    return hr;
-}
-
-void
-DbgEngServices::OutputDmlString(
-    ULONG mask,
-    PCSTR message)
-{
-    m_control->ControlledOutput(DEBUG_OUTCTL_AMBIENT_DML, mask, "%s", message);
-}
-
 HRESULT 
 DbgEngServices::AddModuleSymbol(
     void* param,
@@ -534,6 +530,76 @@ DbgEngServices::GetLastEventInformation(
         description,
         descriptionSize,
         descriptionUsed);
+}
+
+void 
+DbgEngServices::FlushCheck()
+{
+    // Flush the target when the debugger target breaks
+    if (m_flushNeeded)
+    {
+        m_flushNeeded = false;
+        Extensions::GetInstance()->FlushTarget();
+    }
+}
+
+HRESULT
+DbgEngServices::ExecuteHostCommand(
+    PCSTR commandLine,
+    PEXECUTE_COMMAND_OUTPUT_CALLBACK callback)
+{
+    OutputCaptureHolder holder(m_client, callback);
+    return m_control->Execute(DEBUG_OUTCTL_THIS_CLIENT, commandLine, DEBUG_EXECUTE_NO_REPEAT);
+}
+
+//----------------------------------------------------------------------------
+// IOutputService (global)
+//----------------------------------------------------------------------------
+
+ULONG
+DbgEngServices::GetOutputWidth()
+{
+    // m_client->GetOutputWidth() always returns 80 as the width under windbg, windbgx and cdb so just return the max.
+    return INT_MAX;
+}
+
+ULONG
+DbgEngServices::SupportsDml()
+{
+    ULONG opts = 0;
+    HRESULT hr = m_control->GetEngineOptions(&opts);
+    return (SUCCEEDED(hr) && (opts & DEBUG_ENGOPT_PREFER_DML) == DEBUG_ENGOPT_PREFER_DML) ? 1 : 0;
+}
+
+void
+DbgEngServices::OutputString(
+    IOutputService::OutputType type,
+    PCSTR message)
+{
+    ULONG mask;
+    switch (type)
+    {
+        case IOutputService::OutputType::Normal:
+        case IOutputService::OutputType::Logging:
+            mask = DEBUG_OUTPUT_NORMAL;
+            break;
+        case IOutputService::OutputType::Error:
+            mask = DEBUG_OUTPUT_ERROR;
+            break;
+        case IOutputService::OutputType::Warning:
+            mask = DEBUG_OUTPUT_WARNING;
+            break;
+        case IOutputService::OutputType::Verbose:
+            mask = DEBUG_OUTPUT_VERBOSE;
+            break;
+        case IOutputService::OutputType::Dml:
+            m_control->ControlledOutput(DEBUG_OUTCTL_AMBIENT_DML, DEBUG_OUTPUT_NORMAL, "%s", message);
+            return;
+        default:
+            // ignore any invalid output type
+            return;
+    }
+    m_control->Output(mask, "%s", message);
 }
 
 //----------------------------------------------------------------------------
@@ -707,17 +773,6 @@ HRESULT DbgEngServices::UnloadModule(
 //----------------------------------------------------------------------------
 // Helper Functions
 //----------------------------------------------------------------------------
-
-void 
-DbgEngServices::FlushCheck(Extensions* extensions)
-{
-    // Flush the target when the debugger target breaks
-    if (m_flushNeeded)
-    {
-        m_flushNeeded = false;
-        extensions->FlushTarget();
-    }
-}
 
 IMachine*
 DbgEngServices::GetMachine()

@@ -14,8 +14,8 @@ bool lldb::PluginInitialize(lldb::SBDebugger debugger)
     g_services = new LLDBServices(debugger);
     PluginExtensions::Initialize();
     debugger.GetCommandInterpreter().SetCommandOverrideCallback("quit", PluginExtensions::Uninitialize, nullptr);
-    sosCommandInitialize(debugger);
-    setsostidCommandInitialize(debugger);
-    sethostruntimeCommandInitialize(debugger);
+    sosCommandInitialize(g_services);
+    setsostidCommandInitialize(g_services);
+    sethostruntimeCommandInitialize(g_services);
     return true;
 }

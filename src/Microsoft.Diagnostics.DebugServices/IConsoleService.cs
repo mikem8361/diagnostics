@@ -13,22 +13,21 @@ namespace Microsoft.Diagnostics.DebugServices
         /// <summary>
         /// Write text to console's standard out
         /// </summary>
-        /// <param name="value">text</param>
-        void Write(string value);
+        void Write(string text);
 
         /// <summary>
         /// Write warning text to console
         /// </summary>
-        /// <param name="value"></param>
-        void WriteWarning(string value);
+        void WriteWarning(string text);
 
         /// <summary>
         /// Write error text to console
         /// </summary>
-        /// <param name="value"></param>
-        void WriteError(string value);
+        void WriteError(string text);
 
-        /// <summary>Writes Debugger Markup Language (DML) markup text.</summary>
+        /// <summary>
+        /// Writes Debugger Markup Language (DML) markup text
+        /// </summary>
         void WriteDml(string text);
 
         /// <summary>
@@ -38,7 +37,9 @@ namespace Microsoft.Diagnostics.DebugServices
         /// <param name="action">The action to perform.</param>
         void WriteDmlExec(string text, string action);
 
-        /// <summary>Gets whether <see cref="WriteDml"/> is supported.</summary>
+        /// <summary>
+        /// Gets whether <see cref="WriteDml"/> is supported.
+        /// </summary>
         bool SupportsDml { get; }
 
         /// <summary>

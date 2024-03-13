@@ -53,7 +53,7 @@ extern "C" HRESULT STDMETHODCALLTYPE SOSInitializeByHost(IUnknown* punk, IDebugg
             return hr;
         }
     }
-    hr = SOSExtensions::Initialize(host, debuggerServices);
+    hr = SOSExtensions::Initialize(host, debuggerServices, nullptr);
     if (FAILED(hr)) {
         return hr;
     }

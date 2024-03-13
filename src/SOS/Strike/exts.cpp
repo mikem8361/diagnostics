@@ -1,13 +1,9 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-// ==++==
-// 
- 
-// 
-// ==--==
 #include "exts.h"
 #include "disasm.h"
+
 #ifndef FEATURE_PAL
 
 #define VER_PRODUCTVERSION_W        (0x0100)
@@ -29,7 +25,6 @@ PDEBUG_ADVANCED       g_ExtAdvanced;
 
 DebugClient*          g_DebugClient;
 ILLDBServices*        g_ExtServices;    
-ILLDBServices2*       g_ExtServices2;    
 bool                  g_palInitialized = false;
 
 #endif // FEATURE_PAL
@@ -69,15 +64,9 @@ ExtQuery(ILLDBServices* services)
     {
         return E_FAIL;
     }
+    HRESULT Status;
     g_ExtServices = services;
-
-    HRESULT Status = services->QueryInterface(__uuidof(ILLDBServices2), (void**)&g_ExtServices2);
-    if (FAILED(Status)) 
-    {
-        g_ExtServices = NULL;
-        return Status;
-    }
-    DebugClient* client = new DebugClient(services, g_ExtServices2);
+    DebugClient* client = new DebugClient(services);
     g_DebugClient = client;
 #endif
     SOS_ExtQueryFailGo(g_ExtControl, IDebugControl2);
@@ -98,6 +87,30 @@ ExtQuery(ILLDBServices* services)
     
     ExtRelease();
     return Status;
+}
+
+HRESULT
+ExtInit(PDEBUG_CLIENT client)
+{
+    HRESULT hr;
+    if ((hr = ExtQuery(client)) == S_OK)
+    {
+        // Reset some global variables on entry
+        ControlC = FALSE;
+        g_bDacBroken = TRUE;
+        g_clrData = NULL;
+        g_sos = NULL;
+
+        // Flush here only on Windows under dbgeng. The lldb sos plugin handles it for Linux/MacOS.
+#ifndef FEATURE_PAL
+        Extensions* extensions = Extensions::GetInstance();
+        if (extensions != nullptr)
+        {
+            extensions->FlushCheck();
+        }
+#endif // !FEATURE_PAL
+    }
+    return hr;
 }
 
 IMachine*
@@ -194,7 +207,6 @@ ExtRelease(void)
     g_ExtClient = nullptr;
 #else 
     EXT_RELEASE(g_DebugClient);
-    EXT_RELEASE(g_ExtServices2);
     g_ExtServices = nullptr;
 #endif // FEATURE_PAL
     ReleaseTarget();
@@ -273,6 +285,33 @@ DACMessage(HRESULT Status)
     }
     ExtOut("\n");
     ExtOut("For more information see https://go.microsoft.com/fwlink/?linkid=2135652\n");
+}
+
+IXCLRDataProcess*
+GetClrDataFromDbgEng()
+{
+#ifdef FEATURE_PAL
+    return nullptr;    
+#else
+    IXCLRDataProcess* clrData = nullptr;
+
+    // Fail if ExtensionApis wasn't initialized because we are hosted under dotnet-dump
+    if (Ioctl != nullptr)
+    {
+        // Try getting the DAC interface from dbgeng if the above fails on Windows
+        WDBGEXTS_CLR_DATA_INTERFACE Query;
+
+        Query.Iid = &__uuidof(IXCLRDataProcess);
+        if (Ioctl(IG_GET_CLR_DATA_INTERFACE, &Query, sizeof(Query)))
+        {
+            // No AddRef needed. IG_GET_CLR_DATA_INTERFACE either creates or QI's the IXCLRDataProcess instance.
+            clrData = (IXCLRDataProcess*)Query.Iface;
+            clrData->Flush();
+        }
+    }
+
+    return clrData;
+#endif
 }
 
 #ifndef FEATURE_PAL
@@ -440,57 +479,3 @@ DebugClient::Release()
 }
 
 #endif // FEATURE_PAL
-
-/// <summary>
-/// Returns the host instance
-/// 
-/// * dotnet-dump - m_pHost has already been set by SOSInitializeByHost by SOS.Hosting
-/// * lldb - m_pHost has already been set by SOSInitializeByHost by libsosplugin which gets it via the InitializeHostServices callback
-/// * dbgeng - SOS.Extensions provides the instance via the InitializeHostServices callback
-/// </summary>
-IHost* SOSExtensions::GetHost()
-{
-    if (m_pHost == nullptr)
-    {
-#ifndef FEATURE_PAL
-        // Initialize the hosting runtime which will call InitializeHostServices and set m_pHost to the host instance
-        InitializeHosting();
-#endif
-        // Otherwise, use the local host instance (hostimpl.*) that creates a local target instance (targetimpl.*)
-        if (m_pHost == nullptr)
-        {
-            m_pHost = Host::GetInstance();
-        }
-    }
-    return m_pHost;
-}
-
-/// <summary>
-/// Returns the runtime or fails if no target or current runtime
-/// </summary>
-/// <param name="ppRuntime">runtime instance</param>
-/// <returns>error code</returns>
-HRESULT GetRuntime(IRuntime** ppRuntime)
-{
-    SOSExtensions* extensions = (SOSExtensions*)Extensions::GetInstance();
-    ITarget* target = extensions->GetTarget();
-    if (target == nullptr)
-    {
-        return E_FAIL;
-    }
-#ifndef FEATURE_PAL
-    extensions->FlushCheck();
-#endif
-    return target->GetRuntime(ppRuntime);
-}
-
-void FlushCheck()
-{
-#ifndef FEATURE_PAL
-    SOSExtensions* extensions = (SOSExtensions*)Extensions::GetInstance();
-    if (extensions != nullptr)
-    {
-        extensions->FlushCheck();
-    }
-#endif // !FEATURE_PAL
-}

@@ -6,9 +6,10 @@
 #include <unknwn.h>
 #include <rpc.h>
 #include <dbgeng.h>
-#include "debuggerservices.h"
-#include "remotememoryservice.h"
-#include "extensions.h"
+#include <debuggerservices.h>
+#include <outputservice.h>
+#include <remotememoryservice.h>
+#include <extensions.h>
 
 #define VER_PLATFORM_UNIX 10 
 
@@ -18,7 +19,7 @@ class IMachine;
 extern "C" {
 #endif
 
-class DbgEngServices : public IDebuggerServices, public IRemoteMemoryService, public IDebugEventCallbacks
+class DbgEngServices : public IDebuggerServices, public IOutputService, public IRemoteMemoryService, public IDebugEventCallbacks
 {
 private:
     LONG m_ref;
@@ -40,8 +41,6 @@ public:
     //----------------------------------------------------------------------------
     // Helper functions
     //----------------------------------------------------------------------------
-
-    void FlushCheck(Extensions* extensions);
 
     IMachine* GetMachine();
 
@@ -83,10 +82,6 @@ public:
         PCSTR aliases[],
         int numberOfAliases);
 
-    void STDMETHODCALLTYPE OutputString(
-        ULONG mask,
-        PCSTR message);
-
     HRESULT STDMETHODCALLTYPE ReadVirtual(
         ULONG64 offset,
         PVOID buffer,
@@ -102,6 +97,10 @@ public:
     HRESULT STDMETHODCALLTYPE GetNumberModules(
         PULONG loaded,
         PULONG unloaded);
+
+    HRESULT STDMETHODCALLTYPE GetModuleByIndex(
+        ULONG index,
+        PULONG64 base);
 
     HRESULT STDMETHODCALLTYPE GetModuleNames(
         ULONG index,
@@ -131,6 +130,12 @@ public:
         ULONG bufferSize,
         PULONG versionInfoSize);
     
+    HRESULT STDMETHODCALLTYPE GetModuleByModuleName(
+        PCSTR name,
+        ULONG startIndex,
+        PULONG index,
+        PULONG64 base);
+
     HRESULT STDMETHODCALLTYPE GetNumberThreads(
         PULONG number);
 
@@ -194,15 +199,6 @@ public:
         PCSTR fieldName,
         PULONG offset);
 
-    ULONG STDMETHODCALLTYPE GetOutputWidth();
-
-    HRESULT STDMETHODCALLTYPE SupportsDml(
-        PULONG supported);
-
-    void STDMETHODCALLTYPE OutputDmlString(
-        ULONG mask,
-        PCSTR message);
-
     HRESULT STDMETHODCALLTYPE AddModuleSymbol(
         void* param,
         const char* symbolFileName);
@@ -217,6 +213,24 @@ public:
         PSTR description,
         ULONG descriptionSize,
         PULONG descriptionUsed);
+
+    void STDMETHODCALLTYPE FlushCheck();
+
+    HRESULT STDMETHODCALLTYPE ExecuteHostCommand(
+        PCSTR commandLine,
+        PEXECUTE_COMMAND_OUTPUT_CALLBACK callback);
+
+    //----------------------------------------------------------------------------
+    // IOutputServices (global)
+    //----------------------------------------------------------------------------
+
+    ULONG STDMETHODCALLTYPE GetOutputWidth();
+
+    ULONG STDMETHODCALLTYPE SupportsDml();
+
+    void STDMETHODCALLTYPE OutputString(
+         OutputType outputType,
+         PCSTR message);
 
     //----------------------------------------------------------------------------
     // IRemoteMemoryService
@@ -303,6 +317,72 @@ public:
     HRESULT STDMETHODCALLTYPE UnloadModule(
         PCSTR ImageBaseName,
         ULONG64 BaseOffset);
+};
+
+class OutputCaptureHolder : IDebugOutputCallbacks
+{
+private:
+    ULONG m_ref;
+    IDebugClient* m_client;
+    IDebugOutputCallbacks* m_previous;
+    PEXECUTE_COMMAND_OUTPUT_CALLBACK m_callback;
+
+public:
+    //----------------------------------------------------------------------------
+    // IUnknown
+    //----------------------------------------------------------------------------
+
+    HRESULT STDMETHODCALLTYPE
+    QueryInterface(REFIID InterfaceId, PVOID* Interface)
+    {
+        if (InterfaceId == __uuidof(IUnknown) ||
+            InterfaceId == __uuidof(IDebugOutputCallbacks))
+        {
+            *Interface = static_cast<IDebugOutputCallbacks*>(this);
+            AddRef();
+            return S_OK;
+        }
+        *Interface = nullptr;
+        return E_NOINTERFACE;
+    }
+
+    ULONG STDMETHODCALLTYPE
+    AddRef()
+    {
+        LONG ref = InterlockedIncrement(&m_ref);    
+        return ref;
+    }
+
+    ULONG STDMETHODCALLTYPE
+    Release()
+    {
+        LONG ref = InterlockedDecrement(&m_ref);
+        return ref;
+    }
+
+    HRESULT STDMETHODCALLTYPE
+    Output(ULONG mask, PCSTR text)
+    {
+        m_callback(mask, text);
+        return S_OK;
+    }
+
+public:
+    OutputCaptureHolder(IDebugClient* client, PEXECUTE_COMMAND_OUTPUT_CALLBACK callback) :
+        m_ref(0),
+        m_client(client),
+        m_previous(nullptr),
+        m_callback(callback)
+    {
+        _ASSERTE(SUCCEEDED(client->GetOutputCallbacks(&m_previous)));
+        _ASSERTE(SUCCEEDED(client->SetOutputCallbacks(this)));
+    }
+
+    ~OutputCaptureHolder()
+    {
+        _ASSERTE(SUCCEEDED(m_client->SetOutputCallbacks(m_previous)));
+        _ASSERTE(m_ref == 0);
+    }
 };
 
 #ifdef __cplusplus

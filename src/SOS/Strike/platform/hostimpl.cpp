@@ -102,3 +102,8 @@ HRESULT Host::GetCurrentTarget(ITarget** ppTarget)
     *ppTarget = Target::GetInstance();
     return S_OK;
 }
+
+void Host::WriteTrace(IHost::TraceType type, PCSTR message)
+{
+    GetOutputService()->OutputString(IOutputService::OutputType::Logging, message);
+}

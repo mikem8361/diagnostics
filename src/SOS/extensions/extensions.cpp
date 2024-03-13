@@ -32,16 +32,22 @@ extern "C" HRESULT InitializeHostServices(
 /// Creates a new Extensions instance
 /// </summary>
 /// <param name="pDebuggerServices">debugger service or nullptr</param>
-Extensions::Extensions(IDebuggerServices* pDebuggerServices) : 
+/// <param name="pOutputService">global output service instance</param>
+Extensions::Extensions(IDebuggerServices* pDebuggerServices, IOutputService* pOutputService) : 
     m_pHost(nullptr),
     m_pTarget(nullptr),
     m_pDebuggerServices(pDebuggerServices),
+    m_pOutputService(pOutputService),
     m_pHostServices(nullptr),
     m_pSymbolService(nullptr)
 {
     if (pDebuggerServices != nullptr)
     {
         pDebuggerServices->AddRef();
+    }
+    if (pOutputService != nullptr)
+    {
+        pOutputService->AddRef();
     }
 }
 
@@ -55,6 +61,11 @@ Extensions::~Extensions()
     {
         m_pHost->Release();
         m_pHost = nullptr;
+    }
+    if (m_pOutputService != nullptr)
+    {
+        m_pOutputService->Release();
+        m_pOutputService = nullptr;
     }
     if (m_pDebuggerServices != nullptr)
     {
@@ -122,6 +133,17 @@ IHostServices* Extensions::GetHostServices()
         }
     }
     return m_pHostServices;
+}
+
+/// <summary>
+/// Check if a target flush is needed
+/// </summary>
+void Extensions::FlushCheck()
+{
+    if (m_pDebuggerServices != nullptr)
+    {
+        m_pDebuggerServices->FlushCheck();
+    }
 }
 
 /// <summary>
@@ -253,12 +275,25 @@ GetFileName(const std::string& filePath)
 }
 
 /// <summary>
-/// Internal output helper function
+/// Internal logging function
 /// </summary>
-void InternalOutputVaList(
-    ULONG mask,
-    PCSTR format,
-    va_list args)
+void InternalWriteTrace(IHost::TraceType type, PCSTR message)
+{
+    IHost* host = GetHost();
+    if (host != nullptr)
+    {
+        host->WriteTrace(type, message);
+    }
+    else
+    {
+        GetOutputService()->OutputString(IOutputService::OutputType::Logging, message);
+    }
+}
+
+/// <summary>
+/// Internal formatted logging helper function
+/// </summary>
+void InternalWriteTraceVaList(IHost::TraceType type, PCSTR format, va_list args)
 {
     char str[1024];
     va_list argsCopy;
@@ -268,7 +303,7 @@ void InternalOutputVaList(
     size_t length = vsnprintf(str, sizeof(str), format, args);
     if (length < sizeof(str))
     {
-        Extensions::GetInstance()->GetDebuggerServices()->OutputString(mask, str);
+        InternalWriteTrace(type, str);
     }
     else
     {
@@ -277,19 +312,49 @@ void InternalOutputVaList(
         if (str_ptr != nullptr)
         {
             vsnprintf(str_ptr, length + 1, format, argsCopy);
-            Extensions::GetInstance()->GetDebuggerServices()->OutputString(mask, str_ptr);
+            InternalWriteTrace(type, str_ptr);
             ::free(str_ptr);
         }
     }
 }
 
 /// <summary>
-/// Internal trace output for extensions library
+/// Internal formatted output helper function
 /// </summary>
-void TraceError(PCSTR format, ...)
+void InternalOutputVaList(IOutputService::OutputType type, PCSTR format, va_list args)
+{
+    char str[1024];
+    va_list argsCopy;
+    va_copy(argsCopy, args);
+
+    // Try and format our string into a fixed buffer first and see if it fits
+    size_t length = vsnprintf(str, sizeof(str), format, args);
+    if (length < sizeof(str))
+    {
+        GetOutputService()->OutputString(type, str);
+    }
+    else
+    {
+        // Our stack buffer wasn't big enough to contain the entire formatted string
+        char *str_ptr = (char*)::malloc(length + 1);
+        if (str_ptr != nullptr)
+        {
+            vsnprintf(str_ptr, length + 1, format, argsCopy);
+            GetOutputService()->OutputString(type, str_ptr);
+            ::free(str_ptr);
+        }
+    }
+}
+
+/// <summary>
+/// Internal trace output for extensions library. It sends the output to the console because
+/// sending to the managed logging will cause recursion.
+/// </summary>
+void TraceHostingError(PCSTR format, ...)
 {
     va_list args;
     va_start(args, format);
-    InternalOutputVaList(DEBUG_OUTPUT_ERROR, format, args);
+    GetOutputService()->OutputString(IOutputService::OutputType::Error, "SOS_HOSTING: ");
+    InternalOutputVaList(IOutputService::OutputType::Error, format, args);
     va_end(args);
 }

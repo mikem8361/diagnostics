@@ -7,6 +7,7 @@
 #include "mstypes.h"
 #define DEFINE_EXCEPTION_RECORD
 #include "lldbservices.h"
+#include "outputservice.h"
 #include "extensions.h"
 #include "dbgtargetcontext.h"
 #include "specialdiaginfo.h"
@@ -22,21 +23,21 @@ extern char *g_coreclrDirectory;
 extern LLDBServices* g_services;
 
 bool 
-sosCommandInitialize(lldb::SBDebugger debugger);
+sosCommandInitialize(LLDBServices* services);
 
 bool
-setsostidCommandInitialize(lldb::SBDebugger debugger);
+setsostidCommandInitialize(LLDBServices* services);
 
 bool
-sethostruntimeCommandInitialize(lldb::SBDebugger debugger);
+sethostruntimeCommandInitialize(LLDBServices* services);
 
 //-----------------------------------------------------------------------------------------
 // Extension helper class
 //-----------------------------------------------------------------------------------------
 class PluginExtensions : public Extensions
 {
-    PluginExtensions(IDebuggerServices* debuggerServices) :
-        Extensions(debuggerServices)
+    PluginExtensions(LLDBServices* services) :
+        Extensions(services, services)
     {
     }
 

@@ -14,9 +14,7 @@ extern "C" {
 #endif
 
 /// <summary>
-/// ISymbolService
-///
-/// Provides symbol related services to SOS.
+/// Provides symbol related services to the native SOS code.
 /// </summary>
 MIDL_INTERFACE("7EE88D46-F8B3-4645-AD3E-01FE7D4F70F1")
 ISymbolService : public IUnknown

@@ -13,7 +13,8 @@ extern "C" {
 struct ITarget;
 
 /// <summary>
-/// IHost - Provides native services from the host to SOS.
+/// Provides host services to the native SOS code. It is normally implemented managed code
+/// except for the fallback case when there isn't .NET hosting runtime available.
 /// </summary>
 MIDL_INTERFACE("E0CD8534-A88B-40D7-91BA-1B4C925761E9")
 IHost : public IUnknown
@@ -28,6 +29,16 @@ public:
         Lldb,
         DbgEng,
         Vs
+    };
+
+    /// <summary>
+    /// The type of trace logging
+    /// </summary>
+    enum TraceType
+    {
+        Information = 1,            // Trace.TraceInformation
+        Warning = 2,                // Trace.TraceWarning
+        Error = 3                   // Trace.TraceError
     };
 
     /// <summary>
@@ -51,6 +62,13 @@ public:
     /// <param name="ppTarget">pointer to write current target instance</param>
     /// <returns>error code</returns>
     virtual HRESULT STDMETHODCALLTYPE GetCurrentTarget(ITarget** ppTarget) = 0;
+
+    /// <summary>
+    /// Write to managed logging support.
+    /// </summary>
+    /// <param name="type">type of tracing</param>
+    /// <param name="message">text to log</param>
+    virtual void STDMETHODCALLTYPE WriteTrace(TraceType type, PCSTR message) = 0;
 };
 
 #ifdef __cplusplus

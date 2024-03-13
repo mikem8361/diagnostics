@@ -10,7 +10,7 @@
 //-----------------------------------------------------------------------------------------
 class SOSExtensions : public Extensions
 {
-    SOSExtensions(IDebuggerServices* debuggerServices, IHost* host);
+    SOSExtensions(IDebuggerServices* debuggerServices, IOutputService* outputService, IHost* host);
 #ifndef FEATURE_PAL
     ~SOSExtensions();
 #endif
@@ -19,9 +19,7 @@ public:
 #ifndef FEATURE_PAL
     static HRESULT Initialize(IDebugClient* client);
 #endif
-    static HRESULT Initialize(IHost* host, IDebuggerServices* debuggerServices);
-    static void Uninitialize();
-    IHost* GetHost();
+    static HRESULT Initialize(IHost* host, IDebuggerServices* debuggerServices, IOutputService* outputService);
 };
 
 extern HRESULT GetRuntime(IRuntime** ppRuntime);

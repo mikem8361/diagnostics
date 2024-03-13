@@ -39,6 +39,7 @@ namespace SOS.Hosting {
         {
             Debug.Assert(services != null);
             Debug.Assert(runtime != null);
+
             _runtime = runtime;
             _contextService = services.GetService<IContextService>();
             _symbolService = services.GetService<ISymbolService>();

@@ -115,20 +115,6 @@ namespace SOS.Extensions
             }
         }
 
-        public void OutputString(DEBUG_OUTPUT mask, string message)
-        {
-            if (message == null)
-            {
-                throw new ArgumentNullException(nameof(message));
-            }
-
-            byte[] messageBytes = Encoding.ASCII.GetBytes(message + "\0");
-            fixed (byte* messagePtr = messageBytes)
-            {
-                VTable.OutputString(Self, mask, messagePtr);
-            }
-        }
-
         public HResult ReadVirtual(ulong offset, Span<byte> buffer, out int bytesRead)
         {
             fixed (byte* bufferPtr = buffer)
@@ -409,32 +395,6 @@ namespace SOS.Extensions
             }
         }
 
-        public int GetOutputWidth() => (int)VTable.GetOutputWidth(Self);
-
-        public bool SupportsDml
-        {
-            get
-            {
-                uint supported = 0;
-                VTable.SupportsDml(Self, &supported);
-                return supported != 0;
-            }
-        }
-
-        public void OutputDmlString(DEBUG_OUTPUT mask, string message)
-        {
-            if (message == null)
-            {
-                throw new ArgumentNullException(nameof(message));
-            }
-
-            byte[] messageBytes = Encoding.ASCII.GetBytes(message + "\0");
-            fixed (byte* messagePtr = messageBytes)
-            {
-                VTable.OutputDmlString(Self, mask, messagePtr);
-            }
-        }
-
         public HResult AddModuleSymbol(string symbolFileName)
         {
             if (symbolFileName == null)
@@ -488,12 +448,16 @@ namespace SOS.Extensions
             VTable.FlushCheck(Self);
         }
 
-        public IReadOnlyList<string> ExecuteHostCommand(string commandLine, DEBUG_OUTPUT interestMask = DEBUG_OUTPUT.NORMAL)
+        public IReadOnlyList<string> ExecuteHostCommand(string commandLine, bool normal, bool error)
         {
             CaptureConsoleService console = new();
-            ExecuteHostCommand(commandLine, (DEBUG_OUTPUT mask, string text) =>
+            ExecuteHostCommand(commandLine, (OutputType outputType, string text) =>
             {
-                if ((mask & interestMask) != 0)
+                if (normal && outputType == OutputType.Normal)
+                {
+                    console.Write(text);
+                }
+                if (error && outputType == OutputType.Error)
                 {
                     console.Write(text);
                 }
@@ -501,7 +465,7 @@ namespace SOS.Extensions
             return console.OutputLines;
         }
 
-        public delegate void ExecuteHostCommandCallback(DEBUG_OUTPUT mask, string text);
+        public delegate void ExecuteHostCommandCallback(OutputType outputType, string text);
 
         public void ExecuteHostCommand(string commandLine, ExecuteHostCommandCallback outputCallback)
         {
@@ -537,7 +501,6 @@ namespace SOS.Extensions
             public readonly delegate* unmanaged[Stdcall]<IntPtr, out DEBUG_CLASS, out DEBUG_CLASS_QUALIFIER, int> GetDebuggeeType;
             public readonly delegate* unmanaged[Stdcall]<IntPtr, out IMAGE_FILE_MACHINE, int> GetProcessorType;
             public readonly delegate* unmanaged[Stdcall]<IntPtr, byte*, byte*, IntPtr*, int, int> AddCommand;
-            public readonly delegate* unmanaged[Stdcall]<IntPtr, DEBUG_OUTPUT, byte*, void> OutputString;
             public readonly delegate* unmanaged[Stdcall]<IntPtr, ulong, byte*, uint, out int, int> ReadVirtual;
             public readonly delegate* unmanaged[Stdcall]<IntPtr, ulong, byte*, uint, out int, int> WriteVirtual;
             public readonly delegate* unmanaged[Stdcall]<IntPtr, out uint, out uint, int> GetNumberModules;
@@ -559,9 +522,6 @@ namespace SOS.Extensions
             public readonly delegate* unmanaged[Stdcall]<IntPtr, int, byte*, out ulong, int> GetOffsetBySymbol;
             public readonly delegate* unmanaged[Stdcall]<IntPtr, int, byte*, out ulong, HResult> GetTypeId;
             public readonly delegate* unmanaged[Stdcall]<IntPtr, int, byte*, ulong, byte*, out uint, HResult> GetFieldOffset;
-            public readonly delegate* unmanaged[Stdcall]<IntPtr, uint> GetOutputWidth;
-            public readonly delegate* unmanaged[Stdcall]<IntPtr, uint*, int> SupportsDml;
-            public readonly delegate* unmanaged[Stdcall]<IntPtr, DEBUG_OUTPUT, byte*, void> OutputDmlString;
             public readonly delegate* unmanaged[Stdcall]<IntPtr, IntPtr, byte*, int> AddModuleSymbol;
             public readonly delegate* unmanaged[Stdcall]<IntPtr, out uint, out uint, out int, void*, int, uint*, byte*, int, uint*, int> GetLastEventInformation;
             public readonly delegate* unmanaged[Stdcall]<IntPtr, void> FlushCheck;

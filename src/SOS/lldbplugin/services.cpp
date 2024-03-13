@@ -9,10 +9,8 @@
 #if defined(__APPLE__)
 #include <mach-o/loader.h>
 #endif
+#include <arrayholder.h>
 #include "sosplugin.h"
-#include "arrayholder.h"
-
-#define CONVERT_FROM_SIGN_EXTENDED(offset) ((ULONG_PTR)(offset))
 
 // Return what dbgeng returns for Linux modules that don't have a timestamp/checksum
 #define InvalidTimeStamp    0xFFFFFFFE;
@@ -25,7 +23,6 @@
 #undef PAGE_MASK 
 #define PAGE_MASK (~(PAGE_SIZE-1))
 
-char *g_coreclrDirectory = nullptr;
 char *g_pluginModuleDirectory = nullptr;
 
 LLDBServices::LLDBServices(lldb::SBDebugger debugger) :
@@ -68,15 +65,15 @@ LLDBServices::QueryInterface(
         AddRef();
         return S_OK;
     }
-    else if (InterfaceId == __uuidof(ILLDBServices2))
-    {
-        *Interface = static_cast<ILLDBServices2*>(this);
-        AddRef();
-        return S_OK;
-    }
     else if (InterfaceId == __uuidof(IDebuggerServices))
     {
         *Interface = static_cast<IDebuggerServices*>(this);
+        AddRef();
+        return S_OK;
+    }
+    else if (InterfaceId == __uuidof(IOutputService))
+    {
+        *Interface = static_cast<IOutputService*>(this);
         AddRef();
         return S_OK;
     }
@@ -108,32 +105,6 @@ LLDBServices::Release()
 //----------------------------------------------------------------------------
 // ILLDBServices
 //----------------------------------------------------------------------------
-
-PCSTR
-LLDBServices::GetCoreClrDirectory()
-{
-    if (g_coreclrDirectory == nullptr)
-    {
-        lldb::SBTarget target = m_debugger.GetSelectedTarget();
-        if (target.IsValid())
-        {
-            const char *coreclrModule = MAKEDLLNAME_A("coreclr");
-            lldb::SBFileSpec fileSpec;
-            fileSpec.SetFilename(coreclrModule);
-
-            lldb::SBModule module = target.FindModule(fileSpec);
-            if (module.IsValid())
-            {
-                const char *directory = module.GetFileSpec().GetDirectory();
-                std::string path(directory);
-                path.append("/");
-
-                g_coreclrDirectory = strdup(path.c_str());
-            }
-        }
-    }
-    return g_coreclrDirectory;
-}
 
 ULONG64
 LLDBServices::GetExpression(
@@ -216,7 +187,7 @@ LLDBServices::VirtualUnwind(
     thread = process.GetThreadByID(threadID);
     if (!thread.IsValid())
     {
-        Output(DEBUG_OUTPUT_ERROR, "VirtualUnwind %08x GetThreadById FAILED\n", threadID);
+        Output(IOutputService::OutputType::Error, "VirtualUnwind %08x GetThreadById FAILED\n", threadID);
         return E_FAIL;
     }
 
@@ -269,7 +240,7 @@ LLDBServices::VirtualUnwind(
 
     if (!frameFound.IsValid())
     {
-        Output(DEBUG_OUTPUT_ERROR, "VirtualUnwind %08x spToFind %016lx\n", threadID, spToFind);
+        Output(IOutputService::OutputType::Error, "VirtualUnwind %08x spToFind %016lx\n", threadID, spToFind);
         return E_FAIL;
     }
 
@@ -340,6 +311,301 @@ LLDBServices::ClearExceptionCallback()
     return S_OK;
 }
 
+void
+LLDBServices::LoadNativeSymbols(
+    lldb::SBTarget target,
+    lldb::SBModule module,
+    PFN_MODULE_LOAD_CALLBACK callback)
+{
+    if (module.IsValid())
+    {
+        const char* directory = nullptr;
+        const char* filename = nullptr;
+
+        lldb::SBFileSpec symbolFileSpec = module.GetSymbolFileSpec();
+        if (symbolFileSpec.IsValid())
+        {
+            directory = symbolFileSpec.GetDirectory();
+            filename = symbolFileSpec.GetFilename();
+        }
+        else {
+            lldb::SBFileSpec fileSpec = module.GetFileSpec();
+            if (fileSpec.IsValid())
+            {
+                directory = fileSpec.GetDirectory();
+                filename = fileSpec.GetFilename();
+            }
+        }
+
+        if (directory != nullptr && filename != nullptr)
+        {
+            ULONG64 moduleAddress = GetModuleBase(target, module);
+            if (moduleAddress != UINT64_MAX)
+            {
+                std::string path(directory);
+                path.append("/");
+                path.append(filename);
+
+                int moduleSize = GetModuleSize(moduleAddress, module);
+
+                callback(&module, path.c_str(), moduleAddress, moduleSize);
+            }
+        }
+    }
+}
+
+HRESULT 
+LLDBServices::LoadNativeSymbols(
+    bool runtimeOnly,
+    PFN_MODULE_LOAD_CALLBACK callback)
+{
+    if (runtimeOnly)
+    {
+        lldb::SBTarget target = m_debugger.GetSelectedTarget();
+        if (target.IsValid())
+        {
+            const char *coreclrModule = MAKEDLLNAME_A("coreclr");
+            lldb::SBFileSpec fileSpec;
+            fileSpec.SetFilename(coreclrModule);
+
+            lldb::SBModule module = target.FindModule(fileSpec);
+            LoadNativeSymbols(target, module, callback);
+        }
+    }
+    else 
+    {
+        uint32_t numTargets = m_debugger.GetNumTargets();
+        for (int ti = 0; ti < numTargets; ti++)
+        {
+            lldb::SBTarget target = m_debugger.GetTargetAtIndex(ti);
+            if (target.IsValid())
+            {
+                uint32_t numModules = target.GetNumModules();
+                for (int mi = 0; mi < numModules; mi++)
+                {
+                    lldb::SBModule module = target.GetModuleAtIndex(mi);
+                    LoadNativeSymbols(target, module, callback);
+                }
+            }
+        }
+    }
+    return S_OK;
+}
+
+HRESULT 
+LLDBServices::AddModuleSymbol(
+    void* param,
+    const char* symbolFileName)
+{
+    std::string command;
+    command.append("target symbols add ");
+    command.append(symbolFileName);
+
+    return Execute(0, command.c_str(), 0);
+}
+
+HRESULT
+LLDBServices::GetModuleInfo(
+    ULONG index,
+    PULONG64 pBase,
+    PULONG64 pSize,
+    PULONG pTimestamp,
+    PULONG pChecksum)
+{
+    lldb::SBTarget target; 
+    lldb::SBModule module;
+
+    target = m_debugger.GetSelectedTarget();
+    if (!target.IsValid())
+    {
+        return E_INVALIDARG;
+    }
+    module = target.GetModuleAtIndex(index);
+    if (!module.IsValid())
+    {
+        return E_INVALIDARG;
+    }
+    ULONG64 moduleBase = GetModuleBase(target, module);
+    if (pBase)
+    {
+        if (moduleBase == UINT64_MAX)
+        {
+            return E_INVALIDARG;
+        }
+        *pBase = moduleBase;
+    }
+    if (pSize)
+    {
+        *pSize = GetModuleSize(moduleBase, module);
+    }
+    if (pTimestamp)
+    {
+        *pTimestamp = InvalidTimeStamp;
+    }
+    if (pChecksum)
+    {
+        *pChecksum = InvalidChecksum;
+    }
+    return S_OK;
+}
+
+#define VersionBufferSize 1024
+
+HRESULT 
+LLDBServices::GetModuleVersionInformation(
+    ULONG index,
+    ULONG64 base,
+    PCSTR item,
+    PVOID buffer,
+    ULONG bufferSize,
+    PULONG versionInfoSize)
+{
+    // Only support a narrow set of argument values
+    if (index == DEBUG_ANY_ID || buffer == nullptr || versionInfoSize != nullptr)
+    {
+        return E_INVALIDARG;
+    }
+    lldb::SBTarget target = m_debugger.GetSelectedTarget();
+    if (!target.IsValid())
+    {
+        return E_INVALIDARG;
+    }
+    lldb::SBModule module = target.GetModuleAtIndex(index);
+    if (!module.IsValid())
+    {
+        return E_INVALIDARG;
+    }
+    const char* versionString = nullptr;
+    lldb::SBValue value;
+    lldb::SBData data;
+
+    value = module.FindFirstGlobalVariable(target, "sccsid");
+    if (value.IsValid())
+    {
+        data = value.GetData();
+        if (data.IsValid())
+        {
+            lldb::SBError error;
+            versionString = data.GetString(error, 0);
+            if (error.Fail())
+            {
+                versionString = nullptr;
+            }
+        }
+    }
+
+    ArrayHolder<char> versionBuffer = nullptr;
+    if (versionString == nullptr)
+    {
+        versionBuffer = new char[VersionBufferSize];
+
+        int numSections = module.GetNumSections();
+        for (int si = 0; si < numSections; si++)
+        {
+            lldb::SBSection section = module.GetSectionAtIndex(si);
+            if (GetVersionStringFromSection(target, section, versionBuffer.GetPtr()))
+            {
+                versionString = versionBuffer;
+                break;
+            }
+        }
+    }
+
+    if (versionString == nullptr)
+    {
+        return E_FAIL;
+    }
+
+    if (strcmp(item, "\\") == 0)
+    {
+        if (bufferSize < sizeof(VS_FIXEDFILEINFO))
+        {
+            return E_INVALIDARG;
+        }
+        DWORD major, minor, build, revision;
+        if (sscanf(versionString, "@(#)Version %u.%u.%u.%u", &major, &minor, &build, &revision) != 4)
+        {
+            return E_FAIL;
+        }
+        memset(buffer, 0, sizeof(VS_FIXEDFILEINFO));
+        ((VS_FIXEDFILEINFO*)buffer)->dwFileVersionMS = MAKELONG(minor, major);
+        ((VS_FIXEDFILEINFO*)buffer)->dwFileVersionLS = MAKELONG(revision, build);
+    }
+    else if (strcmp(item, "\\StringFileInfo\\040904B0\\FileVersion") == 0)
+    {
+        if (bufferSize < (strlen(versionString) - sizeof("@(#)Version")))
+        {
+            return E_INVALIDARG;
+        }
+        stpncpy((char*)buffer, versionString + sizeof("@(#)Version"), bufferSize);
+    }
+    else
+    {
+        return E_INVALIDARG;
+    }
+    return S_OK;
+}
+
+lldb::SBBreakpoint g_runtimeLoadedBp;
+
+bool 
+RuntimeLoadedBreakpointCallback(
+    void *baton, 
+    lldb::SBProcess &process,
+    lldb::SBThread &thread, 
+    lldb::SBBreakpointLocation &location)
+{
+    lldb::SBProcess* savedProcess = g_services->SetCurrentProcess(&process);
+    lldb::SBThread* savedThread = g_services->SetCurrentThread(&thread);
+    g_services->FlushCheck();
+
+    bool result = ((PFN_RUNTIME_LOADED_CALLBACK)baton)(g_services) == S_OK;
+
+    g_services->SetCurrentProcess(savedProcess);
+    g_services->SetCurrentThread(savedThread);
+
+    // Clear the breakpoint
+    if (g_runtimeLoadedBp.IsValid())
+    {
+        process.GetTarget().BreakpointDelete(g_runtimeLoadedBp.GetID());
+        g_runtimeLoadedBp = lldb::SBBreakpoint();
+    }
+
+    // Continue the process
+    if (result)
+    {
+        lldb::SBError error = process.Continue();
+        result = error.Success();
+    }
+    return result;
+}
+
+HRESULT 
+LLDBServices::SetRuntimeLoadedCallback(
+    PFN_RUNTIME_LOADED_CALLBACK callback)
+{
+    if (!g_runtimeLoadedBp.IsValid())
+    {
+        lldb::SBTarget target = m_debugger.GetSelectedTarget();
+        if (!target.IsValid())
+        {
+            return E_FAIL;
+        }
+        // By the time the host calls coreclr_execute_assembly, the coreclr DAC table should be initialized so DAC can be loaded.
+        lldb::SBBreakpoint runtimeLoadedBp = target.BreakpointCreateByName("coreclr_execute_assembly", MAKEDLLNAME_A("coreclr"));
+        if (!runtimeLoadedBp.IsValid())
+        {
+            return E_FAIL;
+        }
+#ifdef FLAGS_ANONYMOUS_ENUM
+        runtimeLoadedBp.AddName("DoNotDeleteOrDisable");
+#endif
+        runtimeLoadedBp.SetCallback(RuntimeLoadedBreakpointCallback, (void *)callback);
+        g_runtimeLoadedBp = runtimeLoadedBp;
+    }
+    return S_OK;
+}
+
 //----------------------------------------------------------------------------
 // IDebugControl2
 //----------------------------------------------------------------------------
@@ -351,65 +617,6 @@ HRESULT
 LLDBServices::GetInterrupt()
 {
     return E_FAIL;
-}
-
-// Sends output through clients
-// output callbacks if the mask is allowed
-// by the current output control mask and
-// according to the output distribution
-// settings.
-HRESULT 
-LLDBServices::Output(
-    ULONG mask,
-    PCSTR format,
-    ...)
-{
-    va_list args;
-    va_start (args, format);
-    HRESULT result = InternalOutputVaList(mask, format, args);
-    va_end (args);
-    return result;
-}
-
-HRESULT 
-LLDBServices::OutputVaList(
-    ULONG mask,
-    PCSTR format,
-    va_list args)
-{
-    // Just output the string; ignore args. It is always formatted by SOS.
-    OutputString(mask, format);
-    return S_OK;
-}
-
-// The following methods allow direct control
-// over the distribution of the given output
-// for situations where something other than
-// the default is desired.  These methods require
-// extra work in the engine so they should
-// only be used when necessary.
-HRESULT 
-LLDBServices::ControlledOutput(
-    ULONG outputControl,
-    ULONG mask,
-    PCSTR format,
-    ...)
-{
-    va_list args;
-    va_start (args, format);
-    HRESULT result = ControlledOutputVaList(outputControl, mask, format, args);
-    va_end (args);
-    return result;
-}
-
-HRESULT 
-LLDBServices::ControlledOutputVaList(
-    ULONG outputControl,
-    ULONG mask,
-    PCSTR format,
-    va_list args)
-{
-    return OutputVaList(mask, format, args);
 }
 
 // Returns information about the debuggee such
@@ -476,7 +683,8 @@ LLDBServices::Execute(
 {
     lldb::SBCommandReturnObject result;
     lldb::ReturnStatus status = m_interpreter.HandleCommand(command, result);
-    return status <= lldb::eReturnStatusSuccessContinuingResult ? S_OK : E_FAIL;
+    result.SetStatus(status);
+    return result.Succeeded();
 }
 
 HRESULT 
@@ -538,23 +746,23 @@ LLDBServices::GetLastEventInformation(
     size_t read = process.ReadMemory(SpecialDiagInfoAddress, &header, sizeof(header), error);
     if (error.Fail() || read != sizeof(header))
     {
-        Output(DEBUG_OUTPUT_WARNING, "Special diagnostics info read failed\n");
+        Output(IOutputService::OutputType::Warning, "Special diagnostics info read failed\n");
         return E_FAIL;
     }
     if (strncmp(header.Signature, SPECIAL_DIAGINFO_SIGNATURE, sizeof(SPECIAL_DIAGINFO_SIGNATURE)) != 0)
     {
-        Output(DEBUG_OUTPUT_WARNING, "Special diagnostics info signature invalid\n");
+        Output(IOutputService::OutputType::Warning, "Special diagnostics info signature invalid\n");
         return E_FAIL;
     }
     if (header.Version < SPECIAL_DIAGINFO_VERSION || header.ExceptionRecordAddress == 0)
     {
-        Output(DEBUG_OUTPUT_WARNING, "No exception record in special diagnostics info\n");
+        Output(IOutputService::OutputType::Warning, "No exception record in special diagnostics info\n");
         return E_FAIL;
     }
     read = process.ReadMemory(header.ExceptionRecordAddress, &pdle->ExceptionRecord, sizeof(pdle->ExceptionRecord), error);
     if (error.Fail() || read != sizeof(pdle->ExceptionRecord))
     {
-        Output(DEBUG_OUTPUT_WARNING, "Exception record in special diagnostics info read failed\n");
+        Output(IOutputService::OutputType::Warning, "Exception record in special diagnostics info read failed\n");
         return E_FAIL;
     }
 
@@ -1855,304 +2063,6 @@ LLDBServices::GetFrameOffset(
 }
 
 //----------------------------------------------------------------------------
-// ILLDBServices2
-//----------------------------------------------------------------------------
-
-void
-LLDBServices::LoadNativeSymbols(
-    lldb::SBTarget target,
-    lldb::SBModule module,
-    PFN_MODULE_LOAD_CALLBACK callback)
-{
-    if (module.IsValid())
-    {
-        const char* directory = nullptr;
-        const char* filename = nullptr;
-
-        lldb::SBFileSpec symbolFileSpec = module.GetSymbolFileSpec();
-        if (symbolFileSpec.IsValid())
-        {
-            directory = symbolFileSpec.GetDirectory();
-            filename = symbolFileSpec.GetFilename();
-        }
-        else {
-            lldb::SBFileSpec fileSpec = module.GetFileSpec();
-            if (fileSpec.IsValid())
-            {
-                directory = fileSpec.GetDirectory();
-                filename = fileSpec.GetFilename();
-            }
-        }
-
-        if (directory != nullptr && filename != nullptr)
-        {
-            ULONG64 moduleAddress = GetModuleBase(target, module);
-            if (moduleAddress != UINT64_MAX)
-            {
-                std::string path(directory);
-                path.append("/");
-                path.append(filename);
-
-                int moduleSize = GetModuleSize(moduleAddress, module);
-
-                callback(&module, path.c_str(), moduleAddress, moduleSize);
-            }
-        }
-    }
-}
-
-HRESULT 
-LLDBServices::LoadNativeSymbols(
-    bool runtimeOnly,
-    PFN_MODULE_LOAD_CALLBACK callback)
-{
-    if (runtimeOnly)
-    {
-        lldb::SBTarget target = m_debugger.GetSelectedTarget();
-        if (target.IsValid())
-        {
-            const char *coreclrModule = MAKEDLLNAME_A("coreclr");
-            lldb::SBFileSpec fileSpec;
-            fileSpec.SetFilename(coreclrModule);
-
-            lldb::SBModule module = target.FindModule(fileSpec);
-            LoadNativeSymbols(target, module, callback);
-        }
-    }
-    else 
-    {
-        uint32_t numTargets = m_debugger.GetNumTargets();
-        for (int ti = 0; ti < numTargets; ti++)
-        {
-            lldb::SBTarget target = m_debugger.GetTargetAtIndex(ti);
-            if (target.IsValid())
-            {
-                uint32_t numModules = target.GetNumModules();
-                for (int mi = 0; mi < numModules; mi++)
-                {
-                    lldb::SBModule module = target.GetModuleAtIndex(mi);
-                    LoadNativeSymbols(target, module, callback);
-                }
-            }
-        }
-    }
-    return S_OK;
-}
-
-HRESULT 
-LLDBServices::AddModuleSymbol(
-    void* param,
-    const char* symbolFileName)
-{
-    std::string command;
-    command.append("target symbols add ");
-    command.append(symbolFileName);
-
-    return Execute(DEBUG_EXECUTE_NOT_LOGGED, command.c_str(), 0);
-}
-
-HRESULT LLDBServices::GetModuleInfo(
-    ULONG index,
-    PULONG64 pBase,
-    PULONG64 pSize,
-    PULONG pTimestamp,
-    PULONG pChecksum)
-{
-    lldb::SBTarget target; 
-    lldb::SBModule module;
-
-    target = m_debugger.GetSelectedTarget();
-    if (!target.IsValid())
-    {
-        return E_INVALIDARG;
-    }
-    module = target.GetModuleAtIndex(index);
-    if (!module.IsValid())
-    {
-        return E_INVALIDARG;
-    }
-    ULONG64 moduleBase = GetModuleBase(target, module);
-    if (pBase)
-    {
-        if (moduleBase == UINT64_MAX)
-        {
-            return E_INVALIDARG;
-        }
-        *pBase = moduleBase;
-    }
-    if (pSize)
-    {
-        *pSize = GetModuleSize(moduleBase, module);
-    }
-    if (pTimestamp)
-    {
-        *pTimestamp = InvalidTimeStamp;
-    }
-    if (pChecksum)
-    {
-        *pChecksum = InvalidChecksum;
-    }
-    return S_OK;
-}
-
-#define VersionBufferSize 1024
-
-HRESULT 
-LLDBServices::GetModuleVersionInformation(
-    ULONG index,
-    ULONG64 base,
-    PCSTR item,
-    PVOID buffer,
-    ULONG bufferSize,
-    PULONG versionInfoSize)
-{
-    // Only support a narrow set of argument values
-    if (index == DEBUG_ANY_ID || buffer == nullptr || versionInfoSize != nullptr)
-    {
-        return E_INVALIDARG;
-    }
-    lldb::SBTarget target = m_debugger.GetSelectedTarget();
-    if (!target.IsValid())
-    {
-        return E_INVALIDARG;
-    }
-    lldb::SBModule module = target.GetModuleAtIndex(index);
-    if (!module.IsValid())
-    {
-        return E_INVALIDARG;
-    }
-    const char* versionString = nullptr;
-    lldb::SBValue value;
-    lldb::SBData data;
-
-    value = module.FindFirstGlobalVariable(target, "sccsid");
-    if (value.IsValid())
-    {
-        data = value.GetData();
-        if (data.IsValid())
-        {
-            lldb::SBError error;
-            versionString = data.GetString(error, 0);
-            if (error.Fail())
-            {
-                versionString = nullptr;
-            }
-        }
-    }
-
-    ArrayHolder<char> versionBuffer = nullptr;
-    if (versionString == nullptr)
-    {
-        versionBuffer = new char[VersionBufferSize];
-
-        int numSections = module.GetNumSections();
-        for (int si = 0; si < numSections; si++)
-        {
-            lldb::SBSection section = module.GetSectionAtIndex(si);
-            if (GetVersionStringFromSection(target, section, versionBuffer.GetPtr()))
-            {
-                versionString = versionBuffer;
-                break;
-            }
-        }
-    }
-
-    if (versionString == nullptr)
-    {
-        return E_FAIL;
-    }
-
-    if (strcmp(item, "\\") == 0)
-    {
-        if (bufferSize < sizeof(VS_FIXEDFILEINFO))
-        {
-            return E_INVALIDARG;
-        }
-        DWORD major, minor, build, revision;
-        if (sscanf(versionString, "@(#)Version %u.%u.%u.%u", &major, &minor, &build, &revision) != 4)
-        {
-            return E_FAIL;
-        }
-        memset(buffer, 0, sizeof(VS_FIXEDFILEINFO));
-        ((VS_FIXEDFILEINFO*)buffer)->dwFileVersionMS = MAKELONG(minor, major);
-        ((VS_FIXEDFILEINFO*)buffer)->dwFileVersionLS = MAKELONG(revision, build);
-    }
-    else if (strcmp(item, "\\StringFileInfo\\040904B0\\FileVersion") == 0)
-    {
-        if (bufferSize < (strlen(versionString) - sizeof("@(#)Version")))
-        {
-            return E_INVALIDARG;
-        }
-        stpncpy((char*)buffer, versionString + sizeof("@(#)Version"), bufferSize);
-    }
-    else
-    {
-        return E_INVALIDARG;
-    }
-    return S_OK;
-}
-
-lldb::SBBreakpoint g_runtimeLoadedBp;
-
-bool 
-RuntimeLoadedBreakpointCallback(
-    void *baton, 
-    lldb::SBProcess &process,
-    lldb::SBThread &thread, 
-    lldb::SBBreakpointLocation &location)
-{
-    lldb::SBProcess* savedProcess = g_services->SetCurrentProcess(&process);
-    lldb::SBThread* savedThread = g_services->SetCurrentThread(&thread);
-    g_services->FlushCheck();
-
-    bool result = ((PFN_RUNTIME_LOADED_CALLBACK)baton)(g_services) == S_OK;
-
-    g_services->SetCurrentProcess(savedProcess);
-    g_services->SetCurrentThread(savedThread);
-
-    // Clear the breakpoint
-    if (g_runtimeLoadedBp.IsValid())
-    {
-        process.GetTarget().BreakpointDelete(g_runtimeLoadedBp.GetID());
-        g_runtimeLoadedBp = lldb::SBBreakpoint();
-    }
-
-    // Continue the process
-    if (result)
-    {
-        lldb::SBError error = process.Continue();
-        result = error.Success();
-    }
-    return result;
-}
-
-HRESULT 
-LLDBServices::SetRuntimeLoadedCallback(
-    PFN_RUNTIME_LOADED_CALLBACK callback)
-{
-    if (!g_runtimeLoadedBp.IsValid())
-    {
-        lldb::SBTarget target = m_debugger.GetSelectedTarget();
-        if (!target.IsValid())
-        {
-            return E_FAIL;
-        }
-        // By the time the host calls coreclr_execute_assembly, the coreclr DAC table should be initialized so DAC can be loaded.
-        lldb::SBBreakpoint runtimeLoadedBp = target.BreakpointCreateByName("coreclr_execute_assembly", MAKEDLLNAME_A("coreclr"));
-        if (!runtimeLoadedBp.IsValid())
-        {
-            return E_FAIL;
-        }
-#ifdef FLAGS_ANONYMOUS_ENUM
-        runtimeLoadedBp.AddName("DoNotDeleteOrDisable");
-#endif
-        runtimeLoadedBp.SetCallback(RuntimeLoadedBreakpointCallback, (void *)callback);
-        g_runtimeLoadedBp = runtimeLoadedBp;
-    }
-    return S_OK;
-}
-
-//----------------------------------------------------------------------------
 // IDebuggerServices
 //----------------------------------------------------------------------------
 
@@ -2185,7 +2095,7 @@ public:
 
     ~ExtensionCommand()
     {
-        g_services->Output(DEBUG_OUTPUT_ERROR, "~ExtensionCommand %s\n", m_commandName);
+        g_services->Output(IOutputService::OutputType::Error, "~ExtensionCommand %s\n", m_commandName);
     }
 
     virtual bool
@@ -2196,7 +2106,7 @@ public:
         IHostServices* hostservices = GetHostServices();
         if (hostservices == nullptr)
         {
-            g_services->Output(DEBUG_OUTPUT_ERROR, "Unrecognized command '%s' because managed hosting failed or was disabled. See sethostruntime command for details.\n", m_commandName);
+            result.Printf("Unrecognized command '%s' because managed hosting failed or was disabled. See sethostruntime command for details.\n", m_commandName);
             result.SetStatus(lldb::eReturnStatusFailed);
             return false;
         }
@@ -2263,24 +2173,6 @@ LLDBServices::AddCommand(
         }
     }
     return S_OK;
-}
-
-void
-LLDBServices::OutputString(
-    ULONG mask,
-    PCSTR str)
-{
-    FILE* file;
-    if (mask == DEBUG_OUTPUT_ERROR)
-    {
-        file = m_debugger.GetErrorFileHandle();
-    }
-    else 
-    {
-        file = m_debugger.GetOutputFileHandle();
-    }
-    fputs(str, file);
-    fflush(file);
 }
 
 HRESULT 
@@ -2554,27 +2446,6 @@ exit:
     return hr;
 }
 
-ULONG
-LLDBServices::GetOutputWidth()
-{
-    return m_debugger.GetTerminalWidth();
-}
-
-HRESULT
-LLDBServices::SupportsDml(PULONG supported)
-{
-    supported = 0;
-    return S_OK;
-}
-
-void
-LLDBServices::OutputDmlString(
-    ULONG mask,
-    PCSTR str)
-{
-    OutputString(mask, str);
-}
-
 void
 LLDBServices::FlushCheck()
 {
@@ -2608,7 +2479,46 @@ LLDBServices::ExecuteHostCommand(
     PCSTR commandLine,
     PEXECUTE_COMMAND_OUTPUT_CALLBACK callback)
 {
-    return Execute(DEBUG_OUTCTL_THIS_CLIENT, commandLine, DEBUG_EXECUTE_NO_REPEAT);
+    lldb::SBCommandReturnObject result;
+    lldb::ReturnStatus status = m_interpreter.HandleCommand(commandLine, result);
+    result.SetStatus(status);
+    callback(IOutputService::OutputType::Normal, result.GetOutput());
+    callback(IOutputService::OutputType::Error, result.GetError());
+    return result.Succeeded();
+}
+
+//----------------------------------------------------------------------------
+// IOutputService (global)
+//----------------------------------------------------------------------------
+
+ULONG
+LLDBServices::GetOutputWidth()
+{
+    return m_debugger.GetTerminalWidth();
+}
+
+ULONG
+LLDBServices::SupportsDml()
+{
+    return 0;
+}
+
+void
+LLDBServices::OutputString(
+   OutputType outputType,
+   PCSTR message)
+{
+    FILE* file;
+    if (outputType == IOutputService::OutputType::Error)
+    {
+        file = m_debugger.GetErrorFileHandle();
+    }
+    else 
+    {
+        file = m_debugger.GetOutputFileHandle();
+    }
+    fputs(message, file);
+    fflush(file);
 }
 
 HRESULT
@@ -2652,13 +2562,13 @@ LLDBServices::InitializeThreadInfo(lldb::SBProcess process)
     }
     if (strncmp(header.signature, SPECIAL_THREADINFO_SIGNATURE, sizeof(SPECIAL_THREADINFO_SIGNATURE)) != 0)
     {
-        Output(DEBUG_OUTPUT_WARNING, "Special thread info signature invalid\n");
+        Output(IOutputService::OutputType::Warning, "Special thread info signature invalid\n");
         return;
     }
     uint32_t number = process.GetNumThreads();
     if (number != header.numThreads)
     {
-        Output(DEBUG_OUTPUT_WARNING, "Special thread info number of threads mismatched - lldb: %d header: %d\n", number, header.numThreads);
+        Output(IOutputService::OutputType::Warning, "Special thread info number of threads mismatched - lldb: %d header: %d\n", number, header.numThreads);
         return;
     }
     m_processId = header.pid;
@@ -2670,7 +2580,7 @@ LLDBServices::InitializeThreadInfo(lldb::SBProcess process)
         SpecialThreadInfoEntry entry;
         read = process.ReadMemory(address, &entry, sizeof(SpecialThreadInfoEntry), error);
         if (error.Fail() || read != sizeof(entry)) {
-            Output(DEBUG_OUTPUT_WARNING, "Special thread info entry %d read failed\n", index);
+            Output(IOutputService::OutputType::Warning, "Special thread info entry %d read failed\n", index);
             break;
         }
         m_threadInfos.push_back(entry);
@@ -2685,17 +2595,17 @@ LLDBServices::InitializeThreadInfo(lldb::SBProcess process)
             {
                 if (frame.GetSP() != entry.sp)
                 {
-                    Output(DEBUG_OUTPUT_WARNING, "Special thread info SP (%p) doesn't match %p\n", (void*)entry.sp, (void*)frame.GetSP());
+                    Output(IOutputService::OutputType::Warning, "Special thread info SP (%p) doesn't match %p\n", (void*)entry.sp, (void*)frame.GetSP());
                 }
             }
             else
             {
-                Output(DEBUG_OUTPUT_WARNING, "Invalid stack frame for thread %d\n", index);
+                Output(IOutputService::OutputType::Warning, "Invalid stack frame for thread %d\n", index);
             }
         }
         else
         {
-            Output(DEBUG_OUTPUT_WARNING, "Invalid thread %d\n", index);
+            Output(IOutputService::OutputType::Warning, "Invalid thread %d\n", index);
         }
     }
 #endif
@@ -2947,7 +2857,11 @@ LLDBServices::SearchVersionString(
 }
 
 bool
-LLDBServices::ReadVirtualCache(ULONG64 address, PVOID buffer, ULONG bufferSize, PULONG pcbBytesRead)
+LLDBServices::ReadVirtualCache(
+    ULONG64 address,
+    PVOID buffer,
+    ULONG bufferSize,
+    PULONG pcbBytesRead)
 {
     if (bufferSize == 0)
     {
@@ -3023,7 +2937,7 @@ LLDBServices::AddManagedCommand(
     HRESULT hr = AddCommand(name, help, nullptr, 0);
     if (FAILED(hr))
     {
-        Output(DEBUG_OUTPUT_ERROR, "AddManagedCommand FAILED %08x\n", hr);
+        Output(IOutputService::OutputType::Warning, "AddManagedCommand FAILED %08x\n", hr);
     }
 }
 
@@ -3062,7 +2976,7 @@ LLDBServices::ExecuteCommand(
     // directly to the lldb interpreter because of existing commands or aliases.
     if (hostservices != nullptr)
     {
-        g_services->FlushCheck();
+        FlushCheck();
         HRESULT hr = hostservices->DispatchCommand(commandName, commandArguments.c_str(), /* displayCommandNotFound */ false);
         if (hr != E_NOTIMPL)
         {
@@ -3075,36 +2989,15 @@ LLDBServices::ExecuteCommand(
     return false;
 }
 
-HRESULT 
-LLDBServices::InternalOutputVaList(
-    ULONG mask,
+void
+LLDBServices::Output(
+    IOutputService::OutputType type,
     PCSTR format,
-    va_list args)
+    ...)
 {
-    HRESULT result = S_OK;
-    char str[1024];
-
-    // Try and format our string into a fixed buffer first and see if it fits
-    size_t length = ::vsnprintf(str, sizeof(str), format, args);
-    if (length < sizeof(str))
-    {
-        OutputString(mask, str);
-    }
-    else
-    {
-        // Our stack buffer wasn't big enough to contain the entire formatted
-        // string, so lets let vasprintf create the string for us!
-        char *str_ptr = nullptr;
-        length = ::vasprintf(&str_ptr, format, args);
-        if (str_ptr)
-        {
-            OutputString(mask, str_ptr);
-            ::free (str_ptr);
-        }
-        else
-        {
-            result = E_FAIL;
-        }
-    }
-    return result;
+    va_list args;
+    va_start (args, format);
+    ::InternalOutputVaList(type, format, args);
+    va_end (args);
 }
+

@@ -24,22 +24,18 @@ class DebugClient
 private:
     LONG m_ref;
     ILLDBServices* m_lldbservices;
-    ILLDBServices2* m_lldbservices2;
 
 public:
-    DebugClient(ILLDBServices* lldbservices, ILLDBServices2* lldbservices2) : 
+    DebugClient(ILLDBServices* lldbservices) :
         m_ref(1),
-        m_lldbservices(lldbservices),
-        m_lldbservices2(lldbservices2)
+        m_lldbservices(lldbservices)
     {
         m_lldbservices->AddRef();
-        m_lldbservices2->AddRef();
     }
 
     ~DebugClient()
     {
         m_lldbservices->Release();
-        m_lldbservices2->Release();
     }
 
     //----------------------------------------------------------------------------
@@ -66,25 +62,6 @@ public:
     GetInterrupt()
     {
         return m_lldbservices->GetInterrupt();
-    }
-
-    HRESULT 
-    OutputVaList(
-        ULONG mask,
-        PCSTR format,
-        va_list args)
-    {
-        return m_lldbservices->OutputVaList(mask, format, args);
-    }
-
-    HRESULT 
-    ControlledOutputVaList(
-        ULONG outputControl,
-        ULONG mask,
-        PCSTR format,
-        va_list args)
-    {
-        return OutputVaList(mask, format, args);
     }
 
     // Returns information about the debuggee such
@@ -284,7 +261,7 @@ public:
         ULONG bufferSize,
         PULONG versionInfoSize)
     {
-        return m_lldbservices2->GetModuleVersionInformation(index, base, item, buffer, bufferSize, versionInfoSize);
+        return m_lldbservices->GetModuleVersionInformation(index, base, item, buffer, bufferSize, versionInfoSize);
     }
 
     HRESULT 

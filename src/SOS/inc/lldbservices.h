@@ -271,10 +271,6 @@ public:
     // ILLDBServices
     //----------------------------------------------------------------------------
 
-    // Returns the coreclr module directory found by lldb plugin 
-    // in the target process.
-    virtual PCSTR STDMETHODCALLTYPE GetCoreClrDirectory() = 0;
-
     // Evaluates a lldb expression into a value.
     virtual ULONG64 STDMETHODCALLTYPE GetExpression(
         /* [in] */ PCSTR exp) = 0;
@@ -301,11 +297,6 @@ public:
     // This method is reentrant.
     virtual HRESULT STDMETHODCALLTYPE GetInterrupt(
         void) = 0;
-
-    virtual HRESULT STDMETHODCALLTYPE OutputVaList(
-        ULONG mask,
-        PCSTR format,
-        va_list args) = 0;
 
     // Returns information about the debuggee such
     // as user vs. kernel, dump vs. live, etc.
@@ -570,17 +561,6 @@ public:
 
     virtual HRESULT STDMETHODCALLTYPE GetFrameOffset(
         PULONG64 offset) = 0;
-};
-
-typedef void (*PFN_MODULE_LOAD_CALLBACK)(void* param, const char* moduleFilePath, ULONG64 moduleAddress, int moduleSize);
-
-MIDL_INTERFACE("012F32F0-33BA-4E8E-BC01-037D382D8A5E")
-ILLDBServices2: public IUnknown
-{
-public:
-    //----------------------------------------------------------------------------
-    // ILLDBServices2
-    //----------------------------------------------------------------------------
 
     virtual HRESULT STDMETHODCALLTYPE LoadNativeSymbols(
         bool runtimeOnly,

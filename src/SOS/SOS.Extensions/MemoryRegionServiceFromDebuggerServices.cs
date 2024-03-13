@@ -14,6 +14,7 @@ namespace SOS.Extensions
     internal sealed class MemoryRegionServiceFromDebuggerServices : IMemoryRegionService
     {
         private const string AddressCommand = "!address";
+
         private readonly DebuggerServices _debuggerServices;
 
         public MemoryRegionServiceFromDebuggerServices(DebuggerServices debuggerServices)

@@ -13,10 +13,8 @@ extern "C" {
 typedef bool (*PEXECUTE_COMMAND_OUTPUT_CALLBACK)(ULONG mask, const char *text);
 
 /// <summary>
-/// IDebuggerServices 
-/// 
 /// The interface that the native debuggers (dbgeng/lldb) provide the managed extension infrastructure 
-/// service (SOS.Extensions). Isn't used when SOS is hosted by SOS.Hosting (i.e. dotnet-dump).
+/// service (SOS.Extensions). Isn't used when SOS is hosted by SOS.Hosting (i.e. dotnet-dump or VS).
 /// </summary>
 MIDL_INTERFACE("B4640016-6CA0-468E-BA2C-1FFF28DE7B72")
 IDebuggerServices : public IUnknown
@@ -45,10 +43,6 @@ public:
         PCSTR help,
         PCSTR aliases[],
         int numberOfAliases) = 0;
-
-    virtual void STDMETHODCALLTYPE OutputString(
-        ULONG mask,
-        PCSTR message) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE ReadVirtual(
         ULONG64 offset,
@@ -166,14 +160,6 @@ public:
         ULONG64 typeId,
         PCSTR fieldName,
         PULONG offset) = 0;
-
-    virtual ULONG STDMETHODCALLTYPE GetOutputWidth() = 0;
-
-    virtual HRESULT STDMETHODCALLTYPE SupportsDml(PULONG supported) = 0;
-
-    virtual void STDMETHODCALLTYPE OutputDmlString(
-        ULONG mask,
-        PCSTR message) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE AddModuleSymbol(
         void* param,

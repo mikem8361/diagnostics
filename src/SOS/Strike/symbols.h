@@ -7,25 +7,6 @@
 
 extern HMODULE g_hInstance;
 
-extern HRESULT GetMetadataLocator(
-    LPCWSTR imagePath,
-    ULONG32 imageTimestamp,
-    ULONG32 imageSize,
-    GUID* mvid,
-    ULONG32 mdRva,
-    ULONG32 flags,
-    ULONG32 bufferSize,
-    BYTE* buffer,
-    ULONG32* dataSize);
-
-extern HRESULT GetICorDebugMetadataLocator(
-    LPCWSTR imagePath,
-    ULONG32 imageTimestamp,
-    ULONG32 imageSize,
-    ULONG32 cchPathBuffer,
-    ULONG32* pcchPathBuffer,
-    WCHAR wszPathBuffer[]);
-
 class SymbolReader
 {
 private:

@@ -27,6 +27,8 @@ namespace SOS.Hosting
             builder.AddMethod(new GetHostTypeDelegate(GetHostType));
             builder.AddMethod(new GetServiceDelegate(ServiceWrapper.GetService));
             builder.AddMethod(new GetCurrentTargetDelegate(GetCurrentTarget));
+            builder.AddMethod(new WriteTraceDelegate(WriteTrace));
+
             IHost = builder.Complete();
 
             AddRef();
@@ -65,6 +67,37 @@ namespace SOS.Hosting
             return HResult.S_OK;
         }
 
+        /// <summary>
+        /// Must match IHost::TraceType enum in host.h
+        /// </summary>
+        private enum TraceType
+        {
+            Information = 1,            // Trace.TraceInformation
+            Warning = 2,                // Trace.TraceWarning
+            Error = 3                   // Trace.TraceError
+        }
+
+        private void WriteTrace(
+            IntPtr self,
+            TraceType type,
+            string message)
+        {
+            switch (type)
+            {
+                case TraceType.Information:
+                    Trace.TraceInformation(message);
+                    break;
+                case TraceType.Warning:
+                    Trace.TraceWarning(message);
+                    break;
+                case TraceType.Error:
+                    Trace.TraceError(message);
+                    break;
+                default:
+                    break;
+            }
+        }
+
         #endregion
 
         #region IHost delegates
@@ -83,6 +116,12 @@ namespace SOS.Hosting
         private delegate int GetCurrentTargetDelegate(
             [In] IntPtr self,
             [Out] out IntPtr target);
+
+        [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+        private delegate void WriteTraceDelegate(
+            [In] IntPtr self,
+            [In] TraceType type,
+            [In, MarshalAs(UnmanagedType.LPStr)] string message);
 
         #endregion
     }

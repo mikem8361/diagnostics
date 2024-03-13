@@ -116,24 +116,6 @@ namespace SOS.Hosting {
             return ConsoleService.CancellationToken.IsCancellationRequested ? HResult.S_OK : HResult.E_FAIL;
         }
 
-        internal int OutputVaList(
-            IntPtr self,
-            DEBUG_OUTPUT mask,
-            string format,
-            IntPtr va_list)
-        {
-            try
-            {
-                // The text has already been formated by sos
-                ConsoleService.Write(format);
-            }
-            catch (OperationCanceledException)
-            {
-                // ctrl-c interrupted the command
-            }
-            return HResult.S_OK;
-        }
-
         internal unsafe int GetDebuggeeType(
             IntPtr self,
             DEBUG_CLASS* debugClass,

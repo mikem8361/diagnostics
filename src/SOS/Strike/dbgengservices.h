@@ -6,9 +6,10 @@
 #include <unknwn.h>
 #include <rpc.h>
 #include <dbgeng.h>
-#include "debuggerservices.h"
-#include "remotememoryservice.h"
-#include "extensions.h"
+#include <debuggerservices.h>
+#include <outputservice.h>
+#include <remotememoryservice.h>
+#include <extensions.h>
 
 #define VER_PLATFORM_UNIX 10 
 
@@ -18,7 +19,7 @@ class IMachine;
 extern "C" {
 #endif
 
-class DbgEngServices : public IDebuggerServices, public IRemoteMemoryService, public IDebugEventCallbacks
+class DbgEngServices : public IDebuggerServices, public IOutputService, public IRemoteMemoryService, public IDebugEventCallbacks
 {
 private:
     LONG m_ref;
@@ -80,10 +81,6 @@ public:
         PCSTR help,
         PCSTR aliases[],
         int numberOfAliases);
-
-    void STDMETHODCALLTYPE OutputString(
-        ULONG mask,
-        PCSTR message);
 
     HRESULT STDMETHODCALLTYPE ReadVirtual(
         ULONG64 offset,
@@ -202,15 +199,6 @@ public:
         PCSTR fieldName,
         PULONG offset);
 
-    ULONG STDMETHODCALLTYPE GetOutputWidth();
-
-    HRESULT STDMETHODCALLTYPE SupportsDml(
-        PULONG supported);
-
-    void STDMETHODCALLTYPE OutputDmlString(
-        ULONG mask,
-        PCSTR message);
-
     HRESULT STDMETHODCALLTYPE AddModuleSymbol(
         void* param,
         const char* symbolFileName);
@@ -231,6 +219,18 @@ public:
     HRESULT STDMETHODCALLTYPE ExecuteHostCommand(
         PCSTR commandLine,
         PEXECUTE_COMMAND_OUTPUT_CALLBACK callback);
+
+    //----------------------------------------------------------------------------
+    // IOutputServices (global)
+    //----------------------------------------------------------------------------
+
+    ULONG STDMETHODCALLTYPE GetOutputWidth();
+
+    ULONG STDMETHODCALLTYPE SupportsDml();
+
+    void STDMETHODCALLTYPE OutputString(
+         OutputType outputType,
+         PCSTR message);
 
     //----------------------------------------------------------------------------
     // IRemoteMemoryService
@@ -363,7 +363,21 @@ public:
     HRESULT STDMETHODCALLTYPE
     Output(ULONG mask, PCSTR text)
     {
-        m_callback(mask, text);
+        IOutputService::OutputType outputType = IOutputService::OutputType::Normal;
+        switch (mask)
+        {
+            case DEBUG_OUTPUT_ERROR:
+                outputType = IOutputService::OutputType::Error;
+                break;
+            case DEBUG_OUTPUT_WARNING:
+                outputType = IOutputService::OutputType::Warning;
+                break;
+            case DEBUG_OUTPUT_NORMAL:
+            case DEBUG_OUTPUT_VERBOSE:
+            default:
+                break;
+        }
+        m_callback(outputType, text);
         return S_OK;
     }
 

@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="extensions.cpp" />
+    <ClCompile Include="hostcoreclr.cpp" />
+    <ClCompile Include="hostdesktop.cpp" />
+    <ClCompile Include="fallback\datatarget.cpp">
+      <Filter>fallback</Filter>
+    </ClCompile>
+    <ClCompile Include="fallback\hostimpl.cpp">
+      <Filter>fallback</Filter>
+    </ClCompile>
+    <ClCompile Include="fallback\runtimeimpl.cpp">
+      <Filter>fallback</Filter>
+    </ClCompile>
+    <ClCompile Include="fallback\targetimpl.cpp">
+      <Filter>fallback</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="extensions.h" />
+    <ClInclude Include="fallback\datatarget.h">
+      <Filter>fallback</Filter>
+    </ClInclude>
+    <ClInclude Include="fallback\cordebugdatatarget.h">
+      <Filter>fallback</Filter>
+    </ClInclude>
+    <ClInclude Include="fallback\hostimpl.h">
+      <Filter>fallback</Filter>
+    </ClInclude>
+    <ClInclude Include="fallback\runtimeimpl.h">
+      <Filter>fallback</Filter>
+    </ClInclude>
+    <ClInclude Include="fallback\targetimpl.h">
+      <Filter>fallback</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="fallback">
+      <UniqueIdentifier>{fe98065f-b2ff-40e0-80ed-55507880f9fc}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

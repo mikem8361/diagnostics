@@ -7,7 +7,7 @@
 
 #define CACHE_SIZE  4096
 
-class LLDBServices : public ILLDBServices, public ILLDBServices2, public IDebuggerServices
+class LLDBServices : public ILLDBServices, public IDebuggerServices, public IOutputService
 {
 private:
     LONG m_ref;
@@ -86,8 +86,6 @@ public:
     // ILLDBServices
     //----------------------------------------------------------------------------
 
-    PCSTR STDMETHODCALLTYPE GetCoreClrDirectory();
-
     ULONG64 STDMETHODCALLTYPE GetExpression(
         PCSTR exp);
 
@@ -101,33 +99,37 @@ public:
 
     HRESULT STDMETHODCALLTYPE ClearExceptionCallback();
 
+    HRESULT STDMETHODCALLTYPE LoadNativeSymbols(
+        bool runtimeOnly,
+        PFN_MODULE_LOAD_CALLBACK callback);
+
+    HRESULT STDMETHODCALLTYPE AddModuleSymbol(
+        void* param, 
+        const char* symbolFileName);
+
+    HRESULT STDMETHODCALLTYPE GetModuleInfo(
+        ULONG index,
+        PULONG64 pBase,
+        PULONG64 pSize,
+        PULONG pTimestamp,
+        PULONG pChecksum);
+
+    HRESULT STDMETHODCALLTYPE GetModuleVersionInformation(
+        ULONG index,
+        ULONG64 base,
+        PCSTR item,
+        PVOID buffer,
+        ULONG bufferSize,
+        PULONG versionInfoSize);
+
+    HRESULT STDMETHODCALLTYPE SetRuntimeLoadedCallback(
+        PFN_RUNTIME_LOADED_CALLBACK callback);
+
     //----------------------------------------------------------------------------
     // IDebugControl2
     //----------------------------------------------------------------------------
 
     HRESULT STDMETHODCALLTYPE GetInterrupt();
-
-    HRESULT STDMETHODCALLTYPE Output(
-        ULONG mask,
-        PCSTR format,
-        ...);
-
-    HRESULT STDMETHODCALLTYPE OutputVaList(
-        ULONG mask,
-        PCSTR format,
-        va_list args);
-
-    HRESULT STDMETHODCALLTYPE ControlledOutput(
-        ULONG outputControl,
-        ULONG mask,
-        PCSTR format,
-        ...);
-
-    HRESULT STDMETHODCALLTYPE ControlledOutputVaList(
-        ULONG outputControl,
-        ULONG mask,
-        PCSTR format,
-        va_list args);
 
     HRESULT STDMETHODCALLTYPE GetDebuggeeType(
         PULONG debugClass,
@@ -315,36 +317,6 @@ public:
         PULONG64 offset);
 
     //----------------------------------------------------------------------------
-    // ILLDBServices2
-    //----------------------------------------------------------------------------
-
-    HRESULT STDMETHODCALLTYPE LoadNativeSymbols(
-        bool runtimeOnly,
-        PFN_MODULE_LOAD_CALLBACK callback);
-
-    HRESULT STDMETHODCALLTYPE AddModuleSymbol(
-        void* param, 
-        const char* symbolFileName);
-
-    HRESULT STDMETHODCALLTYPE GetModuleInfo(
-        ULONG index,
-        PULONG64 pBase,
-        PULONG64 pSize,
-        PULONG pTimestamp,
-        PULONG pChecksum);
-
-    HRESULT STDMETHODCALLTYPE GetModuleVersionInformation(
-        ULONG index,
-        ULONG64 base,
-        PCSTR item,
-        PVOID buffer,
-        ULONG bufferSize,
-        PULONG versionInfoSize);
-
-    HRESULT STDMETHODCALLTYPE SetRuntimeLoadedCallback(
-        PFN_RUNTIME_LOADED_CALLBACK callback);
-
-    //----------------------------------------------------------------------------
     // IDebuggerServices
     //----------------------------------------------------------------------------
 
@@ -356,10 +328,6 @@ public:
         PCSTR help,
         PCSTR aliases[],
         int numberOfAliases);
-
-    void STDMETHODCALLTYPE OutputString(
-        ULONG mask,
-        PCSTR str);
 
     HRESULT STDMETHODCALLTYPE GetNumberThreads(
         PULONG number);
@@ -407,14 +375,6 @@ public:
         PCSTR fieldName,
         PULONG offset);
 
-    ULONG STDMETHODCALLTYPE GetOutputWidth();
-
-    HRESULT STDMETHODCALLTYPE SupportsDml(PULONG supported);
-
-    void STDMETHODCALLTYPE OutputDmlString(
-        ULONG mask,
-        PCSTR str);
-
     void STDMETHODCALLTYPE FlushCheck();
 
     HRESULT STDMETHODCALLTYPE ExecuteHostCommand(
@@ -425,16 +385,39 @@ public:
         BOOL* dacSignatureVerificationEnabled);
 
     //----------------------------------------------------------------------------
-    // LLDBServices (internal)
+    // IOutputServices (global)
+    //----------------------------------------------------------------------------
+
+    ULONG STDMETHODCALLTYPE GetOutputWidth();
+
+    ULONG STDMETHODCALLTYPE SupportsDml();
+
+    void STDMETHODCALLTYPE OutputString(
+         IOutputService::OutputType outputType,
+         PCSTR message);
+
+    //----------------------------------------------------------------------------
+    // Helper functions
     //----------------------------------------------------------------------------
 
     PCSTR GetPluginModuleDirectory();
 
-    lldb::SBCommand AddCommand(const char *name, lldb::SBCommandPluginInterface *impl, const char *help);
+    lldb::SBCommand AddCommand(
+        const char *name,
+        lldb::SBCommandPluginInterface *impl,
+        const char *help);
 
-    void AddManagedCommand(const char* name, const char* help);
+    void AddManagedCommand(
+        const char* name,
+        const char* help);
 
-    bool ExecuteCommand( const char* commandName, char** arguments, lldb::SBCommandReturnObject &result);
+    bool ExecuteCommand(
+        const char* commandName,
+        char** arguments,
+        lldb::SBCommandReturnObject &result);
 
-    HRESULT InternalOutputVaList(ULONG mask, PCSTR format, va_list args);
+    void Output(
+        IOutputService::OutputType type,
+        PCSTR format,
+        ...);
 };

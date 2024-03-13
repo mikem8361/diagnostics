@@ -23,11 +23,9 @@ extern "C" {
 struct IHost;
 
 /// <summary>
-/// IHostServices
-/// 
 /// Services from the managed extension infrastructure (SOS.Extensions) provides to the native 
 /// debugger (dbgeng/lldb) plugins (sos.dll, libsosplugin.*). Isn't presented when SOS is hosted
-/// by SOS.Hosting (i.e. dotnet-dump).
+/// by SOS.Hosting (i.e. dotnet-dump or VS).
 /// </summary>
 MIDL_INTERFACE("27B2CB8D-BDEE-4CBD-B6EF-75880D76D46F")
 IHostServices : public IUnknown
@@ -60,7 +58,8 @@ public:
     /// </summary>
     /// <param name="processId">process id or 0 if none</param>
     /// <returns>error code</returns>
-    virtual HRESULT STDMETHODCALLTYPE UpdateTarget(ULONG processId) = 0;
+    virtual HRESULT STDMETHODCALLTYPE UpdateTarget(
+        ULONG processId) = 0;
 
     /// <summary>
     /// Flushes the target instance.

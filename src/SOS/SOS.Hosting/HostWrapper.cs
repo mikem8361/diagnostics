@@ -28,6 +28,7 @@ namespace SOS.Hosting
             builder.AddMethod(new GetServiceDelegate(ServiceWrapper.GetService));
             builder.AddMethod(new GetCurrentTargetDelegate(GetCurrentTarget));
             builder.AddMethod(new GetTempDirectoryDelegate(GetTempDirectory));
+            builder.AddMethod(new WriteTraceDelegate(WriteTrace));
             IHost = builder.Complete();
 
             AddRef();
@@ -66,10 +67,47 @@ namespace SOS.Hosting
             return HResult.S_OK;
         }
 
+        /// <summary>
+        /// Returns the unique temporary directory for this debug session
+        /// </summary>
         private string GetTempDirectory(
             IntPtr self)
         {
             return _host.GetTempDirectory();
+        }
+
+        /// <summary>
+        /// Must match IHost::TraceType enum in host.h
+        /// </summary>
+        private enum TraceType
+        {
+            Information = 1,            // Trace.TraceInformation
+            Warning = 2,                // Trace.TraceWarning
+            Error = 3                   // Trace.TraceError
+        }
+
+        /// <summary>
+        /// Native code logging support
+        /// </summary>
+        private void WriteTrace(
+            IntPtr self,
+            TraceType type,
+            string message)
+        {
+            switch (type)
+            {
+                case TraceType.Information:
+                    Trace.TraceInformation(message);
+                    break;
+                case TraceType.Warning:
+                    Trace.TraceWarning(message);
+                    break;
+                case TraceType.Error:
+                    Trace.TraceError(message);
+                    break;
+                default:
+                    break;
+            }
         }
 
         #endregion
@@ -95,6 +133,12 @@ namespace SOS.Hosting
         [return: MarshalAs(UnmanagedType.LPStr)]
         private delegate string GetTempDirectoryDelegate(
             [In] IntPtr self);
+
+        [UnmanagedFunctionPointer(CallingConvention.Winapi)]
+        private delegate void WriteTraceDelegate(
+            [In] IntPtr self,
+            [In] TraceType type,
+            [In, MarshalAs(UnmanagedType.LPStr)] string message);
 
         #endregion
     }

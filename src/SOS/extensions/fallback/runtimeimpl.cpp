@@ -1,23 +1,16 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#include "strike.h"
-#include "util.h"
-#include <string>
-#include <corhdr.h>
-#include <cor.h>
-#include <clrdata.h>
-#include <dbghelp.h>
-#include <cordebug.h>
-#include <xcordebug.h>
+#include <extensions.h>
+#include <target.h>
 #include <mscoree.h>
 #include <psapi.h>
+#include <runtimeinfo.h>
 #include <clrinternal.h>
 #include <metahost.h>
 #include "runtimeimpl.h"
 #include "datatarget.h"
 #include "cordebugdatatarget.h"
-#include "runtimeinfo.h"
 
 #ifdef FEATURE_PAL
 #include <sys/stat.h>
@@ -27,27 +20,31 @@
 
 #define CORDBG_E_NO_IMAGE_AVAILABLE EMAKEHR(0x1c64)
 
+// BUGBUG
+#define ExtErr
+#define ExtDbgOut
+
 typedef HRESULT (STDAPICALLTYPE  *OpenVirtualProcessImpl2FnPtr)(ULONG64 clrInstanceId, 
-    IUnknown * pDataTarget,
+    IUnknown* pDataTarget,
     LPCWSTR pDacModulePath,
     CLR_DEBUGGING_VERSION * pMaxDebuggerSupportedVersion,
     REFIID riid,
-    IUnknown ** ppInstance,
+    void** ppInstance,
     CLR_DEBUGGING_PROCESS_FLAGS * pdwFlags);
 
 typedef HRESULT (STDAPICALLTYPE  *OpenVirtualProcessImplFnPtr)(ULONG64 clrInstanceId, 
-    IUnknown * pDataTarget,
+    IUnknown* pDataTarget,
     HMODULE hDacDll,
     CLR_DEBUGGING_VERSION * pMaxDebuggerSupportedVersion,
     REFIID riid,
-    IUnknown ** ppInstance,
+    void** ppInstance,
     CLR_DEBUGGING_PROCESS_FLAGS * pdwFlags);
 
 typedef HRESULT (STDAPICALLTYPE  *OpenVirtualProcess2FnPtr)(ULONG64 clrInstanceId, 
     IUnknown * pDataTarget,
     HMODULE hDacDll,
     REFIID riid,
-    IUnknown ** ppInstance,
+    void** ppInstance,
     CLR_DEBUGGING_PROCESS_FLAGS * pdwFlags);
 
 typedef HMODULE (STDAPICALLTYPE  *LoadLibraryWFnPtr)(LPCWSTR lpLibFileName);
@@ -64,26 +61,19 @@ extern "C" bool TryGetSymbolWithCallback(
 bool ReaderReadMemory(void* address, void* buffer, size_t size)
 {
     ULONG read = 0;
-    return SUCCEEDED(g_ExtData->ReadVirtual((ULONG64)address, buffer, (ULONG)size, &read));
+    return SUCCEEDED(GetDebuggerServices()->ReadVirtual((ULONG64)address, buffer, (ULONG)size, &read));
 }
 
 /**********************************************************************\
  * Search all the modules in the process for the single-file host
 \**********************************************************************/
-static HRESULT GetSingleFileInfo(ITarget* target, PULONG pModuleIndex, PULONG64 pModuleAddress, RuntimeInfo** ppRuntimeInfo)
+static HRESULT GetSingleFileInfo(IDebuggerServices* debuggerServices, PULONG pModuleIndex, PULONG64 pModuleAddress, RuntimeInfo** ppRuntimeInfo)
 {
     _ASSERTE(pModuleIndex != nullptr);
     _ASSERTE(pModuleAddress != nullptr);
 
-    // No debugger service instance means that SOS is hosted by dotnet-dump,
-    // which does runtime enumeration in CLRMD. We should never get here.
-    IDebuggerServices* debuggerServices = GetDebuggerServices();
-    if (debuggerServices == nullptr) {
-        return E_NOINTERFACE;
-    }
-
     ULONG loaded, unloaded;
-    HRESULT hr = g_ExtSymbols->GetNumberModules(&loaded, &unloaded);
+    HRESULT hr = debuggerServices->GetNumberModules(&loaded, &unloaded);
     if (FAILED(hr)) {
         return hr;
     }
@@ -92,13 +82,18 @@ static HRESULT GetSingleFileInfo(ITarget* target, PULONG pModuleIndex, PULONG64 
     for (ULONG index = 0; index < loaded; index++)
     {
         ULONG64 baseAddress;
-        hr = g_ExtSymbols->GetModuleByIndex(index, &baseAddress);
+        hr = debuggerServices->GetModuleByIndex(index, &baseAddress);
+        if (FAILED(hr)) {
+            return hr;
+        }
+        IDebuggerServices::OperatingSystem operatingSystem;
+        hr = debuggerServices->GetOperatingSystem(&operatingSystem);
         if (FAILED(hr)) {
             return hr;
         }
         ULONG64 symbolAddress;
-        if (target->GetOperatingSystem() == ITarget::OperatingSystem::Linux ||
-            target->GetOperatingSystem() == ITarget::OperatingSystem::OSX)
+        if (operatingSystem == IDebuggerServices::OperatingSystem::Linux ||
+            operatingSystem == IDebuggerServices::OperatingSystem::OSX)
         {
             if (!::TryGetSymbolWithCallback(ReaderReadMemory, baseAddress, symbolName, &symbolAddress)) {
                 continue;
@@ -113,11 +108,11 @@ static HRESULT GetSingleFileInfo(ITarget* target, PULONG pModuleIndex, PULONG64 
         }
         ULONG read = 0;
         ArrayHolder<BYTE> buffer = new BYTE[sizeof(RuntimeInfo)];
-        hr = g_ExtData->ReadVirtual(symbolAddress, buffer, sizeof(RuntimeInfo), &read);
+        hr = debuggerServices->ReadVirtual(symbolAddress, buffer, sizeof(RuntimeInfo), &read);
         if (FAILED(hr)) {
             return hr;
         }
-        if (strcmp(((RuntimeInfo*)buffer.GetPtr())->Signature, "DotNetRuntimeInfo") != 0) {
+        if (strcmp(((RuntimeInfo*)buffer.GetPtr())->Signature, RUNTIME_INFO_SIGNATURE) != 0) {
             break;
         }
         if (((RuntimeInfo*)buffer.GetPtr())->Version <= 0) {
@@ -135,7 +130,7 @@ static HRESULT GetSingleFileInfo(ITarget* target, PULONG pModuleIndex, PULONG64 
 /**********************************************************************\
  * Creates a desktop or .NET Core instance of the runtime class
 \**********************************************************************/
-HRESULT Runtime::CreateInstance(ITarget* target, RuntimeConfiguration configuration, Runtime **ppRuntime)
+HRESULT Runtime::CreateInstance(ITarget* target, IDebuggerServices* debuggerServices, RuntimeConfiguration configuration, Runtime **ppRuntime)
 {
     PCSTR runtimeModuleName = ::GetRuntimeModuleName(configuration);
     ULONG moduleIndex = 0;
@@ -147,30 +142,20 @@ HRESULT Runtime::CreateInstance(ITarget* target, RuntimeConfiguration configurat
     if (*ppRuntime == nullptr)
     {
         // Check if the normal runtime module (coreclr.dll, libcoreclr.so, etc.) is loaded
-        hr = g_ExtSymbols->GetModuleByModuleName(runtimeModuleName, 0, &moduleIndex, &moduleAddress);
+        hr = debuggerServices->GetModuleByModuleName(runtimeModuleName, 0, &moduleIndex, &moduleAddress);
         if (FAILED(hr))
         {
             // If the standard runtime module isn't loaded, try looking for a single-file program
             if (configuration != IRuntime::WindowsDesktop)
             {
-                hr = GetSingleFileInfo(target, &moduleIndex, &moduleAddress, &runtimeInfo);
+                hr = GetSingleFileInfo(debuggerServices, &moduleIndex, &moduleAddress, &runtimeInfo);
             }
         }
 
         // If the previous operations were successful, get the size of the runtime module
         if (SUCCEEDED(hr))
         {
-#ifdef FEATURE_PAL
-            hr = g_ExtServices2->GetModuleInfo(moduleIndex, nullptr, &moduleSize, nullptr, nullptr);
-#else
-            _ASSERTE(moduleAddress != 0);
-            DEBUG_MODULE_PARAMETERS params;
-            hr = g_ExtSymbols->GetModuleParameters(1, &moduleAddress, 0, &params);
-            if (SUCCEEDED(hr))
-            {
-                moduleSize = params.Size;
-            }
-#endif
+            hr = debuggerServices->GetModuleInfo(moduleIndex, nullptr, &moduleSize, nullptr, nullptr);
         }
 
         // If the previous operations were successful, create the Runtime instance
@@ -178,11 +163,11 @@ HRESULT Runtime::CreateInstance(ITarget* target, RuntimeConfiguration configurat
         {
             if (moduleSize > 0) 
             {
-                *ppRuntime = new Runtime(target, configuration, moduleIndex, moduleAddress, moduleSize, runtimeInfo);
+                *ppRuntime = new Runtime(target, debuggerServices, configuration, moduleIndex, moduleAddress, moduleSize, runtimeInfo);
             }
             else 
             {
-                ExtOut("Runtime (%s) module size == 0\n", runtimeModuleName);
+                ExtDbgOut("Runtime (%s) module size == 0\n", runtimeModuleName);
                 hr = E_INVALIDARG;
             }
         }
@@ -193,9 +178,10 @@ HRESULT Runtime::CreateInstance(ITarget* target, RuntimeConfiguration configurat
 /**********************************************************************\
  * Constructor
 \**********************************************************************/
-Runtime::Runtime(ITarget* target, RuntimeConfiguration configuration, ULONG index, ULONG64 address, ULONG64 size, RuntimeInfo* runtimeInfo) :
+Runtime::Runtime(ITarget* target, IDebuggerServices* debuggerServices, RuntimeConfiguration configuration, ULONG index, ULONG64 address, ULONG64 size, RuntimeInfo* runtimeInfo) :
     m_ref(1),
     m_target(target),
+    m_debuggerServices(debuggerServices),
     m_configuration(configuration),
     m_index(index),
     m_address(address),
@@ -213,7 +199,7 @@ Runtime::Runtime(ITarget* target, RuntimeConfiguration configuration, ULONG inde
     _ASSERTE(size != 0);
 
     ArrayHolder<char> szModuleName = new char[MAX_LONGPATH + 1];
-    HRESULT hr = g_ExtSymbols->GetModuleNames(index, 0, szModuleName, MAX_LONGPATH, NULL, NULL, 0, NULL, NULL, 0, NULL);
+    HRESULT hr = debuggerServices->GetModuleNames(index, 0, szModuleName, MAX_LONGPATH, NULL, NULL, 0, NULL, NULL, 0, NULL);
     if (SUCCEEDED(hr))
     {
         m_name = szModuleName.Detach();
@@ -408,7 +394,8 @@ LPCSTR Runtime::GetRuntimeDirectory()
         }
         // Parse off the file name
         char* runtimeDirectory = _strdup(m_name);
-        char* lastSlash = strrchr(runtimeDirectory, GetTargetDirectorySeparatorW());
+        char separator = m_target->GetOperatingSystem() == ITarget::OperatingSystem::Windows ? '\\' : '/';
+        char* lastSlash = strrchr(runtimeDirectory, separator);
         if (lastSlash != nullptr)
         {
             *lastSlash = '\0';
@@ -444,7 +431,7 @@ HRESULT Runtime::GetClrDataProcess(ClrDataProcessFlags flags, IXCLRDataProcess**
             FreeLibrary(hdac);
             return CORDBG_E_MISSING_DEBUGGER_EXPORTS;
         }
-        ICLRDataTarget *target = new DataTarget(GetModuleAddress());
+        ICLRDataTarget *target = new DataTarget(m_debuggerServices, GetModuleAddress());
         HRESULT hr = pfnCLRDataCreateInstance(__uuidof(IXCLRDataProcess), target, (void**)&m_clrDataProcess);
         if (FAILED(hr))
         {
@@ -476,7 +463,7 @@ HRESULT Runtime::GetCorDebugInterface(ICorDebugProcess** ppCorDebugProcess)
     {
         // ICorDebugProcess4 is currently considered a private experimental interface on ICorDebug, it might go away so
         // we need to be sure to handle its absence gracefully
-        ToRelease<ICorDebugProcess4> pProcess4 = NULL;
+        ReleaseHolder<ICorDebugProcess4> pProcess4 = NULL;
         if (SUCCEEDED(m_pCorDebugProcess->QueryInterface(__uuidof(ICorDebugProcess4), (void**)&pProcess4)))
         {
             // FLUSH_ALL is more expensive than PROCESS_RUNNING, but this allows us to be safe even if things
@@ -530,8 +517,8 @@ HRESULT Runtime::GetCorDebugInterface(ICorDebugProcess** ppCorDebugProcess)
     }
     CLR_DEBUGGING_VERSION clrDebuggingVersionRequested = {0, 4, 0, 0, 0};
     CLR_DEBUGGING_PROCESS_FLAGS clrDebuggingFlags = (CLR_DEBUGGING_PROCESS_FLAGS)0;
-    ToRelease<ICorDebugMutableDataTarget> pDataTarget = new CorDebugDataTarget;
-    ToRelease<IUnknown> pUnkProcess = nullptr;
+    ReleaseHolder<ICorDebugMutableDataTarget> pDataTarget = new CorDebugDataTarget(m_debuggerServices);
+    ReleaseHolder<IUnknown> pUnkProcess = nullptr;
 
     // Get access to the latest OVP implementation and call it
     OpenVirtualProcessImpl2FnPtr ovpFn = (OpenVirtualProcessImpl2FnPtr)GetProcAddress(hDbi, "OpenVirtualProcessImpl2");
@@ -616,9 +603,8 @@ HRESULT Runtime::GetCorDebugInterface(ICorDebugProcess** ppCorDebugProcess)
 HRESULT Runtime::GetEEVersion(VS_FIXEDFILEINFO* pFileInfo, char* fileVersionBuffer, int fileVersionBufferSizeInBytes)
 {
     _ASSERTE(pFileInfo);
-    _ASSERTE(g_ExtSymbols2 != nullptr);
 
-    HRESULT hr = g_ExtSymbols2->GetModuleVersionInformation(
+    HRESULT hr = m_debuggerServices->GetModuleVersionInformation(
         m_index, 0, "\\", pFileInfo, sizeof(VS_FIXEDFILEINFO), NULL);
 
     // 0.0.0.0 is not a valid version. This is sometime returned by windbg for Linux core dumps
@@ -633,7 +619,7 @@ HRESULT Runtime::GetEEVersion(VS_FIXEDFILEINFO* pFileInfo, char* fileVersionBuff
             fileVersionBuffer[0] = '\0';
         }
         // We can assume the English/CP_UNICODE lang/code page for the runtime modules
-        g_ExtSymbols2->GetModuleVersionInformation(
+        m_debuggerServices->GetModuleVersionInformation(
             m_index, 0, "\\StringFileInfo\\040904B0\\FileVersion", fileVersionBuffer, fileVersionBufferSizeInBytes, NULL);
     }
 
@@ -645,6 +631,7 @@ HRESULT Runtime::GetEEVersion(VS_FIXEDFILEINFO* pFileInfo, char* fileVersionBuff
 \**********************************************************************/
 void Runtime::DisplayStatus()
 {
+#if 0
     char current = g_pRuntime == this ? '*' : ' ';
     ExtOut("%c%s runtime at %08llx size %08llx\n", current, GetRuntimeConfigurationName(GetRuntimeConfiguration()), m_address, m_size);
     if (m_runtimeInfo != nullptr) {
@@ -662,4 +649,5 @@ void Runtime::DisplayStatus()
     if (m_dbiFilePath != nullptr) {
         ExtOut("    DBI file path: %s\n", m_dbiFilePath);
     }
+#endif
 }

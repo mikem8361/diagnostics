@@ -36,7 +36,7 @@ namespace SOS.Hosting.DbgEng
             builder.AddMethod(new InputDelegate((self, buffer, bufferSize, inputSize) => DebugClient.NotImplemented));
             builder.AddMethod(new ReturnInputDelegate((self, buffer) => DebugClient.NotImplemented));
             builder.AddMethod(new OutputDelegate((self, mask, format) => DebugClient.NotImplemented));
-            builder.AddMethod(new OutputVaListDelegate(soshost.OutputVaList));
+            builder.AddMethod(new OutputVaListDelegate((IntPtr self, DEBUG_OUTPUT mask, string format, IntPtr va_list) => DebugClient.NotImplemented));
             builder.AddMethod(new ControlledOutputDelegate((self, outputControl, mask, format) => DebugClient.NotImplemented));
             builder.AddMethod(new ControlledOutputVaListDelegate((self, outputControl, mask, format, valist) => DebugClient.NotImplemented));
             builder.AddMethod(new OutputPromptDelegate((self, outputControl, format) => DebugClient.NotImplemented));

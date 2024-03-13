@@ -76,7 +76,7 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)src\SOS\inc;$(SolutionDir)src\SOS\extensions;$(SolutionDir)src\shared\gcdump;$(SolutionDir)src\shared\inc;$(SolutionDir)src\shared\pal\prebuilt\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)src\SOS\inc;$(SolutionDir)src\SOS\extensions;$(SolutionDir)src\SOS\extensions\fallback;$(SolutionDir)src\shared\gcdump;$(SolutionDir)src\shared\inc;$(SolutionDir)src\shared\pal\prebuilt\inc;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <AdditionalOptions>%(AdditionalOptions) /d2Zi+ /Zm200 /ZH:SHA_256 /source-charset:utf-8 /homeparams</AdditionalOptions>
       <AssemblerListingLocation>Debug/</AssemblerListingLocation>
       <BufferSecurityCheck>true</BufferSecurityCheck>
@@ -307,11 +307,20 @@
     </Lib>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="fallback\datatarget.cpp" />
+    <ClCompile Include="fallback\hostimpl.cpp" />
+    <ClCompile Include="fallback\runtimeimpl.cpp" />
+    <ClCompile Include="fallback\targetimpl.cpp" />
     <ClCompile Include="extensions.cpp" />
     <ClCompile Include="hostcoreclr.cpp" />
     <ClCompile Include="hostdesktop.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="fallback\cordebugdatatarget.h" />
+    <ClInclude Include="fallback\datatarget.h" />
+    <ClInclude Include="fallback\hostimpl.h" />
+    <ClInclude Include="fallback\runtimeimpl.h" />
+    <ClInclude Include="fallback\targetimpl.h" />
     <ClInclude Include="extensions.h" />
   </ItemGroup>
   <ItemGroup>

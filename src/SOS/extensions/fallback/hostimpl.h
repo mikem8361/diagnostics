@@ -3,7 +3,9 @@
 
 #pragma once
 
-#include "host.h"
+#include <extensions.h>
+
+class Target;
 
 //----------------------------------------------------------------------------
 // Local implementation of IHost
@@ -12,14 +14,19 @@ class Host : public IHost
 {
 private:
     LONG m_ref;
+    Target* m_target;
+    IDebuggerServices* m_debuggerServices;
 
     static Host* s_host;
 
-    Host();
+public:
+    Host(IDebuggerServices* debuggerServices);
     virtual ~Host();
 
-public:
-    static IHost* GetInstance();
+#ifndef FEATURE_PAL
+    static bool SwitchRuntime(bool desktop);
+#endif
+    static void DisplayStatus();
 
     //----------------------------------------------------------------------------
     // IUnknown
@@ -42,4 +49,6 @@ public:
     HRESULT STDMETHODCALLTYPE GetService(REFIID serviceId, PVOID* ppService);
 
     HRESULT STDMETHODCALLTYPE GetCurrentTarget(ITarget** ppTarget);
+
+    void STDMETHODCALLTYPE WriteTrace(TraceType type, PCSTR message);
 };

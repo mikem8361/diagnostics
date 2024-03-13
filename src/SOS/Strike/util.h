@@ -402,7 +402,7 @@ private:
 
 size_t CountHexCharacters(CLRDATA_ADDRESS val);
 
-HRESULT OutputVaList(ULONG mask, PCSTR format, va_list args);
+void OutputVaList(IOutputService::OutputType type, PCSTR format, va_list args);
 
 // Normal output.
 void DMLOut(PCSTR format, ...);         /* Prints out DML strings. */
@@ -1734,11 +1734,6 @@ BOOL IsObjectArray (DacpObjectData *pData);
 BOOL IsDerivedFrom(CLRDATA_ADDRESS mtObj, __in_z LPCWSTR baseString);
 BOOL IsDerivedFrom(CLRDATA_ADDRESS mtObj, DWORD_PTR modulePtr, mdTypeDef typeDef);
 BOOL TryGetMethodDescriptorForDelegate(CLRDATA_ADDRESS delegateAddr, CLRDATA_ADDRESS* pMD);
-
-#ifdef FEATURE_PAL
-void FlushMetadataRegions();
-HRESULT GetMetadataMemory(CLRDATA_ADDRESS address, ULONG32 bufferSize, BYTE* buffer);
-#endif
 
 /* Returns a list of all modules in the process.
  * Params:

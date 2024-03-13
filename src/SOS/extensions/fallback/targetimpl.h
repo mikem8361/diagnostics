@@ -3,7 +3,8 @@
 
 #pragma once
 
-#include "target.h"
+#include <extensions.h>
+#include <target.h>
 #include "runtimeimpl.h"
 
 extern bool IsWindowsTarget();
@@ -16,50 +17,21 @@ class Target : public ITarget
 private:
     LONG m_ref;
     LPCSTR m_tmpPath;
+    IDebuggerServices* m_debuggerServices;
 #ifndef FEATURE_PAL
     Runtime* m_desktop;
 #endif
     Runtime* m_netcore;
 
-    static Target* s_target;
-
-#ifndef FEATURE_PAL
-    bool SwitchRuntimeInstance(bool desktop);
-#endif
-    void DisplayStatusInstance();
-
-    Target();
+public:
+    Target(IDebuggerServices* debuggerServices);
     virtual ~Target();
 
-public:
-    static ITarget* GetInstance();
-
     HRESULT CreateInstance(IRuntime** ppRuntime);
-
 #ifndef FEATURE_PAL
-    static bool SwitchRuntime(bool desktop)
-    {
-        GetInstance();
-        _ASSERTE(s_target != nullptr);
-        return s_target->SwitchRuntimeInstance(desktop);
-    }
+    bool SwitchRuntime(bool desktop);
 #endif
-
-    static void DisplayStatus()
-    {
-        if (s_target != nullptr) 
-        {
-            s_target->DisplayStatusInstance();
-        }
-    }
-
-    static void CleanupTarget()
-    {
-        if (s_target != nullptr)
-        {
-            s_target->Release();
-        }
-    }
+    void DisplayStatus();
 
     //----------------------------------------------------------------------------
     // IUnknown

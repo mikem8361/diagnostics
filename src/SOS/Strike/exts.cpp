@@ -25,7 +25,6 @@ PDEBUG_ADVANCED       g_ExtAdvanced;
 
 DebugClient*          g_DebugClient;
 ILLDBServices*        g_ExtServices;    
-ILLDBServices2*       g_ExtServices2;    
 bool                  g_palInitialized = false;
 
 #endif // FEATURE_PAL
@@ -65,15 +64,9 @@ ExtQuery(ILLDBServices* services)
     {
         return E_FAIL;
     }
+    HRESULT Status;
     g_ExtServices = services;
-
-    HRESULT Status = services->QueryInterface(__uuidof(ILLDBServices2), (void**)&g_ExtServices2);
-    if (FAILED(Status)) 
-    {
-        g_ExtServices = NULL;
-        return Status;
-    }
-    DebugClient* client = new DebugClient(services, g_ExtServices2);
+    DebugClient* client = new DebugClient(services);
     g_DebugClient = client;
 #endif
     SOS_ExtQueryFailGo(g_ExtControl, IDebugControl2);
@@ -261,7 +254,6 @@ ExtRelease(void)
     g_ExtClient = nullptr;
 #else 
     EXT_RELEASE(g_DebugClient);
-    EXT_RELEASE(g_ExtServices2);
     g_ExtServices = nullptr;
 #endif // FEATURE_PAL
     ReleaseTarget();

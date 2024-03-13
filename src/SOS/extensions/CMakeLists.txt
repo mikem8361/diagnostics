@@ -3,10 +3,15 @@ set(CMAKE_INCLUDE_CURRENT_DIR ON)
 include(configure.cmake)
 
 include_directories(${ROOT_DIR}/src/SOS/inc)
+include_directories(fallback)
 
 set(SOURCES
     hostcoreclr.cpp
     extensions.cpp
+    fallback/datatarget.cpp
+    fallback/hostimpl.cpp
+    fallback/targetimpl.cpp
+    fallback/runtimeimpl.cpp
 )
 
 if(WIN32 AND NOT CLR_CMAKE_HOST_ARCH_ARM64 AND NOT CLR_CMAKE_HOST_ARCH_ARM)

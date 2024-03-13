@@ -101,8 +101,8 @@ public:
 };
 
 bool
-sethostruntimeCommandInitialize(lldb::SBDebugger debugger)
+sethostruntimeCommandInitialize(LLDBServices* services)
 {
-    g_services->AddCommand("sethostruntime", new sethostruntimeCommand(), "Sets the path to the .NET Core runtime to use to host the managed code that runs as part of SOS");
+    services->AddCommand("sethostruntime", new sethostruntimeCommand(), "Sets the path to the .NET Core runtime to use to host the managed code that runs as part of SOS");
     return true;
 }

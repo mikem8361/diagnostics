@@ -111,7 +111,7 @@
         <Option Condition="'$(RuntimeVersionLatest)' != ''">
           <TestName>SOS.TestExtensions</TestName>
           <RuntimeFrameworkVersion>$(RuntimeVersionLatest)</RuntimeFrameworkVersion>
-          <DotNetDiagnosticExtensions>$(RootBinDir)\bin\TestExtension\$(TargetConfiguration)\netstandard2.0\TestExtension.dll</DotNetDiagnosticExtensions>
+          <DotNetDiagnosticExtensions>$(RootBinDir)\bin\TestExtension\$(TargetConfiguration)\netstandard2.0\TestExtension.dll;</DotNetDiagnosticExtensions>
           <Options>
             <Option>
               <SetHostRuntime>$(DotNetRoot)/shared/Microsoft.NETCore.App/$(RuntimeFrameworkVersion)</SetHostRuntime>
@@ -211,6 +211,7 @@
         </Option>
       </Options>
 
+      <DotNetDiagnosticExtensions>$(DotNetDiagnosticExtensions)C:\ssd\dotnet-diagnostics-internal-components\artifacts\bin\Microsoft.Diagnostics.DataContractReader.Extension\Debug\netstandard2.0\Microsoft.Diagnostics.DataContractReader.Extension.dll</DotNetDiagnosticExtensions>
       <FrameworkVersion Condition="'$(FrameworkVersion)' == ''">$(RuntimeFrameworkVersion)</FrameworkVersion>
       <RuntimeSymbolsPath>$(DotNetRoot)\shared\Microsoft.NETCore.App\$(RuntimeFrameworkVersion)</RuntimeSymbolsPath>
 

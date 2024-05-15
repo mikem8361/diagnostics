@@ -171,6 +171,7 @@
             SOS.WebApp3 and SOS.DualRuntimes (runs on 3.1 and latest aspnetcore)
           -->
         <Option Condition="'$(TestWebApp3)' == 'true'">
+          <DebuggeeBuildProcess>cli</DebuggeeBuildProcess>
           <Options>
             <Option>
               <TestName>SOS.WebApp3</TestName>
@@ -184,7 +185,6 @@
           </Options>
           <Options>
             <Option Condition="'$(RuntimeLatestVersion)' != ''">
-              <DebuggeeBuildProcess>cli</DebuggeeBuildProcess>
               <DebuggeeBuildRoot>$(RootBinDir)\Debuggees\SingleFile</DebuggeeBuildRoot>
               <RuntimeFrameworkVersion>$(RuntimeLatestVersion)</RuntimeFrameworkVersion>
               <PublishSingleFile>true</PublishSingleFile>

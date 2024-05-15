@@ -149,6 +149,7 @@
       -->
     <Option Condition="'$(TestWebApp3)' == 'true'">
       <TestName>SOS.WebApp3</TestName>
+      <DebuggeeBuildProcess>cli</DebuggeeBuildProcess>
       <Options>
         <Option Condition="'$(AspNetCoreVersionLatest)' != ''">
           <RuntimeFrameworkVersion>$(RuntimeVersionLatest)</RuntimeFrameworkVersion>

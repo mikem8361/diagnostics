@@ -8,11 +8,6 @@
 
 void *g_sosHandle = nullptr;
 
-// If true, use the directory that libsosplugin is in to load 
-// libsos, otherwise (if false) use the libcoreclr module 
-// directory (legacy behavior).
-bool g_usePluginDirectory = true;
-
 class sosCommand : public lldb::SBCommandPluginInterface
 {
     const char *m_command;
@@ -99,36 +94,21 @@ public:
     {
         if (g_sosHandle == nullptr)
         {
-            if (g_usePluginDirectory)
+            const char *loadDirectory = g_services->GetPluginModuleDirectory();
+            if (loadDirectory != nullptr)
             {
-                const char *loadDirectory = g_services->GetPluginModuleDirectory();
-                if (loadDirectory != nullptr)
+                g_sosHandle = LoadModule(loadDirectory, MAKEDLLNAME_A("sos"));
+                if (g_sosHandle != nullptr)
                 {
-                    g_sosHandle = LoadModule(loadDirectory, MAKEDLLNAME_A("sos"));
-                    if (g_sosHandle != nullptr)
+                    InitializeFunc initializeFunc = (InitializeFunc)dlsym(g_sosHandle, SOSInitialize);
+                    if (initializeFunc)
                     {
-                        InitializeFunc initializeFunc = (InitializeFunc)dlsym(g_sosHandle, SOSInitialize);
-                        if (initializeFunc)
+                        HRESULT hr = initializeFunc(GetHost(), GetDebuggerServices());
+                        if (hr != S_OK)
                         {
-                            HRESULT hr = initializeFunc(GetHost(), GetDebuggerServices());
-                            if (hr != S_OK)
-                            {
-                                g_services->Output(IOutputService::OutputType::Error, SOSInitialize " failed %08x\n", hr);
-                            }
+                            g_services->Output(IOutputService::OutputType::Error, SOSInitialize " failed %08x\n", hr);
                         }
                     }
-                }
-            }
-            else
-            {
-                const char *loadDirectory = g_services->GetCoreClrDirectory();
-                if (loadDirectory != nullptr)
-                {
-                    // Load the DAC module first explicitly because SOS and DBI
-                    // have implicit references to the DAC's PAL.
-                    LoadModule(loadDirectory, MAKEDLLNAME_A("mscordaccore"));
-
-                    g_sosHandle = LoadModule(loadDirectory, MAKEDLLNAME_A("sos"));
                 }
             }
         }

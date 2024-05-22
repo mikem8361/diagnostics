@@ -31,7 +31,6 @@ namespace SOS.Hosting
 
             VTableBuilder builder = AddInterface(IID_ILLDBServices, validate: false);
 
-            builder.AddMethod(new GetCoreClrDirectoryDelegate(GetCoreClrDirectory));
             builder.AddMethod(new GetExpressionDelegate((self, expression) => SymbolServiceWrapper.GetExpressionValue(IntPtr.Zero, expression)));
             builder.AddMethod(new VirtualUnwindDelegate(VirtualUnwind));
             builder.AddMethod(new SetExceptionCallbackDelegate(SetExceptionCallback));
@@ -87,17 +86,6 @@ namespace SOS.Hosting
         }
 
         #region ILLDBServices
-
-        private string GetCoreClrDirectory(
-            IntPtr self)
-        {
-            IRuntime currentRuntime = _soshost.ContextService.GetCurrentRuntime();
-            if (currentRuntime is not null)
-            {
-                return Path.GetDirectoryName(currentRuntime.RuntimeModule.FileName);
-            }
-            return null;
-        }
 
         private int VirtualUnwind(
             IntPtr self,
@@ -202,11 +190,6 @@ namespace SOS.Hosting
         #endregion
 
         #region ILLDBServices delegates
-
-        [UnmanagedFunctionPointer(CallingConvention.Winapi)]
-        [return: MarshalAs(UnmanagedType.LPStr)]
-        private delegate string GetCoreClrDirectoryDelegate(
-            IntPtr self);
 
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]
         private delegate ulong GetExpressionDelegate(

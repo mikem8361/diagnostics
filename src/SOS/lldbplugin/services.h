@@ -86,8 +86,6 @@ public:
     // ILLDBServices
     //----------------------------------------------------------------------------
 
-    PCSTR STDMETHODCALLTYPE GetCoreClrDirectory();
-
     ULONG64 STDMETHODCALLTYPE GetExpression(
         PCSTR exp);
 

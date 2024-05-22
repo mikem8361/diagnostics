@@ -271,10 +271,6 @@ public:
     // ILLDBServices
     //----------------------------------------------------------------------------
 
-    // Returns the coreclr module directory found by lldb plugin 
-    // in the target process.
-    virtual PCSTR STDMETHODCALLTYPE GetCoreClrDirectory() = 0;
-
     // Evaluates a lldb expression into a value.
     virtual ULONG64 STDMETHODCALLTYPE GetExpression(
         /* [in] */ PCSTR exp) = 0;

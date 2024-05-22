@@ -42,8 +42,8 @@ namespace SOS.Extensions
         [StructLayout(LayoutKind.Sequential)]
         private readonly unsafe struct IOutputServiceVTable
         {
-            public readonly delegate* unmanaged[Stdcall]<IntPtr, uint> SupportsDml;
             public readonly delegate* unmanaged[Stdcall]<IntPtr, uint> GetOutputWidth;
+            public readonly delegate* unmanaged[Stdcall]<IntPtr, uint> SupportsDml;
             public readonly delegate* unmanaged[Stdcall]<IntPtr, OutputType, byte*, void> OutputString;
         }
     }

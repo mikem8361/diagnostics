@@ -17,7 +17,7 @@
 #define SOSInitialize "SOSInitializeByHost"
 
 typedef HRESULT (*CommandFunc)(ILLDBServices* services, const char* args);
-typedef HRESULT (*InitializeFunc)(IUnknown* punk, IDebuggerServices* debuggerServices);
+typedef HRESULT (*InitializeFunc)(IUnknown* punk, IDebuggerServices* debuggerServices, IOutputService* outputService);
 
 extern char *g_coreclrDirectory;
 extern LLDBServices* g_services;

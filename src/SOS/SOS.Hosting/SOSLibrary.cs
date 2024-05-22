@@ -40,7 +40,8 @@ namespace SOS.Hosting
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]
         private delegate int SOSInitializeDelegate(
             IntPtr IHost,
-            IntPtr IDebuggerServices);
+            IntPtr IDebuggerServices,
+            IntPtr IOutputService);
 
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]
         private delegate void SOSUninitializeDelegate();
@@ -153,7 +154,7 @@ namespace SOS.Hosting
                 {
                     throw new EntryPointNotFoundException($"Can not find SOS module initialization function: {SOSInitialize}");
                 }
-                int result = initializeFunc(_hostWrapper.IHost, IntPtr.Zero);
+                int result = initializeFunc(_hostWrapper.IHost, IntPtr.Zero, IntPtr.Zero);
                 if (result != 0)
                 {
                     throw new InvalidOperationException($"SOS initialization FAILED 0x{result:X8}");

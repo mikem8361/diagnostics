@@ -300,7 +300,7 @@ void InternalWriteTraceVaList(IHost::TraceType type, PCSTR format, va_list args)
     va_copy(argsCopy, args);
 
     // Try and format our string into a fixed buffer first and see if it fits
-    size_t length = vsnprintf(str, sizeof(str), format, args);
+    int length = vsnprintf(str, sizeof(str), format, args);
     if (length > 0)
     {
         if (length < sizeof(str))
@@ -336,7 +336,7 @@ void InternalOutputVaList(IOutputService::OutputType type, PCSTR format, va_list
     va_copy(argsCopy, args);
 
     // Try and format our string into a fixed buffer first and see if it fits
-    size_t length = vsnprintf(str, sizeof(str), format, args);
+    int length = vsnprintf(str, sizeof(str), format, args);
     if (length > 0)
     {
         if (length < sizeof(str))

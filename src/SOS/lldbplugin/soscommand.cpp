@@ -103,7 +103,7 @@ public:
                     InitializeFunc initializeFunc = (InitializeFunc)dlsym(g_sosHandle, SOSInitialize);
                     if (initializeFunc)
                     {
-                        HRESULT hr = initializeFunc(GetHost(), GetDebuggerServices());
+                        HRESULT hr = initializeFunc(GetHost(), GetDebuggerServices(), GetOutputService());
                         if (hr != S_OK)
                         {
                             g_services->Output(IOutputService::OutputType::Error, SOSInitialize " failed %08x\n", hr);

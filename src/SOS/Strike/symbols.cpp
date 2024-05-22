@@ -41,7 +41,7 @@ ISymUnmanagedBinder3 *g_pSymBinder = nullptr;
 /**********************************************************************\
  * Called when the managed host or plug-in loads/initializes SOS.
 \**********************************************************************/
-extern "C" HRESULT STDMETHODCALLTYPE SOSInitializeByHost(IUnknown* punk, IDebuggerServices* debuggerServices)
+extern "C" HRESULT STDMETHODCALLTYPE SOSInitializeByHost(IUnknown* punk, IDebuggerServices* debuggerServices, IOutputService* outputService)
 {
     IHost* host = nullptr;
     HRESULT hr;
@@ -53,7 +53,7 @@ extern "C" HRESULT STDMETHODCALLTYPE SOSInitializeByHost(IUnknown* punk, IDebugg
             return hr;
         }
     }
-    hr = SOSExtensions::Initialize(host, debuggerServices, nullptr);
+    hr = SOSExtensions::Initialize(host, debuggerServices, outputService);
     if (FAILED(hr)) {
         return hr;
     }

@@ -37,7 +37,7 @@ sethostruntimeCommandInitialize(LLDBServices* services);
 class PluginExtensions : public Extensions
 {
     PluginExtensions(LLDBServices* services) :
-        Extensions(services, services)
+        Extensions(static_cast<IDebuggerServices*>(services), static_cast<IOutputService*>(services))
     {
     }
 

@@ -589,9 +589,6 @@ DbgEngServices::OutputString(
         case IOutputService::OutputType::Warning:
             mask = DEBUG_OUTPUT_WARNING;
             break;
-        case IOutputService::OutputType::Verbose:
-            mask = DEBUG_OUTPUT_VERBOSE;
-            break;
         case IOutputService::OutputType::Dml:
             m_control->ControlledOutput(DEBUG_OUTCTL_AMBIENT_DML, DEBUG_OUTPUT_NORMAL, "%s", message);
             return;

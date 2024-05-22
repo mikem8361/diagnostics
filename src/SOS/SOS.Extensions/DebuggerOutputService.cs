@@ -13,16 +13,6 @@ namespace SOS.Extensions
 {
     public sealed unsafe class DebuggerOutputService : CallableCOMWrapper
     {
-        public enum OutputType
-        {
-            Normal = 0,
-            Error = 1,
-            Warning = 2,
-            Verbose = 3,
-            Dml = 4,        // Ignored if DML isn't supported or enabled.
-            Logging = 5,    // Used when logging to console is enabled. Allows the command output capture to ignore SOS logging output.
-        }
-
         private static Guid IID_IOutputService = new("30745290-DC07-4993-9B61-F6132CCEB663");
 
         private ref readonly IOutputServiceVTable VTable => ref Unsafe.AsRef<IOutputServiceVTable>(_vtable);

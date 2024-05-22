@@ -51,24 +51,6 @@ LLDBServices::~LLDBServices()
 {
 }
 
-IOutputService::OutputType
-GetOutputType(ULONG mask)
-{
-    switch (mask)
-    {
-        case DEBUG_OUTPUT_NORMAL:
-            return IOutputService::OutputType::Normal;
-        case DEBUG_OUTPUT_ERROR:
-            return IOutputService::OutputType::Error;
-        case DEBUG_OUTPUT_WARNING:
-            return IOutputService::OutputType::Warning;
-        case DEBUG_OUTPUT_VERBOSE:
-            return IOutputService::OutputType::Verbose;
-        default:
-            return IOutputService::OutputType::Normal;
-    }
-}
-
 //----------------------------------------------------------------------------
 // IUnknown
 //----------------------------------------------------------------------------

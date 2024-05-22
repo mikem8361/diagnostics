@@ -17,14 +17,14 @@ MIDL_INTERFACE("30745290-DC07-4993-9B61-F6132CCEB663")
 IOutputService : public IUnknown
 {
 public:
+    // Must match OutputType in Microsoft.Diagnostics.DebugServices
     enum OutputType
     {
         Normal          = 0,
         Error           = 1,
         Warning         = 2,
-        Verbose         = 3,
+        Logging         = 3,    // Used when logging to console is enabled. Allows the command output capture to ignore SOS logging output.
         Dml             = 4,    // Ignored if DML isn't supported or enabled.
-        Logging         = 5,    // Used when logging to console is enabled. Allows the command output capture to ignore SOS logging output.
     };
 
     virtual ULONG STDMETHODCALLTYPE GetOutputWidth() = 0;

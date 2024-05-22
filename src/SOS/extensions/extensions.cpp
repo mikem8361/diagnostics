@@ -301,20 +301,28 @@ void InternalWriteTraceVaList(IHost::TraceType type, PCSTR format, va_list args)
 
     // Try and format our string into a fixed buffer first and see if it fits
     size_t length = vsnprintf(str, sizeof(str), format, args);
-    if (length < sizeof(str))
+    if (length > 0)
     {
-        InternalWriteTrace(type, str);
+        if (length < sizeof(str))
+        {
+            InternalWriteTrace(type, str);
+        }
+        else
+        {
+            // Our stack buffer wasn't big enough to contain the entire formatted string
+            char *str_ptr = (char*)::malloc(length + 1);
+            if (str_ptr != nullptr)
+            {
+                vsnprintf(str_ptr, length + 1, format, argsCopy);
+                InternalWriteTrace(type, str_ptr);
+                ::free(str_ptr);
+            }
+        }
     }
     else
     {
-        // Our stack buffer wasn't big enough to contain the entire formatted string
-        char *str_ptr = (char*)::malloc(length + 1);
-        if (str_ptr != nullptr)
-        {
-            vsnprintf(str_ptr, length + 1, format, argsCopy);
-            InternalWriteTrace(type, str_ptr);
-            ::free(str_ptr);
-        }
+        InternalWriteTrace(type, "FORMATING ERROR: ");
+        InternalWriteTrace(type, format);
     }
 }
 
@@ -329,20 +337,28 @@ void InternalOutputVaList(IOutputService::OutputType type, PCSTR format, va_list
 
     // Try and format our string into a fixed buffer first and see if it fits
     size_t length = vsnprintf(str, sizeof(str), format, args);
-    if (length < sizeof(str))
+    if (length > 0)
     {
-        GetOutputService()->OutputString(type, str);
+        if (length < sizeof(str))
+        {
+            GetOutputService()->OutputString(type, str);
+        }
+        else
+        {
+            // Our stack buffer wasn't big enough to contain the entire formatted string
+            char *str_ptr = (char*)::malloc(length + 1);
+            if (str_ptr != nullptr)
+            {
+                vsnprintf(str_ptr, length + 1, format, argsCopy);
+                GetOutputService()->OutputString(type, str_ptr);
+                ::free(str_ptr);
+            }
+        }
     }
     else
     {
-        // Our stack buffer wasn't big enough to contain the entire formatted string
-        char *str_ptr = (char*)::malloc(length + 1);
-        if (str_ptr != nullptr)
-        {
-            vsnprintf(str_ptr, length + 1, format, argsCopy);
-            GetOutputService()->OutputString(type, str_ptr);
-            ::free(str_ptr);
-        }
+        GetOutputService()->OutputString(type, "FORMATING ERROR: ");
+        GetOutputService()->OutputString(type, format);
     }
 }
 

@@ -4349,16 +4349,45 @@ size_t CountHexCharacters(CLRDATA_ADDRESS val)
     return ret;
 }
 
-HRESULT
-OutputText(
-    PCSTR format,
-    ...)
+void OutputVaList(IOutputService::OutputType type, PCSTR format, va_list args)
+{
+    char str[1024];
+    va_list argsCopy;
+    va_copy(argsCopy, args);
+
+    // Try and format our string into a fixed buffer first and see if it fits
+    int length = _vsnprintf_s(str, sizeof(str), _TRUNCATE, format, args);
+    if (length > 0)
+    {
+        if (length < sizeof(str))
+        {
+            GetOutputService()->OutputString(type, str);
+        }
+        else
+        {
+            // Our stack buffer wasn't big enough to contain the entire formatted string
+            char *str_ptr = (char*)::malloc(length + 1);
+            if (str_ptr != nullptr)
+            {
+                _vsnprintf_s(str_ptr, length + 1, _TRUNCATE, format, argsCopy);
+                GetOutputService()->OutputString(type, str_ptr);
+                ::free(str_ptr);
+            }
+        }
+    }
+    else
+    {
+        GetOutputService()->OutputString(type, "FORMATING ERROR: ");
+        GetOutputService()->OutputString(type, format);
+    }
+}
+
+void OutputText(PCSTR format, ...)
 {
     va_list args;
     va_start (args, format);
-    InternalOutputVaList(IOutputService::OutputType::Normal, format, args);
+    OutputVaList(IOutputService::OutputType::Normal, format, args);
     va_end (args);
-    return S_OK;
 }
 
 void WhitespaceOut(int count)
@@ -4390,11 +4419,11 @@ void DMLOut(PCSTR format, ...)
 
     if (IsDMLEnabled() && !Output::IsDMLExposed())
     {
-        InternalOutputVaList(IOutputService::OutputType::Dml, format, args);
+        OutputVaList(IOutputService::OutputType::Dml, format, args);
     }
     else
     {
-        InternalOutputVaList(IOutputService::OutputType::Normal, format, args);
+        OutputVaList(IOutputService::OutputType::Normal, format, args);
     }
     va_end(args);
 }
@@ -4407,7 +4436,7 @@ void IfDMLOut(PCSTR format, ...)
     va_list args;
     va_start(args, format);
     ExtOutIndent();
-    InternalOutputVaList(IOutputService::OutputType::Dml, format, args);
+    OutputVaList(IOutputService::OutputType::Dml, format, args);
     va_end(args);
 }
 
@@ -4419,7 +4448,7 @@ void ExtOut(PCSTR format, ...)
     va_list args;
     va_start(args, format);
     ExtOutIndent();
-    InternalOutputVaList(IOutputService::OutputType::Normal, format, args);
+    OutputVaList(IOutputService::OutputType::Normal, format, args);
     va_end(args);
 }
 
@@ -4430,7 +4459,7 @@ void ExtWarn(PCSTR format, ...)
 
     va_list args;
     va_start(args, format);
-    InternalOutputVaList(IOutputService::OutputType::Warning, format, args);
+    OutputVaList(IOutputService::OutputType::Warning, format, args);
     va_end(args);
 }
 
@@ -4438,7 +4467,7 @@ void ExtErr(PCSTR format, ...)
 {
     va_list args;
     va_start(args, format);
-    InternalOutputVaList(IOutputService::OutputType::Error, format, args);
+    OutputVaList(IOutputService::OutputType::Error, format, args);
     va_end(args);
 }
 

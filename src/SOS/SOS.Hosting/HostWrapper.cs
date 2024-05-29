@@ -28,6 +28,7 @@ namespace SOS.Hosting
             builder.AddMethod(new GetServiceDelegate(ServiceWrapper.GetService));
             builder.AddMethod(new GetCurrentTargetDelegate(GetCurrentTarget));
             builder.AddMethod(new WriteTraceDelegate(WriteTrace));
+
             IHost = builder.Complete();
 
             AddRef();

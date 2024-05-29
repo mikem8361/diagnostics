@@ -75,7 +75,8 @@ namespace SOS.Hosting
             builder.AddMethod(new AddModuleSymbolDelegate(AddModuleSymbol));
             builder.AddMethod(new GetModuleInfoDelegate(GetModuleInfo));
             builder.AddMethod(new GetModuleVersionInformationDelegate(soshost.GetModuleVersionInformation));
-            builder.Complete();
+
+            ILLDBServices = builder.Complete();
 
             AddRef();
         }

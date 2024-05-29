@@ -25,6 +25,7 @@ namespace SOS.Hosting
             builder.AddMethod(new GetOutputWidthDelegate(GetOutputWidth));
             builder.AddMethod(new SupportsDmlDelegate(SupportsDml));
             builder.AddMethod(new OutputStringDelegate(OutputString));
+
             IOutputService = builder.Complete();
 
             AddRef();

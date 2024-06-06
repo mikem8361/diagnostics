@@ -6,6 +6,55 @@
 #include "dbgengservices.h"
 #endif
 
+/**********************************************************************\
+ * Called when the managed host or plug-in loads/initializes SOS.
+\**********************************************************************/
+extern "C" HRESULT STDMETHODCALLTYPE SOSInitializeByHost(IUnknown* punk, IDebuggerServices* debuggerServices, IOutputService* outputService)
+{
+    IHost* host = nullptr;
+    HRESULT hr;
+
+    if (punk != nullptr)
+    {
+        hr = punk->QueryInterface(__uuidof(IHost), (void**)&host);
+        if (FAILED(hr)) {
+            return hr;
+        }
+    }
+    hr = SOSExtensions::Initialize(host, debuggerServices, outputService);
+    if (FAILED(hr)) {
+        return hr;
+    }
+#ifndef FEATURE_PAL
+    // When SOS is hosted on dotnet-dump on Windows, the ExtensionApis are not set so 
+    // the expression evaluation function needs to be supplied.
+    if (GetExpression == nullptr)
+    {
+        GetExpression = ([](const char* message) {
+		    ISymbolService* symbolService = GetSymbolService();
+		    if (symbolService == nullptr)
+		    {
+		        return (ULONG64)0;
+		    }
+            return symbolService->GetExpressionValue(message);
+        });
+    }
+#endif
+    return S_OK;
+}
+
+/**********************************************************************\
+ * Called when the managed host or plug-in exits.
+\**********************************************************************/
+extern "C" void STDMETHODCALLTYPE SOSUninitializeByHost()
+{
+    OnUnloadTask::Run();
+}
+
+/**********************************************************************\
+ * Extensions for the Windows SOS or the Linux or MacOS libsos side.
+\**********************************************************************/
+
 SOSExtensions::SOSExtensions(IDebuggerServices* debuggerServices, IOutputService* outputService, IHost* host) :
     Extensions(debuggerServices, outputService)
 {

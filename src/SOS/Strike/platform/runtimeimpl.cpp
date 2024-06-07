@@ -131,7 +131,7 @@ static HRESULT GetSingleFileInfo(IDebuggerServices* debuggerServices, PULONG pMo
 /**********************************************************************\
  * Creates a desktop or .NET Core instance of the runtime class
 \**********************************************************************/
-HRESULT Runtime::CreateInstance(ITarget* target, RuntimeConfiguration configuration, Runtime **ppRuntime)
+HRESULT Runtime::CreateInstance(ITarget* target, IDebuggerServices* debuggerServices, RuntimeConfiguration configuration, Runtime **ppRuntime)
 {
     PCSTR runtimeModuleName = ::GetRuntimeModuleName(configuration);
     ULONG moduleIndex = 0;
@@ -142,13 +142,6 @@ HRESULT Runtime::CreateInstance(ITarget* target, RuntimeConfiguration configurat
 
     if (*ppRuntime == nullptr)
     {
-        // No debugger service instance means that SOS is hosted by dotnet-dump,
-        // which does runtime enumeration in CLRMD. We should never get here.
-        IDebuggerServices* debuggerServices = GetDebuggerServices();
-        if (debuggerServices == nullptr) {
-            return E_NOINTERFACE;
-        }
-
         // Check if the normal runtime module (coreclr.dll, libcoreclr.so, etc.) is loaded
         hr = debuggerServices->GetModuleByModuleName(runtimeModuleName, 0, &moduleIndex, &moduleAddress);
         if (FAILED(hr))
@@ -171,7 +164,7 @@ HRESULT Runtime::CreateInstance(ITarget* target, RuntimeConfiguration configurat
         {
             if (moduleSize > 0) 
             {
-                *ppRuntime = new Runtime(target, configuration, moduleIndex, moduleAddress, moduleSize, runtimeInfo);
+                *ppRuntime = new Runtime(target, debuggerServices, configuration, moduleIndex, moduleAddress, moduleSize, runtimeInfo);
             }
             else 
             {
@@ -186,9 +179,10 @@ HRESULT Runtime::CreateInstance(ITarget* target, RuntimeConfiguration configurat
 /**********************************************************************\
  * Constructor
 \**********************************************************************/
-Runtime::Runtime(ITarget* target, RuntimeConfiguration configuration, ULONG index, ULONG64 address, ULONG64 size, RuntimeInfo* runtimeInfo) :
+Runtime::Runtime(ITarget* target, IDebuggerServices* debuggerServices, RuntimeConfiguration configuration, ULONG index, ULONG64 address, ULONG64 size, RuntimeInfo* runtimeInfo) :
     m_ref(1),
     m_target(target),
+    m_debuggerServices(debuggerServices),
     m_configuration(configuration),
     m_index(index),
     m_address(address),
@@ -206,7 +200,7 @@ Runtime::Runtime(ITarget* target, RuntimeConfiguration configuration, ULONG inde
     _ASSERTE(size != 0);
 
     ArrayHolder<char> szModuleName = new char[MAX_LONGPATH + 1];
-    HRESULT hr = GetDebuggerServices()->GetModuleNames(index, 0, szModuleName, MAX_LONGPATH, NULL, NULL, 0, NULL, NULL, 0, NULL);
+    HRESULT hr = debuggerServices->GetModuleNames(index, 0, szModuleName, MAX_LONGPATH, NULL, NULL, 0, NULL, NULL, 0, NULL);
     if (SUCCEEDED(hr))
     {
         m_name = szModuleName.Detach();
@@ -454,7 +448,7 @@ HRESULT Runtime::GetClrDataProcess(IXCLRDataProcess** ppClrDataProcess)
             FreeLibrary(hdac);
             return CORDBG_E_MISSING_DEBUGGER_EXPORTS;
         }
-        ICLRDataTarget *target = new DataTarget(GetModuleAddress());
+        ICLRDataTarget *target = new DataTarget(m_debuggerServices, GetModuleAddress());
         HRESULT hr = pfnCLRDataCreateInstance(__uuidof(IXCLRDataProcess), target, (void**)&m_clrDataProcess);
         if (FAILED(hr))
         {
@@ -540,7 +534,7 @@ HRESULT Runtime::GetCorDebugInterface(ICorDebugProcess** ppCorDebugProcess)
     }
     CLR_DEBUGGING_VERSION clrDebuggingVersionRequested = {0, 4, 0, 0, 0};
     CLR_DEBUGGING_PROCESS_FLAGS clrDebuggingFlags = (CLR_DEBUGGING_PROCESS_FLAGS)0;
-    ToRelease<ICorDebugMutableDataTarget> pDataTarget = new CorDebugDataTarget;
+    ToRelease<ICorDebugMutableDataTarget> pDataTarget = new CorDebugDataTarget(m_debuggerServices);
     ToRelease<IUnknown> pUnkProcess = nullptr;
 
     // Get access to the latest OVP implementation and call it
@@ -627,7 +621,7 @@ HRESULT Runtime::GetEEVersion(VS_FIXEDFILEINFO* pFileInfo, char* fileVersionBuff
 {
     _ASSERTE(pFileInfo);
 
-    HRESULT hr = GetDebuggerServices()->GetModuleVersionInformation(
+    HRESULT hr = m_debuggerServices->GetModuleVersionInformation(
         m_index, 0, "\\", pFileInfo, sizeof(VS_FIXEDFILEINFO), NULL);
 
     // 0.0.0.0 is not a valid version. This is sometime returned by windbg for Linux core dumps
@@ -642,7 +636,7 @@ HRESULT Runtime::GetEEVersion(VS_FIXEDFILEINFO* pFileInfo, char* fileVersionBuff
             fileVersionBuffer[0] = '\0';
         }
         // We can assume the English/CP_UNICODE lang/code page for the runtime modules
-        GetDebuggerServices()->GetModuleVersionInformation(
+        m_debuggerServices->GetModuleVersionInformation(
             m_index, 0, "\\StringFileInfo\\040904B0\\FileVersion", fileVersionBuffer, fileVersionBufferSizeInBytes, NULL);
     }
 

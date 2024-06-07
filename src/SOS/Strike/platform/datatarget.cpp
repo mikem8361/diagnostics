@@ -14,8 +14,9 @@
 #define IMAGE_FILE_MACHINE_LOONGARCH64      0x6264  // LOONGARCH64
 #endif
 
-DataTarget::DataTarget(ULONG64 baseAddress) :
+DataTarget::DataTarget(IDebuggerServices* debuggerServices, ULONG64 baseAddress) :
     m_ref(0),
+    m_debuggerServices(debuggerServices),
     m_baseAddress(baseAddress)
 {
 }
@@ -91,7 +92,7 @@ HRESULT STDMETHODCALLTYPE
 DataTarget::GetMachineType(
     /* [out] */ ULONG32 *machine)
 {
-    return GetDebuggerServices()->GetExecutingProcessorType((PULONG)machine);
+    return m_debuggerServices->GetExecutingProcessorType((PULONG)machine);
 }
 
 HRESULT STDMETHODCALLTYPE
@@ -99,7 +100,7 @@ DataTarget::GetPointerSize(
     /* [out] */ ULONG32 *size)
 {
     ULONG machine;
-    HRESULT hr = GetDebuggerServices()->GetExecutingProcessorType(&machine);
+    HRESULT hr = m_debuggerServices->GetExecutingProcessorType(&machine);
     if (FAILED(hr))
     {
         return hr;
@@ -141,7 +142,7 @@ DataTarget::GetImageBase(
         *lp = '\0';
     }
 #endif
-    return GetDebuggerServices()->GetModuleByModuleName(lpstr, 0, NULL, base);
+    return m_debuggerServices->GetModuleByModuleName(lpstr, 0, NULL, base);
 }
 
 HRESULT STDMETHODCALLTYPE
@@ -168,7 +169,7 @@ DataTarget::ReadVirtual(
         }
     }
 #endif
-    HRESULT hr = GetDebuggerServices()->ReadVirtual(address, (PVOID)buffer, request, (PULONG)done);
+    HRESULT hr = m_debuggerServices->ReadVirtual(address, (PVOID)buffer, request, (PULONG)done);
     if (FAILED(hr)) 
     {
         ExtDbgOut("DataTarget::ReadVirtual FAILED %08x address %08llx size %08x\n", hr, address, request);
@@ -183,7 +184,7 @@ DataTarget::WriteVirtual(
     /* [in] */ ULONG32 request,
     /* [optional][out] */ ULONG32 *done)
 {
-    return GetDebuggerServices()->WriteVirtual(address, (PVOID)buffer, request, (PULONG)done);
+    return m_debuggerServices->WriteVirtual(address, (PVOID)buffer, request, (PULONG)done);
 }
 
 HRESULT STDMETHODCALLTYPE
@@ -208,7 +209,7 @@ HRESULT STDMETHODCALLTYPE
 DataTarget::GetCurrentThreadID(
     /* [out] */ ULONG32 *threadID)
 {
-    return GetDebuggerServices()->GetCurrentThreadSystemId((PULONG)threadID);
+    return m_debuggerServices->GetCurrentThreadSystemId((PULONG)threadID);
 }
 
 HRESULT STDMETHODCALLTYPE
@@ -218,7 +219,7 @@ DataTarget::GetThreadContext(
     /* [in] */ ULONG32 contextSize,
     /* [out, size_is(contextSize)] */ PBYTE context)
 {
-    return GetDebuggerServices()->GetThreadContextBySystemId(threadID, contextFlags, contextSize, context);
+    return m_debuggerServices->GetThreadContextBySystemId(threadID, contextFlags, contextSize, context);
 }
 
 HRESULT STDMETHODCALLTYPE
@@ -253,7 +254,7 @@ DataTarget::AllocVirtual(
 {
     HRESULT hr;
     ReleaseHolder<IRemoteMemoryService> remote;
-    if (FAILED(hr = GetDebuggerServices()->QueryInterface(__uuidof(IRemoteMemoryService), (void**)&remote)))
+    if (FAILED(hr = m_debuggerServices->QueryInterface(__uuidof(IRemoteMemoryService), (void**)&remote)))
     {
         return hr;
     }
@@ -268,7 +269,7 @@ DataTarget::FreeVirtual(
 {
     HRESULT hr;
     ReleaseHolder<IRemoteMemoryService> remote;
-    if (FAILED(hr = GetDebuggerServices()->QueryInterface(__uuidof(IRemoteMemoryService), (void**)&remote)))
+    if (FAILED(hr = m_debuggerServices->QueryInterface(__uuidof(IRemoteMemoryService), (void**)&remote)))
     {
         return hr;
     }
@@ -284,7 +285,7 @@ DataTarget::VirtualUnwind(
     /* [in, out, size_is(contextSize)] */ PBYTE context)
 {
 #ifdef FEATURE_PAL
-    return GetDebuggerServices()->VirtualUnwind(threadId, contextSize, context);
+    return m_debuggerServices->VirtualUnwind(threadId, contextSize, context);
 #else
     return E_NOTIMPL;
 #endif

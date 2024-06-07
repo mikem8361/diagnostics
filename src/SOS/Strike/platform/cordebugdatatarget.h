@@ -10,8 +10,14 @@
 \**********************************************************************/
 class CorDebugDataTarget : public ICorDebugMutableDataTarget, public ICorDebugMetaDataLocator, public ICorDebugDataTarget4
 {
+protected:
+    LONG m_ref;
+    IDebuggerServices* m_debuggerServices;
+
 public:
-    CorDebugDataTarget() : m_ref(1)
+    CorDebugDataTarget(IDebuggerServices* debuggerServices) :
+        m_ref(1),
+        m_debuggerServices(debuggerServices)
     {
     }
 
@@ -129,7 +135,7 @@ public:
             }
         }
 #endif
-        HRESULT hr = GetDebuggerServices()->ReadVirtual(address, pBuffer, request, (PULONG)pcbRead);
+        HRESULT hr = m_debuggerServices->ReadVirtual(address, pBuffer, request, (PULONG)pcbRead);
         if (FAILED(hr)) 
         {
             ExtDbgOut("CorDebugDataTarget::ReadVirtual FAILED %08x address %p size %08x\n", hr, address, request);
@@ -143,7 +149,7 @@ public:
         ULONG32 contextSize,
         BYTE * context)
     {
-        return GetDebuggerServices()->GetThreadContextBySystemId(dwThreadOSID, contextFlags, contextSize, context);
+        return m_debuggerServices->GetThreadContextBySystemId(dwThreadOSID, contextFlags, contextSize, context);
     }
 
     //
@@ -155,7 +161,7 @@ public:
         const BYTE * pBuffer,
         ULONG32 bytesRequested)
     {
-        return GetDebuggerServices()->WriteVirtual(address, (PVOID)pBuffer, bytesRequested, NULL);
+        return m_debuggerServices->WriteVirtual(address, (PVOID)pBuffer, bytesRequested, NULL);
     }
 
     virtual HRESULT STDMETHODCALLTYPE SetThreadContext(
@@ -199,14 +205,11 @@ public:
         PBYTE context)
     {
 #ifdef FEATURE_PAL
-        return GetDebuggerServices()->VirtualUnwind(threadId, contextSize, context);
+        return m_debuggerServices->VirtualUnwind(threadId, contextSize, context);
 #else 
         return E_NOTIMPL;
 #endif
     }
-
-protected:
-    LONG m_ref;
 };
 
 #endif // __cordebugdatatarget_h__

@@ -22,41 +22,16 @@ private:
 #endif
     Runtime* m_netcore;
 
-#ifndef FEATURE_PAL
-    bool SwitchRuntimeInstance(bool desktop);
-#endif
-    void DisplayStatusInstance();
-
 public:
+#ifndef FEATURE_PAL
+    bool SwitchRuntime(bool desktop);
+#endif
+    void DisplayStatus();
+
     Target(IDebuggerServices* debuggerServices);
     virtual ~Target();
 
     HRESULT CreateInstance(IRuntime** ppRuntime);
-
-#ifndef FEATURE_PAL
-    static bool SwitchRuntime(bool desktop)
-    {
-        GetInstance();
-        _ASSERTE(s_target != nullptr);
-        return s_target->SwitchRuntimeInstance(desktop);
-    }
-#endif
-
-    static void DisplayStatus()
-    {
-        if (s_target != nullptr) 
-        {
-            s_target->DisplayStatusInstance();
-        }
-    }
-
-    static void CleanupTarget()
-    {
-        if (s_target != nullptr)
-        {
-            s_target->Release();
-        }
-    }
 
     //----------------------------------------------------------------------------
     // IUnknown

@@ -8054,7 +8054,7 @@ DECLARE_API(SOSStatus)
         ExtOut("Internal cached state reset\n");
         return S_OK;
     }
-    Target::DisplayStatus();
+    Host::DisplayStatus();
     return S_OK;
 }
 
@@ -12380,10 +12380,6 @@ HRESULT CALLBACK _EFN_StackTrace(
     size_t uiSizeOfContext,
     DWORD Flags)
 {
-    if ((g_clrmaGlobalFlags & ClrmaGlobalFlags::StackTraceEnabled) == 0)
-    {
-        return E_FAIL;
-    }
     INIT_API_EFN();
 
     Status = ImplementEFNStackTraceTry(client, wszTextOut, puiTextLength,
@@ -13580,7 +13576,7 @@ DECLARE_API(runtimes)
         if (IsWindowsTarget())
         {
             PCSTR name = bNetFx ? "desktop .NET Framework" : ".NET Core";
-            if (!Target::SwitchRuntime(bNetFx))
+            if (!Host::SwitchRuntime(bNetFx))
             {
                 ExtErr("The %s runtime is not loaded\n", name);
                 return E_INVALIDARG;
@@ -13596,7 +13592,7 @@ DECLARE_API(runtimes)
     }
     else
     {
-        Target::DisplayStatus();
+        Host::DisplayStatus();
     }
     return Status;
 }

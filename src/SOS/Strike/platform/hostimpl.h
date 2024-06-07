@@ -5,6 +5,8 @@
 
 #include "host.h"
 
+class Target;
+
 //----------------------------------------------------------------------------
 // Local implementation of IHost
 //----------------------------------------------------------------------------
@@ -12,12 +14,19 @@ class Host : public IHost
 {
 private:
     LONG m_ref;
-    ITarget* m_target;
+    Target* m_target;
     IDebuggerServices* m_debuggerServices;
+
+    static Host* s_host;
 
 public:
     Host(IDebuggerServices* debuggerServices);
     virtual ~Host();
+
+#ifndef FEATURE_PAL
+    static bool SwitchRuntime(bool desktop);
+#endif
+    static void DisplayStatus();
 
     //----------------------------------------------------------------------------
     // IUnknown

@@ -125,7 +125,7 @@ TraceInformation(PCSTR format, ...)
     {
         va_list args;
         va_start(args, format);
-        InternalOutputVaList(DEBUG_OUTPUT_NORMAL, format, args);
+        InternalWriteTraceVaList(IHost::TraceType::Information, format, args);
         va_end(args);
     }
 }
@@ -137,7 +137,7 @@ TraceError(PCSTR format, ...)
     {
         va_list args;
         va_start(args, format);
-        InternalOutputVaList(DEBUG_OUTPUT_ERROR, format, args);
+        InternalWriteTraceVaList(IHost::TraceType::Error, format, args);
         va_end(args);
     }
 }

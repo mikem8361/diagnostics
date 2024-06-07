@@ -80,7 +80,7 @@ Target::~Target()
 HRESULT 
 Target::CreateInstance(IRuntime **ppRuntime)
 {
-    HRESULT hr = Runtime::CreateInstance(this, IRuntime::Core, &m_netcore);
+    HRESULT hr = Runtime::CreateInstance(this, m_debuggerServices, IRuntime::Core, &m_netcore);
 #ifdef FEATURE_PAL
     *ppRuntime = m_netcore;
 #else
@@ -92,12 +92,12 @@ Target::CreateInstance(IRuntime **ppRuntime)
             // Only attempt to create linux/OSX core runtime if above failed
             if (m_netcore == nullptr)
             {
-                hr = Runtime::CreateInstance(this, IRuntime::UnixCore, &m_netcore);
+                hr = Runtime::CreateInstance(this, m_debuggerServices, IRuntime::UnixCore, &m_netcore);
             }
             break;
         case ITarget::OperatingSystem::Windows:
             // Always attempt to create desktop clr, but only return result the if the .NET Core create failed
-            HRESULT hrDesktop = Runtime::CreateInstance(this, IRuntime::WindowsDesktop, &m_desktop);
+            HRESULT hrDesktop = Runtime::CreateInstance(this, m_debuggerServices, IRuntime::WindowsDesktop, &m_desktop);
             if (m_netcore == nullptr)
             {
                 hr = hrDesktop;
@@ -114,10 +114,16 @@ Target::CreateInstance(IRuntime **ppRuntime)
  * loaded). Creates the desktop CLR runtime instance on demand.
 \**********************************************************************/
 #ifndef FEATURE_PAL
-bool Target::SwitchRuntimeInstance(bool desktop)
+bool Target::SwitchRuntime(bool desktop)
 {
-    IRuntime* runtime = desktop ? m_desktop : m_netcore;
-    if (runtime == nullptr) {
+    IRuntime* runtime;
+    if (FAILED(CreateInstance(&runtime)))
+    {
+        return false;
+    }
+    runtime = desktop ? m_desktop : m_netcore;
+    if (runtime == nullptr)
+    {
         return false;
     }
     g_pRuntime = runtime;
@@ -128,7 +134,7 @@ bool Target::SwitchRuntimeInstance(bool desktop)
 /**********************************************************************\
  * Display the internal target and runtime status
 \**********************************************************************/
-void Target::DisplayStatusInstance()
+void Target::DisplayStatus()
 {
     static const char* osName[] = {
         "Unknown",

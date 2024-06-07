@@ -130,7 +130,7 @@ SOSExtensions::GetHost()
         // Otherwise, use the local host instance (hostimpl.*) that creates a local target instance (targetimpl.*)
         if (m_pHost == nullptr)
         {
-            m_pHost = Host::GetInstance();
+            m_pHost = new Host(GetDebuggerServices());
         }
     }
     return m_pHost;

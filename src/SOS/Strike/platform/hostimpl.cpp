@@ -6,6 +6,8 @@
 #include "targetimpl.h"
 #include "hostimpl.h"
 
+Host* Host::s_host = nullptr;
+
 //----------------------------------------------------------------------------
 // Host
 //----------------------------------------------------------------------------
@@ -16,6 +18,7 @@ Host::Host(IDebuggerServices* debuggerServices) :
     m_debuggerServices(debuggerServices)
 { 
     debuggerServices->AddRef();
+    s_host = this;
 }
 
 Host::~Host()
@@ -29,6 +32,26 @@ Host::~Host()
     {
         m_debuggerServices->Release();
         m_debuggerServices = nullptr;
+    }
+    s_host = nullptr;
+}
+
+#ifndef FEATURE_PAL
+bool Host::SwitchRuntime(bool desktop)
+{
+    if (s_host != nullptr)
+    {
+        return s_host->m_target->SwitchRuntime(desktop);
+    }
+    return false;
+}
+#endif
+
+void Host::DisplayStatus()
+{
+    if (s_host != nullptr)
+    {
+        s_host->m_target->DisplayStatus();
     }
 }
 

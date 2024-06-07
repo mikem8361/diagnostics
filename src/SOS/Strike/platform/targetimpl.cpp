@@ -7,15 +7,14 @@
 #include "host.h"
 #include <string>
 
-Target* Target::s_target = nullptr;
-
 //----------------------------------------------------------------------------
 // Target
 //----------------------------------------------------------------------------
 
-Target::Target() :
+Target::Target(IDebuggerServices* debuggerServices) :
     m_ref(1),
     m_tmpPath(nullptr),
+    m_debuggerServices(debuggerServices),
 #ifndef FEATURE_PAL
     m_desktop(nullptr),
 #endif
@@ -69,21 +68,6 @@ Target::~Target()
     }
 #endif
     g_pRuntime = nullptr;
-    s_target = nullptr;
-}
-
-/**********************************************************************\
-* Creates a local target instance or returns the existing one
-\**********************************************************************/
-ITarget* Target::GetInstance()
-{
-    if (s_target == nullptr) 
-    {
-        s_target = new Target();
-        OnUnloadTask::Register(CleanupTarget);
-    }
-    s_target->AddRef();
-    return s_target;
 }
 
 /**********************************************************************\
@@ -214,7 +198,7 @@ ULONG Target::Release()
 ITarget::OperatingSystem Target::GetOperatingSystem()
 {
     IDebuggerServices::OperatingSystem operatingSystem;
-    if (SUCCEEDED(GetDebuggerServices()->GetOperatingSystem(&operatingSystem)))
+    if (SUCCEEDED(m_debuggerServices->GetOperatingSystem(&operatingSystem)))
     {
         switch (operatingSystem)
         {

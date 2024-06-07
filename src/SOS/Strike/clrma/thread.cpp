@@ -53,10 +53,12 @@ ClrmaThread::Initialize()
         }
         if (thread.osThreadId == m_osThreadId)
         {
-            if (FAILED(hr = m_managedAnalysis->ReadPointer(thread.lastThrownObjectHandle, &m_lastThrownObject)))
+            if (thread.lastThrownObjectHandle != 0)
             {
-                TraceError("ClrmaThread::Initialize ReadPointer FAILED %08x\n", hr);
-                return hr;
+                if (FAILED(hr = m_managedAnalysis->ReadPointer(thread.lastThrownObjectHandle, &m_lastThrownObject)))
+                {
+                    TraceError("ClrmaThread::Initialize ReadPointer FAILED %08x\n", hr);
+                }
             }
             m_firstNestedException = thread.firstNestedException;
             return S_OK;
@@ -190,51 +192,39 @@ ClrmaThread::get_FrameCount(
             {
                 // For each managed stack frame
                 int index = 0;
+                int count = 0;
                 do
                 {
                     StackFrame frame;
                     frame.Frame = index;
                     if (FAILED(hr = GetFrameLocation(pStackWalk, &frame.IP, &frame.SP)))
                     {
+                        TraceError("Unwind: GetFrameLocation() FAILED %08x\n", hr);
                         break;
                     }
+                    // Only include normal frames, skipping any special frames
                     DacpFrameData frameData;
                     if (SUCCEEDED(hr = frameData.Request(pStackWalk)) && frameData.frameAddr != 0)
                     {
-                        frame.SP = frameData.frameAddr;
-
-                        // Format special frame
-                        if (FAILED(hr = GetFrameFromAddress(pStackWalk, frame)))
-                        {
-                            continue;
-                        }
+                        TraceInformation("Unwind: skipping special frame SP %016llx IP %016llx\n", frame.SP, frame.IP);
+                        continue;
                     }
-                    else
+                    CLRDATA_ADDRESS methodDesc = 0;
+                    if (FAILED(hr = m_managedAnalysis->SosDacInterface()->GetMethodDescPtrFromIP(frame.IP, &methodDesc)))
                     {
-                        // Get normal module and method names like MethodNameFromIP() does for !clrstack
-                        CLRDATA_ADDRESS methodDesc = 0;
-                        if (SUCCEEDED(hr = m_managedAnalysis->SosDacInterface()->GetMethodDescPtrFromIP(frame.IP, &methodDesc)))
-                        {
-                            if (FAILED(hr = m_managedAnalysis->GetMethodDescInfo(methodDesc, frame)))
-                            {
-                                continue;
-                            }
-                        }
-                        else
-                        {
-                            frame.Function = L"<unknown>";
-                        }
+                        TraceInformation("Unwind: skipping frame GetMethodDescPtrFromIP(%016llx) FAILED %08x\n", frame.IP, hr);
+                        continue;
                     }
-
-                    if (frame.Module.empty())
+                    // Get normal module and method names like MethodNameFromIP() does for !clrstack
+                    if (FAILED(hr = m_managedAnalysis->GetMethodDescInfo(methodDesc, frame, /* stripFunctionParameters */ false)))
                     {
-                        // TODO: from built-in SOS CLRMA provider
+                        TraceInformation("Unwind: skipping frame GetMethodDescInfo(%016llx) FAILED %08x\n", methodDesc, hr);
+                        continue;
                     }
-
                     m_stackFrames.push_back(frame);
                     index++;
 
-                } while (pStackWalk->Next() == S_OK);
+                } while (count++ < MAX_STACK_FRAMES && pStackWalk->Next() == S_OK);
             }
             else
             {
@@ -521,47 +511,4 @@ ClrmaThread::GetFrameLocation(
             break;
     }
     return S_OK;
-}
-
-HRESULT
-ClrmaThread::GetFrameFromAddress(
-    IXCLRDataStackWalk* pStackWalk,
-    StackFrame& frame
-)
-{
-    ArrayHolder<WCHAR> wszNameBuffer = new WCHAR[MAX_LONGPATH + 1];
-    CLRDATA_ADDRESS methodDesc = 0;
-    HRESULT hr;
-
-    if (SUCCEEDED(hr = m_managedAnalysis->SosDacInterface()->GetMethodDescPtrFromFrame(frame.SP, &methodDesc)))
-    {
-        if (SUCCEEDED(hr = m_managedAnalysis->SosDacInterface()->GetMethodDescName(methodDesc, MAX_LONGPATH, wszNameBuffer, nullptr)))
-        {
-            frame.Function.append(wszNameBuffer);
-        }
-    }
-    else
-    {
-         // The Frame did not have direct function info, so try to get the method instance
-         // (in this case a MethodDesc), and read the name from it.
-         ReleaseHolder<IXCLRDataFrame> clrDataFrame;
-         if (SUCCEEDED(hr = pStackWalk->GetFrame((IXCLRDataFrame**)&clrDataFrame)))
-         {
-             ReleaseHolder<IXCLRDataMethodInstance> methodInstance;
-             if (SUCCEEDED(hr = clrDataFrame->GetMethodInstance((IXCLRDataMethodInstance**)&methodInstance)))
-             {
-                 if (SUCCEEDED(hr = methodInstance->GetName(0, MAX_LONGPATH, nullptr, wszNameBuffer)))
-                 {
-                     frame.Function.append(wszNameBuffer);
-                 }
-             }
-         }
-    }
-    // Strip off the function parameters
-    size_t parameterStart = frame.Function.find_first_of(L'(');
-    if (parameterStart != -1)
-    {
-        frame.Function = frame.Function.substr(0, parameterStart);
-    }
-    return hr;
 }

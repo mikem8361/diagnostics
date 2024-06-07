@@ -16,23 +16,20 @@ class Target : public ITarget
 private:
     LONG m_ref;
     LPCSTR m_tmpPath;
+    IDebuggerServices* m_debuggerServices;
 #ifndef FEATURE_PAL
     Runtime* m_desktop;
 #endif
     Runtime* m_netcore;
-
-    static Target* s_target;
 
 #ifndef FEATURE_PAL
     bool SwitchRuntimeInstance(bool desktop);
 #endif
     void DisplayStatusInstance();
 
-    Target();
-    virtual ~Target();
-
 public:
-    static ITarget* GetInstance();
+    Target(IDebuggerServices* debuggerServices);
+    virtual ~Target();
 
     HRESULT CreateInstance(IRuntime** ppRuntime);
 

@@ -494,7 +494,7 @@ ClrmaManagedAnalysis::get_ObjectInspection(
 }
 
 HRESULT
-ClrmaManagedAnalysis::GetMethodDescInfo(CLRDATA_ADDRESS methodDesc, StackFrame& frame)
+ClrmaManagedAnalysis::GetMethodDescInfo(CLRDATA_ADDRESS methodDesc, StackFrame& frame, bool stripFunctionParameters)
 {
     HRESULT hr;
     DacpMethodDescData methodDescData;
@@ -593,10 +593,13 @@ ClrmaManagedAnalysis::GetMethodDescInfo(CLRDATA_ADDRESS methodDesc, StackFrame& 
             }
 
             // Strip off the function parameters
-            size_t parameterStart = frame.Function.find_first_of(L'(');
-            if (parameterStart != -1)
+            if (stripFunctionParameters)
             {
-                frame.Function = frame.Function.substr(0, parameterStart);
+                size_t parameterStart = frame.Function.find_first_of(L'(');
+                if (parameterStart != -1)
+                {
+                    frame.Function = frame.Function.substr(0, parameterStart);
+                }
             }
         }
         else
@@ -627,7 +630,7 @@ ClrmaManagedAnalysis::IsExceptionObj(CLRDATA_ADDRESS mtObj)
     HRESULT hr;
 
     // We want to follow back until we get the mt for System.Exception
-    while(walkMT != NULL)
+    while (walkMT != NULL)
     {
         if (FAILED(hr = dmtd.Request(SosDacInterface(), walkMT)))
         {
@@ -647,8 +650,12 @@ ClrmaManagedAnalysis::IsExceptionObj(CLRDATA_ADDRESS mtObj)
 WCHAR*
 ClrmaManagedAnalysis::GetStringObject(CLRDATA_ADDRESS stringObject)
 {
-    DacpObjectData objData;
+    if (stringObject == 0)
+    {
+        return nullptr;
+    }
     HRESULT hr;
+    DacpObjectData objData;
     if (FAILED(hr = objData.Request(SosDacInterface(), stringObject)))
     {
         TraceError("GetStringObject ISOSDacInterface::GetObjectData FAILED %08x\n", hr);

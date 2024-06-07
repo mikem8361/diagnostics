@@ -31,11 +31,12 @@
 
 enum ClrmaGlobalFlags
 {
-    DacClrmaEnabled = 0x01,                     // Direct DAC CLRMA code enabled
-    ManagedClrmaEnabled = 0x02,                 // Native AOT managed support enabled
-    StackTraceEnabled = 0x04,                   // The EFN_StackTrace extension API enabled (disabled only for testing)
-    TraceInformationEnabled = 0x08              // CLRMA trace information logging enabled
+    LoggingEnabled = 0x01,                  // CLRMA logging enabled
+    DacClrmaEnabled = 0x02,                 // Direct DAC CLRMA code enabled
+    ManagedClrmaEnabled = 0x04,             // Native AOT managed support enabled
 };
+
+#define MAX_STACK_FRAMES    1000            // Max number of stack frames returned from thread stackwalk
 
 typedef struct StackFrame
 {
@@ -79,12 +80,13 @@ public:
     inline IXCLRDataProcess* ClrData() { return m_clrData; }
     inline ISOSDacInterface* SosDacInterface() { return m_sosDac; }
     inline int PointerSize() { return m_pointerSize; }
-    inline ULONG ProcessorType () { return m_processorType; }
+    inline ULONG ProcessorType() { return m_processorType; }
+    inline CLRDATA_ADDRESS ObjectMethodTable() { return m_usefulGlobals.ObjectMethodTable; }
 
     /// <summary>
     /// Fills in the frame.Module and frame.Function from the MethodDesc.
     /// </summary>
-    HRESULT GetMethodDescInfo(CLRDATA_ADDRESS methodDesc, StackFrame& frame);
+    HRESULT GetMethodDescInfo(CLRDATA_ADDRESS methodDesc, StackFrame& frame, bool stripFunctionParameters);
 
     /// <summary>
     /// Returns base Exception MT address if exception derived MT

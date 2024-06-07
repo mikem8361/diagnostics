@@ -6,34 +6,30 @@
 #include "targetimpl.h"
 #include "hostimpl.h"
 
-Host* Host::s_host = nullptr;
-
 //----------------------------------------------------------------------------
 // Host
 //----------------------------------------------------------------------------
 
-Host::Host() :
-    m_ref(1)
+Host::Host(IDebuggerServices* debuggerServices) :
+    m_ref(1),
+    m_target(nullptr),
+    m_debuggerServices(debuggerServices)
 { 
+    debuggerServices->AddRef();
 }
 
 Host::~Host()
 {
-    s_host = nullptr;
-}
-
-/// <summary>
-/// Creates a local service provider instance or returns the existing one 
-/// </summary>
-/// <returns></returns>
-IHost* Host::GetInstance()
-{
-    if (s_host == nullptr) 
+    if (m_target != nullptr)
     {
-        s_host = new Host();
+        m_target->Release();
+        m_target = nullptr;
     }
-    s_host->AddRef();
-    return s_host;
+    if (m_debuggerServices != nullptr)
+    {
+        m_debuggerServices->Release();
+        m_debuggerServices = nullptr;
+    }
 }
 
 //----------------------------------------------------------------------------
@@ -99,7 +95,11 @@ HRESULT Host::GetCurrentTarget(ITarget** ppTarget)
     {
         return E_INVALIDARG;
     }
-    *ppTarget = Target::GetInstance();
+    if (m_target == nullptr)
+    {
+        m_target = new Target(m_debuggerServices);
+    }
+    *ppTarget = m_target;
     return S_OK;
 }
 

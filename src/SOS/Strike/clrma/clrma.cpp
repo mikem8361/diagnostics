@@ -9,7 +9,7 @@ HRESULT CLRMAReleaseInstance();
 
 ICLRManagedAnalysis* g_managedAnalysis = nullptr;
 
-int g_clrmaGlobalFlags = ClrmaGlobalFlags::TraceInformationEnabled | ClrmaGlobalFlags::DacClrmaEnabled | ClrmaGlobalFlags::ManagedClrmaEnabled | ClrmaGlobalFlags::StackTraceEnabled;
+int g_clrmaGlobalFlags = ClrmaGlobalFlags::LoggingEnabled | ClrmaGlobalFlags::DacClrmaEnabled | ClrmaGlobalFlags::ManagedClrmaEnabled;
 
 //
 // Exports
@@ -62,7 +62,6 @@ DECLARE_API(clrmaconfig)
     BOOL bDisable = FALSE;
     BOOL bDacClrma = FALSE;
     BOOL bManagedClrma = FALSE;
-    BOOL bStackTrace = FALSE;
     BOOL bLogging = FALSE;
 
     CMDOption option[] =
@@ -71,7 +70,6 @@ DECLARE_API(clrmaconfig)
         {"-disable", &bDisable, COBOOL, FALSE},
         {"-dac", &bDacClrma, COBOOL, FALSE},
         {"-managed", &bManagedClrma, COBOOL, FALSE},
-        {"-stacktrace", &bStackTrace, COBOOL, FALSE},
         {"-logging", &bLogging, COBOOL, FALSE},
     };
 
@@ -90,13 +88,9 @@ DECLARE_API(clrmaconfig)
         {
             g_clrmaGlobalFlags |= ClrmaGlobalFlags::ManagedClrmaEnabled;
         }
-        if (bStackTrace)
-        {
-            g_clrmaGlobalFlags |= ClrmaGlobalFlags::StackTraceEnabled;
-        }
         if (bLogging)
         {
-            g_clrmaGlobalFlags |= ClrmaGlobalFlags::TraceInformationEnabled;
+            g_clrmaGlobalFlags |= ClrmaGlobalFlags::LoggingEnabled;
         }
     }
     else if (bDisable)
@@ -109,32 +103,29 @@ DECLARE_API(clrmaconfig)
         {
             g_clrmaGlobalFlags &= ~ClrmaGlobalFlags::ManagedClrmaEnabled;
         }
-        if (bStackTrace)
-        {
-            g_clrmaGlobalFlags &= ~ClrmaGlobalFlags::StackTraceEnabled;
-        }
         if (bLogging)
         {
-            g_clrmaGlobalFlags &= ~ClrmaGlobalFlags::TraceInformationEnabled;
+            g_clrmaGlobalFlags &= ~ClrmaGlobalFlags::LoggingEnabled;
         }
     }
 
-    ExtOut("CLRMA direct DAC support:        %s\n", g_clrmaGlobalFlags & ClrmaGlobalFlags::DacClrmaEnabled ? "enabled (disable with '-disable -dac')" : "disabled (enable with '-enable -dac')");
-    ExtOut("CLRMA managed support:           %s\n", g_clrmaGlobalFlags & ClrmaGlobalFlags::ManagedClrmaEnabled ? "enabled (disable with '-disable -managed')" : "disabled (enable with '-enable -managed')");
-    ExtOut("EFN_StackTrace support:          %s\n", g_clrmaGlobalFlags & ClrmaGlobalFlags::StackTraceEnabled ? "enabled (disable with '-disable -stacktrace')" : "disabled (enable with '-enable -stacktrace')");
-    ExtOut("CLRMA trace information logging: %s\n", g_clrmaGlobalFlags & ClrmaGlobalFlags::TraceInformationEnabled ? "enabled (disable with '-disable -logging')" : "disabled (enable with '-enable -logging')");
+    ExtOut("CLRMA logging:              %s\n", g_clrmaGlobalFlags & ClrmaGlobalFlags::LoggingEnabled ? "enabled (disable with '-disable -logging')" : "disabled (enable with '-enable -logging')");
+    ExtOut("CLRMA direct DAC support:   %s\n", g_clrmaGlobalFlags & ClrmaGlobalFlags::DacClrmaEnabled ? "enabled (disable with '-disable -dac')" : "disabled (enable with '-enable -dac')");
+    ExtOut("CLRMA managed support:      %s\n", g_clrmaGlobalFlags & ClrmaGlobalFlags::ManagedClrmaEnabled ? "enabled (disable with '-disable -managed')" : "disabled (enable with '-enable -managed')");
 
     return Status;
 }
 
+extern void InternalOutputVaList(ULONG mask, PCSTR format, va_list args);
+
 void
 TraceInformation(PCSTR format, ...)
 {
-    if (g_clrmaGlobalFlags & ClrmaGlobalFlags::TraceInformationEnabled)
+    if (g_clrmaGlobalFlags & ClrmaGlobalFlags::LoggingEnabled)
     {
         va_list args;
         va_start(args, format);
-        InternalWriteTraceVaList(IHost::TraceType::Information, format, args);
+        InternalOutputVaList(DEBUG_OUTPUT_NORMAL, format, args);
         va_end(args);
     }
 }
@@ -142,8 +133,11 @@ TraceInformation(PCSTR format, ...)
 void
 TraceError(PCSTR format, ...)
 {
-    va_list args;
-    va_start(args, format);
-    InternalWriteTraceVaList(IHost::TraceType::Error, format, args);
-    va_end(args);
+    if (g_clrmaGlobalFlags & ClrmaGlobalFlags::LoggingEnabled)
+    {
+        va_list args;
+        va_start(args, format);
+        InternalOutputVaList(DEBUG_OUTPUT_ERROR, format, args);
+        va_end(args);
+    }
 }

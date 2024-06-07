@@ -23,15 +23,14 @@ private:
     Runtime* m_netcore;
 
 public:
-#ifndef FEATURE_PAL
-    bool SwitchRuntime(bool desktop);
-#endif
-    void DisplayStatus();
-
     Target(IDebuggerServices* debuggerServices);
     virtual ~Target();
 
     HRESULT CreateInstance(IRuntime** ppRuntime);
+#ifndef FEATURE_PAL
+    bool SwitchRuntime(bool desktop);
+#endif
+    void DisplayStatus();
 
     //----------------------------------------------------------------------------
     // IUnknown

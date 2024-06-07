@@ -122,6 +122,7 @@ HRESULT Host::GetCurrentTarget(ITarget** ppTarget)
     {
         m_target = new Target(m_debuggerServices);
     }
+    m_target->AddRef();
     *ppTarget = m_target;
     return S_OK;
 }

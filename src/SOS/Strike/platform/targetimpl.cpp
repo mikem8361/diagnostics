@@ -58,9 +58,7 @@ Target::~Target()
         m_netcore->Release();
         m_netcore = nullptr;
     }
-#ifdef FEATURE_PAL
-    FlushMetadataRegions();
-#else
+#ifndef FEATURE_PAL
     if (m_desktop != nullptr)
     {
         m_desktop->Release();
@@ -267,9 +265,7 @@ void Target::Flush()
     if (m_netcore != nullptr) {
         m_netcore->Flush();
     }
-#ifdef FEATURE_PAL
-    FlushMetadataRegions();
-#else
+#ifndef FEATURE_PAL
     if (m_desktop != nullptr) {
         m_desktop->Flush();
     }

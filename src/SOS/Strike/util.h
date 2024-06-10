@@ -1742,11 +1742,6 @@ BOOL IsDerivedFrom(CLRDATA_ADDRESS mtObj, __in_z LPCWSTR baseString);
 BOOL IsDerivedFrom(CLRDATA_ADDRESS mtObj, DWORD_PTR modulePtr, mdTypeDef typeDef);
 BOOL TryGetMethodDescriptorForDelegate(CLRDATA_ADDRESS delegateAddr, CLRDATA_ADDRESS* pMD);
 
-#ifdef FEATURE_PAL
-void FlushMetadataRegions();
-HRESULT GetMetadataMemory(CLRDATA_ADDRESS address, ULONG32 bufferSize, BYTE* buffer);
-#endif
-
 /* Returns a list of all modules in the process.
  * Params:
  *      name - The name of the module you would like.  If mName is NULL the all modules are returned.

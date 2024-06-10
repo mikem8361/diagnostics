@@ -13,7 +13,8 @@ extern "C" {
 struct ITarget;
 
 /// <summary>
-/// IHost - Provides native services from the host to SOS.
+/// Provides host services to the native SOS code. It is normally implemented managed code
+/// except for the fallback case when there isn't .NET hosting runtime available.
 /// </summary>
 MIDL_INTERFACE("E0CD8534-A88B-40D7-91BA-1B4C925761E9")
 IHost : public IUnknown

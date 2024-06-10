@@ -11,7 +11,8 @@ extern "C" {
 #endif
 
 /// <summary>
-/// IOutputService
+/// There are both global and per-command instances available. It normally implemented in native code
+/// except for the dotnet-dump or VS hosts which is implemented in managed.
 /// </summary>
 MIDL_INTERFACE("30745290-DC07-4993-9B61-F6132CCEB663")
 IOutputService : public IUnknown

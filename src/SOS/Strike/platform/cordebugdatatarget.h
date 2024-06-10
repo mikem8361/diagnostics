@@ -8,7 +8,7 @@
 * Data target for the debugged process. Provided to OpenVirtualProcess 
 * in order to get an ICorDebugProcess back.
 \**********************************************************************/
-class CorDebugDataTarget : public ICorDebugMutableDataTarget, public ICorDebugMetaDataLocator, public ICorDebugDataTarget4
+class CorDebugDataTarget : public ICorDebugMutableDataTarget, public ICorDebugDataTarget4
 {
 protected:
     LONG m_ref;
@@ -38,10 +38,6 @@ public:
         else if (InterfaceId == IID_ICorDebugMutableDataTarget)
         {
             *pInterface = static_cast<ICorDebugMutableDataTarget *>(this);
-        }
-        else if (InterfaceId == IID_ICorDebugMetaDataLocator)
-        {
-            *pInterface = static_cast<ICorDebugMetaDataLocator *>(this);
         }
         else if (InterfaceId == IID_ICorDebugDataTarget4)
         {
@@ -119,22 +115,6 @@ public:
         ULONG32 * pcbRead)
     {
         address = CONVERT_FROM_SIGN_EXTENDED(address);
-#ifdef FEATURE_PAL
-        if (g_sos != nullptr)
-        {
-            // LLDB synthesizes memory (returns 0's) for missing pages (in this case the missing metadata  pages) 
-            // in core dumps. This functions creates a list of the metadata regions and caches the metadata if 
-            // available from the local or downloaded assembly. If the read would be in the metadata of a loaded 
-            // assembly, the metadata from the this cache will be returned.
-            HRESULT hr = GetMetadataMemory(address, request, pBuffer);
-            if (SUCCEEDED(hr)) {
-                if (pcbRead != nullptr) {
-                    *pcbRead = request;
-                }
-                return hr;
-            }
-        }
-#endif
         HRESULT hr = m_debuggerServices->ReadVirtual(address, pBuffer, request, (PULONG)pcbRead);
         if (FAILED(hr)) 
         {
@@ -177,23 +157,6 @@ public:
         CORDB_CONTINUE_STATUS continueStatus)
     {
         return E_NOTIMPL;
-    }
-
-    //
-    // ICorDebugMetaDataLocator.
-    //
-
-    virtual HRESULT STDMETHODCALLTYPE GetMetaData(
-        /* [in] */ LPCWSTR wszImagePath,
-        /* [in] */ DWORD dwImageTimeStamp,
-        /* [in] */ DWORD dwImageSize,
-        /* [in] */ ULONG32 cchPathBuffer,
-        /* [annotation][out] */ 
-        _Out_ ULONG32 *pcchPathBuffer,
-        /* [annotation][length_is][size_is][out] */ 
-        _Out_writes_to_(cchPathBuffer, *pcchPathBuffer) WCHAR wszPathBuffer[])
-    {
-        return ::GetICorDebugMetadataLocator(wszImagePath, dwImageTimeStamp, dwImageSize, cchPathBuffer, pcchPathBuffer, wszPathBuffer);
     }
 
     //

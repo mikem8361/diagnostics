@@ -47,12 +47,6 @@ DataTarget::QueryInterface(
         AddRef();
         return S_OK;
     }
-    else if (InterfaceId == IID_ICLRMetadataLocator)
-    {
-        *Interface = (ICLRMetadataLocator*)this;
-        AddRef();
-        return S_OK;
-    }
     else if (InterfaceId == IID_ICLRRuntimeLocator)
     {
         *Interface = (ICLRRuntimeLocator*)this;
@@ -153,22 +147,6 @@ DataTarget::ReadVirtual(
     /* [optional][out] */ ULONG32 *done)
 {
     address = CONVERT_FROM_SIGN_EXTENDED(address);
-#ifdef FEATURE_PAL
-    if (g_sos != nullptr)
-    {
-        // LLDB synthesizes memory (returns 0's) for missing pages (in this case the missing metadata  pages) 
-        // in core dumps. This functions creates a list of the metadata regions and caches the metadata if 
-        // available from the local or downloaded assembly. If the read would be in the metadata of a loaded 
-        // assembly, the metadata from the this cache will be returned.
-        HRESULT hr = GetMetadataMemory(address, request, buffer);
-        if (SUCCEEDED(hr)) {
-            if (done != nullptr) {
-                *done = request;
-            }
-            return hr;
-        }
-    }
-#endif
     HRESULT hr = m_debuggerServices->ReadVirtual(address, (PVOID)buffer, request, (PULONG)done);
     if (FAILED(hr)) 
     {
@@ -289,24 +267,6 @@ DataTarget::VirtualUnwind(
 #else
     return E_NOTIMPL;
 #endif
-}
-
-// ICLRMetadataLocator
-
-HRESULT STDMETHODCALLTYPE
-DataTarget::GetMetadata(
-    /* [in] */ LPCWSTR imagePath,
-    /* [in] */ ULONG32 imageTimestamp,
-    /* [in] */ ULONG32 imageSize,
-    /* [in] */ GUID* mvid,
-    /* [in] */ ULONG32 mdRva,
-    /* [in] */ ULONG32 flags,
-    /* [in] */ ULONG32 bufferSize,
-    /* [out, size_is(bufferSize), length_is(*dataSize)] */
-    BYTE* buffer,
-    /* [out] */ ULONG32* dataSize)
-{
-    return ::GetMetadataLocator(imagePath, imageTimestamp, imageSize, mvid, mdRva, flags, bufferSize, buffer, dataSize);
 }
 
 // ICLRRuntimeLocator

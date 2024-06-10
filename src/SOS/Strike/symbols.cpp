@@ -38,47 +38,6 @@ HMODULE g_hmoduleSymBinder = nullptr;
 ISymUnmanagedBinder3 *g_pSymBinder = nullptr;
 #endif
 
-/**********************************************************************\
- * Returns the metadata from a local or downloaded assembly
-\**********************************************************************/
-HRESULT GetMetadataLocator(
-    LPCWSTR imagePath,
-    ULONG32 imageTimestamp,
-    ULONG32 imageSize,
-    GUID* mvid,
-    ULONG32 mdRva,
-    ULONG32 flags,
-    ULONG32 bufferSize,
-    BYTE* buffer,
-    ULONG32* dataSize)
-{
-    ISymbolService* symbolService = GetSymbolService();
-    if (symbolService == nullptr)
-    {
-        return E_NOINTERFACE;
-    }
-    return symbolService->GetMetadataLocator(imagePath, imageTimestamp, imageSize, mvid, mdRva, flags, bufferSize, buffer, dataSize);
-}
-
-/**********************************************************************\
- * Returns the metadata from a local or downloaded assembly
-\**********************************************************************/
-HRESULT GetICorDebugMetadataLocator(
-    LPCWSTR imagePath,
-    ULONG32 imageTimestamp,
-    ULONG32 imageSize,
-    ULONG32 cchPathBuffer,
-    ULONG32 *pcchPathBuffer,
-    WCHAR wszPathBuffer[])
-{
-    ISymbolService* symbolService = GetSymbolService();
-    if (symbolService == nullptr)
-    {
-        return E_NOINTERFACE;
-    }
-    return symbolService->GetICorDebugMetadataLocator(imagePath, imageTimestamp, imageSize, cchPathBuffer, pcchPathBuffer, wszPathBuffer);
-}
-
 #ifndef FEATURE_PAL
 
 /**********************************************************************\

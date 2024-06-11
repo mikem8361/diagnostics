@@ -1,11 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#include "strike.h"
-#include "util.h"
 #include "targetimpl.h"
 #include "host.h"
-#include <string>
 
 //----------------------------------------------------------------------------
 // Target
@@ -140,12 +137,14 @@ void Target::DisplayStatus()
         "Linux",
         "MacOS"
     };
+#if 0
     if (g_targetMachine != nullptr) {
         ExtOut("Target OS: %s Platform: %04x Context size: %04x\n", osName[GetOperatingSystem()], g_targetMachine->GetPlatform(), g_targetMachine->GetContextSize());
     }
     if (m_tmpPath != nullptr) {
         ExtOut("Temp path: %s\n", m_tmpPath);
     }
+#endif
     if (m_netcore != nullptr) {
         m_netcore->DisplayStatus();
     }
@@ -239,7 +238,7 @@ LPCSTR Target::GetTempDirectory()
             strcat_s(tmpPath, MAX_LONGPATH, DIRECTORY_SEPARATOR_STR_A);
         }
         ULONG pid = 0;
-        if (g_ExtSystem->GetCurrentProcessSystemId(&pid) != 0)
+        if (m_debuggerServices->GetCurrentProcessSystemId(&pid) != 0)
         {
             // Use the SOS process id if can't get target's
             pid = ::GetCurrentProcessId();

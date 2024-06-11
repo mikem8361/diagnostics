@@ -118,7 +118,7 @@ public:
         HRESULT hr = m_debuggerServices->ReadVirtual(address, pBuffer, request, (PULONG)pcbRead);
         if (FAILED(hr)) 
         {
-            ExtDbgOut("CorDebugDataTarget::ReadVirtual FAILED %08x address %p size %08x\n", hr, address, request);
+            //ExtDbgOut("CorDebugDataTarget::ReadVirtual FAILED %08x address %p size %08x\n", hr, address, request);
         }
         return hr;
     }

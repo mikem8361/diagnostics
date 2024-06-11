@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "extensions.h"
-#include "runtime.h"
-#include "runtimeinfo.h"
+#include <extensions.h>
+#include <runtime.h>
+#include <runtimeinfo.h>
 
 #ifdef FEATURE_PAL
 

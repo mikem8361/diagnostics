@@ -1,6 +1,10 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+#pragma once
+
+#include <extensions.h>
+
 class DataTarget : public ICLRDataTarget2, ICorDebugDataTarget4, ICLRRuntimeLocator
 {
 private:
@@ -15,8 +19,8 @@ public:
     // IUnknown.
     STDMETHOD(QueryInterface)(
         THIS_
-        ___in REFIID InterfaceId,
-        ___out PVOID* Interface
+        REFIID InterfaceId,
+        PVOID* Interface
         );
     STDMETHOD_(ULONG, AddRef)(
         THIS

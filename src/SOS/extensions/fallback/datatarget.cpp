@@ -1,18 +1,8 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#include "sos.h"
 #include "datatarget.h"
-#include <corhdr.h>
-#include <cor.h>
-#include <dacprivate.h>
-#include <sospriv.h>
-#include <corerror.h>
 #include <remotememoryservice.h>
-
-#ifndef IMAGE_FILE_MACHINE_LOONGARCH64
-#define IMAGE_FILE_MACHINE_LOONGARCH64      0x6264  // LOONGARCH64
-#endif
 
 DataTarget::DataTarget(IDebuggerServices* debuggerServices, ULONG64 baseAddress) :
     m_ref(0),
@@ -24,8 +14,8 @@ DataTarget::DataTarget(IDebuggerServices* debuggerServices, ULONG64 baseAddress)
 STDMETHODIMP
 DataTarget::QueryInterface(
     THIS_
-    ___in REFIID InterfaceId,
-    ___out PVOID* Interface
+    REFIID InterfaceId,
+    PVOID* Interface
     )
 {
     if (InterfaceId == IID_IUnknown ||
@@ -150,7 +140,7 @@ DataTarget::ReadVirtual(
     HRESULT hr = m_debuggerServices->ReadVirtual(address, (PVOID)buffer, request, (PULONG)done);
     if (FAILED(hr)) 
     {
-        ExtDbgOut("DataTarget::ReadVirtual FAILED %08x address %08llx size %08x\n", hr, address, request);
+        //ExtDbgOut("DataTarget::ReadVirtual FAILED %08x address %08llx size %08x\n", hr, address, request);
     }
     return hr;
 }

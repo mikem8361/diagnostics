@@ -3,13 +3,32 @@
 
 #pragma once
 
+#include <minipal/utils.h>
+#include <cor.h>
+#include <corsym.h>
+#include <clrdata.h>
 #include <corhdr.h>
+#include <cordebug.h>
+#include <xcordebug.h>
+#include <xclrdata.h>
 #include <string>
 #include <host.h>
 #include <hostservices.h>
 #include <debuggerservices.h>
 #include <outputservice.h>
 #include <symbolservice.h>
+#include <releaseholder.h>
+#include <arrayholder.h>
+
+#define CONVERT_FROM_SIGN_EXTENDED(offset) ((ULONG_PTR)(offset))
+
+#ifndef IMAGE_FILE_MACHINE_LOONGARCH64
+#define IMAGE_FILE_MACHINE_LOONGARCH64      0x6264  // LOONGARCH64
+#endif
+
+#ifndef IMAGE_FILE_MACHINE_RISCV64
+#define IMAGE_FILE_MACHINE_RISCV64          0x5064  // RISCV64
+#endif
 
 interface IRuntime;
 

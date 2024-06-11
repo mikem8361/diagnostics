@@ -3,34 +3,30 @@
 
 #pragma once
 
-#include "target.h"
-#include "runtimeimpl.h"
+#include <extensions.h>
 
-extern bool IsWindowsTarget();
+class Target;
 
 //----------------------------------------------------------------------------
-// Local implementation of ITarget when the host doesn't provide it
+// Local implementation of IHost
 //----------------------------------------------------------------------------
-class Target : public ITarget
+class Host : public IHost
 {
 private:
     LONG m_ref;
-    LPCSTR m_tmpPath;
+    Target* m_target;
     IDebuggerServices* m_debuggerServices;
-#ifndef FEATURE_PAL
-    Runtime* m_desktop;
-#endif
-    Runtime* m_netcore;
+
+    static Host* s_host;
 
 public:
-    Target(IDebuggerServices* debuggerServices);
-    virtual ~Target();
+    Host(IDebuggerServices* debuggerServices);
+    virtual ~Host();
 
-    HRESULT CreateInstance(IRuntime** ppRuntime);
 #ifndef FEATURE_PAL
-    bool SwitchRuntime(bool desktop);
+    static bool SwitchRuntime(bool desktop);
 #endif
-    void DisplayStatus();
+    static void DisplayStatus();
 
     //----------------------------------------------------------------------------
     // IUnknown
@@ -45,16 +41,14 @@ public:
     ULONG STDMETHODCALLTYPE Release();
 
     //----------------------------------------------------------------------------
-    // ITarget
+    // IHost
     //----------------------------------------------------------------------------
 
-    OperatingSystem STDMETHODCALLTYPE GetOperatingSystem();
+    IHost::HostType STDMETHODCALLTYPE GetHostType();
 
     HRESULT STDMETHODCALLTYPE GetService(REFIID serviceId, PVOID* ppService);
 
-    LPCSTR STDMETHODCALLTYPE GetTempDirectory();
+    HRESULT STDMETHODCALLTYPE GetCurrentTarget(ITarget** ppTarget);
 
-    HRESULT STDMETHODCALLTYPE GetRuntime(IRuntime** pRuntime);
-
-    void STDMETHODCALLTYPE Flush();
+    void STDMETHODCALLTYPE WriteTrace(TraceType type, PCSTR message);
 };

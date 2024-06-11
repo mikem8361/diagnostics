@@ -1,23 +1,15 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
-#include "strike.h"
-#include "util.h"
-#include <string>
-#include <corhdr.h>
-#include <cor.h>
-#include <clrdata.h>
-#include <dbghelp.h>
-#include <cordebug.h>
-#include <xcordebug.h>
+#include <extensions.h>
 #include <mscoree.h>
 #include <psapi.h>
+#include <runtimeinfo.h>
 #include <clrinternal.h>
 #include <metahost.h>
 #include "runtimeimpl.h"
 #include "datatarget.h"
 #include "cordebugdatatarget.h"
-#include "runtimeinfo.h"
 
 #ifdef FEATURE_PAL
 #include <sys/stat.h>
@@ -25,27 +17,31 @@
 #include <unistd.h>
 #endif // !FEATURE_PAL
 
+// BUGBUG
+#define ExtErr
+#define ExtDbgOut
+
 typedef HRESULT (STDAPICALLTYPE  *OpenVirtualProcessImpl2FnPtr)(ULONG64 clrInstanceId, 
-    IUnknown * pDataTarget,
+    IUnknown* pDataTarget,
     LPCWSTR pDacModulePath,
     CLR_DEBUGGING_VERSION * pMaxDebuggerSupportedVersion,
     REFIID riid,
-    IUnknown ** ppInstance,
+    void** ppInstance,
     CLR_DEBUGGING_PROCESS_FLAGS * pdwFlags);
 
 typedef HRESULT (STDAPICALLTYPE  *OpenVirtualProcessImplFnPtr)(ULONG64 clrInstanceId, 
-    IUnknown * pDataTarget,
+    IUnknown* pDataTarget,
     HMODULE hDacDll,
     CLR_DEBUGGING_VERSION * pMaxDebuggerSupportedVersion,
     REFIID riid,
-    IUnknown ** ppInstance,
+    void** ppInstance,
     CLR_DEBUGGING_PROCESS_FLAGS * pdwFlags);
 
 typedef HRESULT (STDAPICALLTYPE  *OpenVirtualProcess2FnPtr)(ULONG64 clrInstanceId, 
     IUnknown * pDataTarget,
     HMODULE hDacDll,
     REFIID riid,
-    IUnknown ** ppInstance,
+    void** ppInstance,
     CLR_DEBUGGING_PROCESS_FLAGS * pdwFlags);
 
 typedef HMODULE (STDAPICALLTYPE  *LoadLibraryWFnPtr)(LPCWSTR lpLibFileName);
@@ -480,7 +476,7 @@ HRESULT Runtime::GetCorDebugInterface(ICorDebugProcess** ppCorDebugProcess)
     {
         // ICorDebugProcess4 is currently considered a private experimental interface on ICorDebug, it might go away so
         // we need to be sure to handle its absence gracefully
-        ToRelease<ICorDebugProcess4> pProcess4 = NULL;
+        ReleaseHolder<ICorDebugProcess4> pProcess4 = NULL;
         if (SUCCEEDED(m_pCorDebugProcess->QueryInterface(__uuidof(ICorDebugProcess4), (void**)&pProcess4)))
         {
             // FLUSH_ALL is more expensive than PROCESS_RUNNING, but this allows us to be safe even if things
@@ -534,8 +530,8 @@ HRESULT Runtime::GetCorDebugInterface(ICorDebugProcess** ppCorDebugProcess)
     }
     CLR_DEBUGGING_VERSION clrDebuggingVersionRequested = {0, 4, 0, 0, 0};
     CLR_DEBUGGING_PROCESS_FLAGS clrDebuggingFlags = (CLR_DEBUGGING_PROCESS_FLAGS)0;
-    ToRelease<ICorDebugMutableDataTarget> pDataTarget = new CorDebugDataTarget(m_debuggerServices);
-    ToRelease<IUnknown> pUnkProcess = nullptr;
+    ReleaseHolder<ICorDebugMutableDataTarget> pDataTarget = new CorDebugDataTarget(m_debuggerServices);
+    ReleaseHolder<IUnknown> pUnkProcess = nullptr;
 
     // Get access to the latest OVP implementation and call it
     OpenVirtualProcessImpl2FnPtr ovpFn = (OpenVirtualProcessImpl2FnPtr)GetProcAddress(hDbi, "OpenVirtualProcessImpl2");
@@ -648,6 +644,7 @@ HRESULT Runtime::GetEEVersion(VS_FIXEDFILEINFO* pFileInfo, char* fileVersionBuff
 \**********************************************************************/
 void Runtime::DisplayStatus()
 {
+#if 0
     char current = g_pRuntime == this ? '*' : ' ';
     ExtOut("%c%s runtime at %08llx size %08llx\n", current, GetRuntimeConfigurationName(GetRuntimeConfiguration()), m_address, m_size);
     if (m_runtimeInfo != nullptr) {
@@ -665,4 +662,5 @@ void Runtime::DisplayStatus()
     if (m_dbiFilePath != nullptr) {
         ExtOut("    DBI file path: %s\n", m_dbiFilePath);
     }
+#endif
 }

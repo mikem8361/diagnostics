@@ -75,36 +75,62 @@ public:
     virtual HRESULT STDMETHODCALLTYPE GetPlatform(
         CorDebugPlatform * pPlatform)
     {
-        ULONG platformKind = g_targetMachine->GetPlatform();
-        if (IsWindowsTarget())
+        ULONG platformKind;
+        HRESULT hr = m_debuggerServices->GetExecutingProcessorType(&platformKind);
+        if (FAILED(hr)) {
+            return hr;
+        }
+        IDebuggerServices::OperatingSystem os;
+        hr = m_debuggerServices->GetOperatingSystem(&os);
+        if (FAILED(hr)) {
+            return hr;
+        }
+        if (os == IDebuggerServices::OperatingSystem::Windows)
         {
-            if (platformKind == IMAGE_FILE_MACHINE_I386)
-                *pPlatform = CORDB_PLATFORM_WINDOWS_X86;
-            else if (platformKind == IMAGE_FILE_MACHINE_AMD64)
-                *pPlatform = CORDB_PLATFORM_WINDOWS_AMD64;
-            else if (platformKind == IMAGE_FILE_MACHINE_ARMNT)
-                *pPlatform = CORDB_PLATFORM_WINDOWS_ARM;
-            else if (platformKind == IMAGE_FILE_MACHINE_ARM64)
-                *pPlatform = CORDB_PLATFORM_WINDOWS_ARM64;
-            else
-                return E_FAIL;
+            switch (platformKind)
+            {
+                case IMAGE_FILE_MACHINE_I386:
+                    *pPlatform = CORDB_PLATFORM_WINDOWS_X86;
+                    break;
+                case IMAGE_FILE_MACHINE_AMD64:
+                    *pPlatform = CORDB_PLATFORM_WINDOWS_AMD64;
+                    break;
+                case IMAGE_FILE_MACHINE_ARMNT:
+                    *pPlatform = CORDB_PLATFORM_WINDOWS_ARM;
+                    break;
+                case IMAGE_FILE_MACHINE_ARM64:
+                    *pPlatform = CORDB_PLATFORM_WINDOWS_ARM64;
+                    break;
+                default:
+                    return E_FAIL;
+            }
         }
         else
         {
-            if (platformKind == IMAGE_FILE_MACHINE_I386)
-                *pPlatform = CORDB_PLATFORM_POSIX_X86;
-            else if (platformKind == IMAGE_FILE_MACHINE_AMD64)
-                *pPlatform = CORDB_PLATFORM_POSIX_AMD64;
-            else if (platformKind == IMAGE_FILE_MACHINE_ARMNT)
-                *pPlatform = CORDB_PLATFORM_POSIX_ARM;
-            else if (platformKind == IMAGE_FILE_MACHINE_ARM64)
-                *pPlatform = CORDB_PLATFORM_POSIX_ARM64;
-            else if (platformKind == IMAGE_FILE_MACHINE_RISCV64)
-                *pPlatform = CORDB_PLATFORM_POSIX_RISCV64;
-            else
-                return E_FAIL;
+            switch (platformKind)
+            {
+                case IMAGE_FILE_MACHINE_I386:
+                    *pPlatform = CORDB_PLATFORM_POSIX_X86;
+                    break;
+                case IMAGE_FILE_MACHINE_AMD64:
+                    *pPlatform = CORDB_PLATFORM_POSIX_AMD64;
+                    break;
+                case IMAGE_FILE_MACHINE_ARMNT:
+                    *pPlatform = CORDB_PLATFORM_POSIX_ARM;
+                    break;
+                case IMAGE_FILE_MACHINE_ARM64:
+                    *pPlatform = CORDB_PLATFORM_POSIX_ARM64;
+                    break;
+                case IMAGE_FILE_MACHINE_LOONGARCH64:
+                    *pPlatform = CORDB_PLATFORM_POSIX_LOONGARCH64;
+                    break;
+                case IMAGE_FILE_MACHINE_RISCV64:
+                    *pPlatform = CORDB_PLATFORM_POSIX_RISCV64;
+                    break;
+                default:
+                    return E_FAIL;
+            }
         }
-    
         return S_OK;
     }
 

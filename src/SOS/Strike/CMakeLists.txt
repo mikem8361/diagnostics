@@ -75,6 +75,7 @@ add_definitions(-DSTRIKE)
 
 include_directories(${ROOT_DIR}/src/SOS/inc)
 include_directories(${ROOT_DIR}/src/SOS/extensions)
+include_directories(${ROOT_DIR}/src/SOS/extensions/fallback)
 include_directories(${CLR_SHARED_DIR}/gcdump)
 
 if (CLR_CMAKE_HOST_WIN32)

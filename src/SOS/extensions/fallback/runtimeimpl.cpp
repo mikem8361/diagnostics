@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 #include <extensions.h>
+#include <target.h>
 #include <mscoree.h>
 #include <psapi.h>
 #include <runtimeinfo.h>
@@ -408,7 +409,8 @@ LPCSTR Runtime::GetRuntimeDirectory()
         }
         // Parse off the file name
         char* runtimeDirectory = _strdup(m_name);
-        char* lastSlash = strrchr(runtimeDirectory, GetTargetDirectorySeparatorW());
+        char separator = m_target->GetOperatingSystem() == ITarget::OperatingSystem::Windows ? '\\' : '/';
+        char* lastSlash = strrchr(runtimeDirectory, separator);
         if (lastSlash != nullptr)
         {
             *lastSlash = '\0';

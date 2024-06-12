@@ -4351,12 +4351,13 @@ size_t CountHexCharacters(CLRDATA_ADDRESS val)
 
 void OutputVaList(IOutputService::OutputType type, PCSTR format, va_list args)
 {
-    char str[1024];
+    char str[128];
     va_list argsCopy;
     va_copy(argsCopy, args);
 
     // Try and format our string into a fixed buffer first and see if it fits
-    int length = _vsnprintf_s(str, sizeof(str), _TRUNCATE, format, args);
+    //int length = _vsnprintf_s(str, sizeof(str), _TRUNCATE, format, args);
+    int length = vsnprintf(str, sizeof(str), format, args);
     if (length > 0)
     {
         if (length < sizeof(str))
@@ -4369,8 +4370,10 @@ void OutputVaList(IOutputService::OutputType type, PCSTR format, va_list args)
             char *str_ptr = (char*)::malloc(length + 1);
             if (str_ptr != nullptr)
             {
-                _vsnprintf_s(str_ptr, length + 1, _TRUNCATE, format, argsCopy);
-                GetOutputService()->OutputString(type, str_ptr);
+                if (_vsnprintf_s(str_ptr, length + 1, _TRUNCATE, format, argsCopy) > 0)
+                {
+                    GetOutputService()->OutputString(type, str_ptr);
+                }
                 ::free(str_ptr);
             }
         }

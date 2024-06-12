@@ -296,7 +296,7 @@ vDoOut(BOOL bToConsole, FILE* file, PCSTR Format, ...)
 
     if (bToConsole)
     {
-        InternalOutputVaList(IOutputService::OutputType::Normal, Format, Args);
+        OutputVaList(IOutputService::OutputType::Normal, Format, Args);
     }
     else
     {

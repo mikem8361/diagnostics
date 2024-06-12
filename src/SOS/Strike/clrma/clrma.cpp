@@ -116,8 +116,6 @@ DECLARE_API(clrmaconfig)
     return Status;
 }
 
-extern void InternalOutputVaList(ULONG mask, PCSTR format, va_list args);
-
 void
 TraceInformation(PCSTR format, ...)
 {

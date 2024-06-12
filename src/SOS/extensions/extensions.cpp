@@ -349,8 +349,10 @@ void InternalOutputVaList(IOutputService::OutputType type, PCSTR format, va_list
             char *str_ptr = (char*)::malloc(length + 1);
             if (str_ptr != nullptr)
             {
-                vsnprintf(str_ptr, length + 1, format, argsCopy);
-                GetOutputService()->OutputString(type, str_ptr);
+                if (vsnprintf(str_ptr, length + 1, format, argsCopy) > 0)
+                {
+                    GetOutputService()->OutputString(type, str_ptr);
+                }
                 ::free(str_ptr);
             }
         }

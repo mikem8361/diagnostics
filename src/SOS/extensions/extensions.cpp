@@ -327,7 +327,7 @@ void InternalWriteTraceVaList(IHost::TraceType type, PCSTR format, va_list args)
 }
 
 /// <summary>
-/// Internal formatted output helper function
+/// Internal formatted output helper function. Doesn't support format chars like %S.
 /// </summary>
 void InternalOutputVaList(IOutputService::OutputType type, PCSTR format, va_list args)
 {

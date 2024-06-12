@@ -4356,8 +4356,7 @@ void OutputVaList(IOutputService::OutputType type, PCSTR format, va_list args)
     va_copy(argsCopy, args);
 
     // Try and format our string into a fixed buffer first and see if it fits
-    //int length = _vsnprintf_s(str, sizeof(str), _TRUNCATE, format, args);
-    int length = vsnprintf(str, sizeof(str), format, args);
+    int length = _vsnprintf_s(str, sizeof(str), _TRUNCATE, format, args);
     if (length > 0)
     {
         if (length < sizeof(str))

@@ -5,8 +5,9 @@
 #include <psapi.h>
 #include <tchar.h>
 #include <limits.h>
-#include "target.h"
-#include "arrayholder.h"
+#include <target.h>
+#include <hostimpl.h>
+#include <arrayholder.h>
 #include "extensions.h"
 
 // Error output.
@@ -26,6 +27,23 @@ extern "C" HRESULT InitializeHostServices(
 {
     g_hostingInitialized = true;
     return Extensions::GetInstance()->InitializeHostServices(punk);
+}
+
+void Extensions::Initialize(IDebuggerServices* debuggerServices, IOutputService* outputService)
+{
+    if (s_extensions == nullptr)
+    {
+        s_extensions = new Extensions(debuggerServices, outputService);
+    }
+}
+
+void Extensions::Uninitialize()
+{
+    if (s_extensions != nullptr)
+    {
+        delete s_extensions;
+        s_extensions = nullptr;
+    }
 }
 
 /// <summary>
@@ -133,6 +151,29 @@ IHostServices* Extensions::GetHostServices()
         }
     }
     return m_pHostServices;
+}
+
+/// <summary>
+/// Returns the host instance
+/// 
+/// * dotnet-dump - m_pHost has already been set by SOSInitializeByHost by SOS.Hosting
+/// * lldb - m_pHost has already been set by SOSInitializeByHost by libsosplugin which gets it via the InitializeHostServices callback
+/// * dbgeng - SOS.Extensions provides the instance via the InitializeHostServices callback
+/// </summary>
+IHost* Extensions::GetHost()
+{
+    if (m_pHost == nullptr)
+    {
+        // Initialize the hosting runtime which will call InitializeHostServices and set m_pHost to the host instance
+        InitializeHosting();
+
+        // Otherwise, use the local host instance (hostimpl.*) that creates a local target instance (targetimpl.*)
+        if (m_pHost == nullptr)
+        {
+            m_pHost = new Host(GetDebuggerServices());
+        }
+    }
+    return m_pHost;
 }
 
 /// <summary>

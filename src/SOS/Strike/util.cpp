@@ -4351,7 +4351,7 @@ size_t CountHexCharacters(CLRDATA_ADDRESS val)
 
 void OutputVaList(IOutputService::OutputType type, PCSTR format, va_list args)
 {
-    char str[128];
+    char str[1024];
     va_list argsCopy;
     va_copy(argsCopy, args);
 

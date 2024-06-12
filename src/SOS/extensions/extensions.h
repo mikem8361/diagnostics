@@ -68,6 +68,9 @@ public:
     Extensions(IDebuggerServices* pDebuggerServices, IOutputService* pOutputService);
     virtual ~Extensions();
 
+    static void Initialize(IDebuggerServices* debuggerServices, IOutputService* outputService);
+    static void Uninitialize();
+
     /// <summary>
     /// Return the singleton extensions instance
     /// </summary>
@@ -103,7 +106,7 @@ public:
     /// <summary>
     /// Returns the host service provider or null
     /// </summary>
-    virtual IHost* GetHost() = 0;
+    IHost* GetHost();
 
     /// <summary>
     /// Returns the extension service interface or null

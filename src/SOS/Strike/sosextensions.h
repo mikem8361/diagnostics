@@ -20,8 +20,6 @@ public:
     static HRESULT Initialize(IDebugClient* client);
 #endif
     static HRESULT Initialize(IHost* host, IDebuggerServices* debuggerServices, IOutputService* outputService);
-    static void Uninitialize();
-    IHost* GetHost();
 };
 
 extern HRESULT GetRuntime(IRuntime** ppRuntime);

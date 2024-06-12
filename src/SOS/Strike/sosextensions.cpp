@@ -101,41 +101,6 @@ SOSExtensions::Initialize(IHost* host, IDebuggerServices* debuggerServices, IOut
     return S_OK;
 }
 
-void
-SOSExtensions::Uninitialize()
-{
-    if (s_extensions != nullptr)
-    {
-        delete s_extensions;
-        s_extensions = nullptr;
-    }
-}
-
-/// <summary>
-/// Returns the host instance
-/// 
-/// * dotnet-dump - m_pHost has already been set by SOSInitializeByHost by SOS.Hosting
-/// * lldb - m_pHost has already been set by SOSInitializeByHost by libsosplugin which gets it via the InitializeHostServices callback
-/// * dbgeng - SOS.Extensions provides the instance via the InitializeHostServices callback
-/// </summary>
-IHost*
-SOSExtensions::GetHost()
-{
-    if (m_pHost == nullptr)
-    {
-#ifndef FEATURE_PAL
-        // Initialize the hosting runtime which will call InitializeHostServices and set m_pHost to the host instance
-        InitializeHosting();
-#endif
-        // Otherwise, use the local host instance (hostimpl.*) that creates a local target instance (targetimpl.*)
-        if (m_pHost == nullptr)
-        {
-            m_pHost = new Host(GetDebuggerServices());
-        }
-    }
-    return m_pHost;
-}
-
 /// <summary>
 /// Returns the runtime or fails if no target or current runtime
 /// </summary>

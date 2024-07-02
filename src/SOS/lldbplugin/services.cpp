@@ -1461,7 +1461,7 @@ LLDBServices::GetModuleSize(
         if (section.IsValid())
         {
             Output(DEBUG_OUTPUT_NORMAL, "GetModuleSize (%d): load %016llx file address %016llx byte size %016llx\n",
-                si, section.LoadAddress(target), section.GetFileAddress(), section.GetByteSize());
+                si, section.GetLoadAddress(target), section.GetFileAddress(), section.GetByteSize());
 #if defined(__APPLE__)
             if (strcmp(section.GetName(), "__LINKEDIT") == 0)
             {

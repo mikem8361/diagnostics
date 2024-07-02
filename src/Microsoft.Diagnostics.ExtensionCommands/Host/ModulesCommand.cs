@@ -42,6 +42,9 @@ namespace Microsoft.Diagnostics.ExtensionCommands
         [ServiceImport]
         public IMemoryService MemoryService { get; set; }
 
+        [ServiceImport]
+        public IRuntime Runtime { get; set; }
+
         public override void Invoke()
         {
             if (Address.HasValue)
@@ -49,6 +52,14 @@ namespace Microsoft.Diagnostics.ExtensionCommands
                 IModule module = ModuleService.GetModuleFromAddress(Address.Value);
                 if (module != null)
                 {
+                    IModuleSymbols symbols = module.Services.GetService<IModuleSymbols>();
+                    if (symbols != null)
+                    {
+                        if (symbols.TryGetSymbolName(Address.Value, out string symbol, out ulong displacement))
+                        {
+                            WriteLine($"Symbol at 0x{Address:X16} - {symbol} + 0x{displacement:X}");
+                        }
+                    }
                     DisplayModule(module);
                 }
                 else

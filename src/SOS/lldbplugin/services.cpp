@@ -922,6 +922,7 @@ LLDBServices::GetNameByOffset(
     PULONG64 displacement)
 {
     ULONG64 disp = DEBUG_INVALID_OFFSET;
+    const char* name = nullptr;
     HRESULT hr = S_OK;
 
     lldb::SBTarget target;
@@ -929,6 +930,7 @@ LLDBServices::GetNameByOffset(
     lldb::SBModule module;
     lldb::SBFileSpec file;
     lldb::SBSymbol symbol;
+    lldb::SBAddress startAddress;
     std::string str;
 
     // lldb doesn't expect sign-extended address
@@ -995,13 +997,13 @@ LLDBServices::GetNameByOffset(
         goto exit;
     }
 
-    lldb::SBAddress startAddress = symbol.GetStartAddress();
+    startAddress = symbol.GetStartAddress();
     if (startAddress.IsValid())
     {
         disp = address.GetOffset() - startAddress.GetOffset();
     }
 
-    const char *name = symbol.GetName();
+    name = symbol.GetName();
     if (name != nullptr)
     {
         // Was the module name added above?

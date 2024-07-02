@@ -930,6 +930,7 @@ LLDBServices::GetNameByOffset(
     PULONG64 displacement)
 {
     ULONG64 disp = DEBUG_INVALID_OFFSET;
+    const char* name = nullptr;
     HRESULT hr = S_OK;
 
     lldb::SBTarget target;
@@ -937,6 +938,7 @@ LLDBServices::GetNameByOffset(
     lldb::SBModule module;
     lldb::SBFileSpec file;
     lldb::SBSymbol symbol;
+    lldb::SBAddress startAddress;
     std::string str;
 
     // lldb doesn't expect sign-extended address
@@ -966,6 +968,7 @@ LLDBServices::GetNameByOffset(
             goto exit;
         }
 
+        // Only adding the module name to the symbol in this path when no module index was specified.
         file = module.GetFileSpec();
         if (file.IsValid())
         {
@@ -996,23 +999,27 @@ LLDBServices::GetNameByOffset(
     }
 
     symbol = address.GetSymbol();
-    if (symbol.IsValid())
+    if (!symbol.IsValid())
     {
-        lldb::SBAddress startAddress = symbol.GetStartAddress();
-        if (startAddress.IsValid())
-        {
-            disp = address.GetOffset() - startAddress.GetOffset();
+        hr = E_INVALIDARG;
+        goto exit;
+    }
 
-            const char *name = symbol.GetName();
-            if (name)
-            {
-                if (file.IsValid())
-                {
-                    str.append("!");
-                }
-                str.append(name);
-            }
+    startAddress = symbol.GetStartAddress();
+    if (startAddress.IsValid())
+    {
+        disp = address.GetOffset() - startAddress.GetOffset();
+    }
+
+    name = symbol.GetName();
+    if (name != nullptr)
+    {
+        // Was the module name added above?
+        if (file.IsValid())
+        {
+            str.append("!");
         }
+        str.append(name);
     }
 
     str.append(1, '\0');
@@ -1449,7 +1456,7 @@ LLDBServices::GetModuleBase(
 
 ULONG64
 LLDBServices::GetModuleSize(
-    ULONG64 baseAddress,
+    /* const */ lldb::SBTarget& target,
     /* const */ lldb::SBModule& module)
 {
     ULONG64 size = 0;
@@ -1461,6 +1468,22 @@ LLDBServices::GetModuleSize(
         lldb::SBSection section = module.GetSectionAtIndex(si);
         if (section.IsValid())
         {
+            Output(DEBUG_OUTPUT_NORMAL, "%2d: type %2d load %016llx file address %016llx byte size %016llx %s\n",
+                si, section.GetSectionType(), section.GetLoadAddress(target), section.GetFileAddress(), section.GetByteSize(), section.GetName());
+
+            if (section.GetSectionType() == lldb::eSectionTypeContainer)
+            {
+                int numSub = section.GetNumSubSections();
+                for (int sbi = 0; sbi < numSub; sbi++)
+                {
+                    lldb::SBSection subsection = section.GetSubSectionAtIndex(sbi);
+                    if (subsection.IsValid())
+                    {
+                        Output(DEBUG_OUTPUT_NORMAL, "--> %2d: type %2d load %016llx file address %016llx byte size %016llx %s\n",
+                            sbi, subsection.GetSectionType(), subsection.GetLoadAddress(target), subsection.GetFileAddress(), subsection.GetByteSize(), subsection.GetName());
+                    }
+                }
+            }
 #if defined(__APPLE__)
             if (strcmp(section.GetName(), "__LINKEDIT") == 0)
             {
@@ -1893,7 +1916,7 @@ LLDBServices::LoadNativeSymbols(
                 path.append("/");
                 path.append(filename);
 
-                int moduleSize = GetModuleSize(moduleAddress, module);
+                int moduleSize = GetModuleSize(target, module);
 
                 callback(&module, path.c_str(), moduleAddress, moduleSize);
             }
@@ -1982,7 +2005,7 @@ HRESULT LLDBServices::GetModuleInfo(
     }
     if (pSize)
     {
-        *pSize = GetModuleSize(moduleBase, module);
+        *pSize = GetModuleSize(target, module);
     }
     if (pTimestamp)
     {

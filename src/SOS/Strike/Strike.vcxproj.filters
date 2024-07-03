@@ -84,9 +84,6 @@
     <Filter Include="clrma">
       <UniqueIdentifier>{e8809ec7-01fb-4c2b-b1fe-6be4f9c1a91a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="clrma">
-      <UniqueIdentifier>{e8809ec7-01fb-4c2b-b1fe-6be4f9c1a91a}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Text Include="CMakeLists.txt" />

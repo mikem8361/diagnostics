@@ -393,14 +393,8 @@ public:
          IOutputService::OutputType outputType,
          PCSTR message);
 
-    void STDMETHODCALLTYPE FlushCheck();
-
-    HRESULT STDMETHODCALLTYPE ExecuteHostCommand(
-        PCSTR commandLine,
-        PEXECUTE_COMMAND_OUTPUT_CALLBACK callback);
-
     //----------------------------------------------------------------------------
-    // LLDBServices (internal)
+    // Helper functions
     //----------------------------------------------------------------------------
 
     PCSTR GetPluginModuleDirectory();

@@ -30,11 +30,13 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
 
             try
             {
-                if (targetPlatform != OSPlatform.OSX &&
-                    (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ||
-                     dataTarget.DataReader.EnumerateModules().Any((module) => Path.GetExtension(module.FileName) == ".dylib")))
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && (targetPlatform != OSPlatform.OSX))
                 {
-                    targetPlatform = OSPlatform.OSX;
+                    throw new NotSupportedException("Analyzing Windows or Linux dumps not supported when running on MacOS");
+                }
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && (targetPlatform != OSPlatform.Linux))
+                {
+                    throw new NotSupportedException("Analyzing Windows or MacOS dumps not supported when running on Linux");
                 }
                 return new TargetFromDataReader(dataTarget, targetPlatform, _host, fileName);
             }

@@ -8,7 +8,7 @@ namespace Microsoft.Diagnostics.ExtensionCommands
 {
     [Command(Name = "targets", Help = "Lists targets or creates targets.")]
     [Command(Name = "settarget", DefaultOptions = "--set", Help = "Sets the current target.")]
-    [Command(Name = "closetarget", DefaultOptions = "--close", Help = "Closes a target.")]
+    [Command(Name = "closetarget", DefaultOptions = "--close", Aliases = new string[] { "closedump" }, Help = "Closes a target.")]
     public class TargetsCommand : CommandBase
     {
         [ServiceImport]
@@ -31,12 +31,6 @@ namespace Microsoft.Diagnostics.ExtensionCommands
 
         [Option(Name = "--close", Aliases = new string[] { "-c" }, Help = "Close/destroy target.")]
         public bool Close { get; set; }
-
-        [Option(Name = "--dump", Aliases = new string[] { "-d" }, Help = "Open dump target.")]
-        public string DumpFile { get; set; }
-
-        [Option(Name = "--attach", Aliases = new string[] { "-a" }, Help = "Non-invasive attach to process.")]
-        public int? ProcessId { get; set; }
 
         public override void Invoke()
         {
@@ -67,28 +61,6 @@ namespace Microsoft.Diagnostics.ExtensionCommands
                 WriteLine($"Closed target #{target.Id} {target}");
                 return;
             }
-            else if (!string.IsNullOrEmpty(DumpFile))
-            {
-                if (DumpTargetFactory is null)
-                {
-                    throw new DiagnosticsException("Creating dump targets is not supported");
-                }
-                ITarget target = DumpTargetFactory.OpenDump(DumpFile);
-                ContextService.SetCurrentTarget(target.Id);
-                WriteLine($"Loaded core dump '{DumpFile}' target #{target.Id}");
-                return;
-            }
-            else if (ProcessId.HasValue)
-            {
-                if (LiveTargetFactory is null)
-                {
-                    throw new DiagnosticsException("Attaching to live targets is not supported");
-                }
-                ITarget target = LiveTargetFactory.Attach(ProcessId.Value);
-                ContextService.SetCurrentTarget(target.Id);
-                WriteLine($"Attached to process {ProcessId.Value} target #{target.Id}");
-                return;
-            }
 
             // Display the current target star ("*") only if there is more than one target
             bool displayStar = Host.EnumerateTargets().Count() > 1;
@@ -98,6 +70,48 @@ namespace Microsoft.Diagnostics.ExtensionCommands
             {
                 string current = displayStar ? (target == currentTarget ? "*" : " ") : "";
                 WriteLine($"{current}{target.Id} {target}");
+            }
+        }
+    }
+
+    [Command(Name = "opendump", Help = "Opens a new dump target.")]
+    public class OpendumpCommand : TargetsCommand
+    {
+        [Argument(Help = "The dump file path.")]
+        public string DumpFile { get; set; }
+
+        public override void Invoke()
+        {
+            if (!string.IsNullOrEmpty(DumpFile))
+            {
+                if (DumpTargetFactory is null)
+                {
+                    throw new DiagnosticsException("Creating dump targets is not supported");
+                }
+                ITarget target = DumpTargetFactory.OpenDump(DumpFile);
+                ContextService.SetCurrentTarget(target.Id);
+                WriteLine($"Loaded core dump '{DumpFile}' target #{target.Id}");
+            }
+        }
+    }
+
+    [Command(Name = "attach", Help = "Non-invasive attach to process.")]
+    public class AttachCommand : TargetsCommand
+    {
+        [Argument(Help = "Process id to attach.")]
+        public int? ProcessId { get; set; } = null;
+
+        public override void Invoke()
+        {
+            if (ProcessId.HasValue)
+            {
+                if (LiveTargetFactory is null)
+                {
+                    throw new DiagnosticsException("Attaching to live targets is not supported");
+                }
+                ITarget target = LiveTargetFactory.Attach(ProcessId.Value);
+                ContextService.SetCurrentTarget(target.Id);
+                WriteLine($"Attached to process {ProcessId.Value} target #{target.Id}");
             }
         }
     }

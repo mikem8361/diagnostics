@@ -2,9 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security;
@@ -103,16 +101,6 @@ namespace Microsoft.Diagnostics.Tools.Dump
             try
             {
                 ITarget target = dumpTargetFactory.OpenDump(dump_path.FullName);
-
-                OSPlatform os = target.OperatingSystem;
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && (os != OSPlatform.OSX))
-                {
-                    throw new NotSupportedException("Analyzing Windows or Linux dumps not supported when running on MacOS");
-                }
-                if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux) && (os != OSPlatform.Linux))
-                {
-                    throw new NotSupportedException("Analyzing Windows or MacOS dumps not supported when running on Linux");
-                }
                 contextService.SetCurrentTarget(target);
 
                 // Automatically enable symbol server support, default cache and search for symbols in the dump directory

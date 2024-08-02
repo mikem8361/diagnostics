@@ -248,7 +248,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                     {
                         break;
                     }
-                    CommandAttribute[] commandAttributes = (CommandAttribute[])baseType.GetCustomAttributes(typeof(CommandAttribute), inherit: true);
+                    CommandAttribute[] commandAttributes = (CommandAttribute[])baseType.GetCustomAttributes(typeof(CommandAttribute), inherit: false);
                     foreach (CommandAttribute commandAttribute in commandAttributes)
                     {
                         factory ??= (services) => Utilities.CreateInstance(type, services);

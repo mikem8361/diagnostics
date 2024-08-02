@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using Microsoft.Diagnostics.DebugServices;
-using Microsoft.Diagnostics.DebugServices.Implementation;
 
 namespace Microsoft.Diagnostics.TestHelpers
 {

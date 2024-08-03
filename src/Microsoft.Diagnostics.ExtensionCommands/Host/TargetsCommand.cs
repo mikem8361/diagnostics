@@ -9,20 +9,8 @@ namespace Microsoft.Diagnostics.ExtensionCommands
     [Command(Name = "targets", Help = "Lists targets or creates targets.")]
     [Command(Name = "settarget", DefaultOptions = "--set", Help = "Sets the current target.")]
     [Command(Name = "closetarget", DefaultOptions = "--close", Aliases = new string[] { "closedump" }, Help = "Closes a target.")]
-    public class TargetsCommand : CommandBase
+    public class TargetsCommand : TargetsCommandBase
     {
-        [ServiceImport]
-        public IHost Host { get; set; }
-
-        [ServiceImport]
-        public IContextService ContextService { get; set; }
-
-        [ServiceImport(Optional = true)]
-        public IDumpTargetFactory DumpTargetFactory { get; set; }
-
-        [ServiceImport(Optional = true)]
-        public ILiveTargetFactory LiveTargetFactory { get; set; }
-
         [Argument(Help = "The target id.")]
         public int? TargetId { get; set; } = null;
 
@@ -61,21 +49,12 @@ namespace Microsoft.Diagnostics.ExtensionCommands
                 WriteLine($"Closed target #{target.Id} {target}");
                 return;
             }
-
-            // Display the current target star ("*") only if there is more than one target
-            bool displayStar = Host.EnumerateTargets().Count() > 1;
-            ITarget currentTarget = ContextService.GetCurrentTarget();
-
-            foreach (ITarget target in Host.EnumerateTargets())
-            {
-                string current = displayStar ? (target == currentTarget ? "*" : " ") : "";
-                WriteLine($"{current}{target.Id} {target}");
-            }
+            base.Invoke();
         }
     }
 
     [Command(Name = "opendump", Help = "Opens a new dump target.")]
-    public class OpendumpCommand : TargetsCommand
+    public class OpendumpCommand : TargetsCommandBase
     {
         [Argument(Help = "The dump file path.")]
         public string DumpFile { get; set; }
@@ -96,7 +75,7 @@ namespace Microsoft.Diagnostics.ExtensionCommands
     }
 
     [Command(Name = "attach", Help = "Non-invasive attach to process.")]
-    public class AttachCommand : TargetsCommand
+    public class AttachCommand : TargetsCommandBase
     {
         [Argument(Help = "Process id to attach.")]
         public int? ProcessId { get; set; } = null;
@@ -112,6 +91,34 @@ namespace Microsoft.Diagnostics.ExtensionCommands
                 ITarget target = LiveTargetFactory.Attach(ProcessId.Value);
                 ContextService.SetCurrentTarget(target.Id);
                 WriteLine($"Attached to process {ProcessId.Value} target #{target.Id}");
+            }
+        }
+    }
+
+    public class TargetsCommandBase : CommandBase
+    {
+        [ServiceImport]
+        public IHost Host { get; set; }
+
+        [ServiceImport]
+        public IContextService ContextService { get; set; }
+
+        [ServiceImport(Optional = true)]
+        public IDumpTargetFactory DumpTargetFactory { get; set; }
+
+        [ServiceImport(Optional = true)]
+        public ILiveTargetFactory LiveTargetFactory { get; set; }
+
+        public override void Invoke()
+        {
+            // Display the current target star ("*") only if there is more than one target
+            bool displayStar = Host.EnumerateTargets().Count() > 1;
+            ITarget currentTarget = ContextService.GetCurrentTarget();
+
+            foreach (ITarget target in Host.EnumerateTargets())
+            {
+                string current = displayStar ? (target == currentTarget ? "*" : " ") : "";
+                WriteLine($"{current}{target.Id} {target}");
             }
         }
     }

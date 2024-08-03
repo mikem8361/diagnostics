@@ -242,6 +242,8 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         {
             if (type.IsClass)
             {
+                factory ??= (services) => Utilities.CreateInstance(type, services);
+
                 for (Type baseType = type; baseType != null; baseType = baseType.BaseType)
                 {
                     if (baseType == typeof(CommandBase))
@@ -251,8 +253,6 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                     CommandAttribute[] commandAttributes = (CommandAttribute[])baseType.GetCustomAttributes(typeof(CommandAttribute), inherit: false);
                     foreach (CommandAttribute commandAttribute in commandAttributes)
                     {
-                        factory ??= (services) => Utilities.CreateInstance(type, services);
-
                         bool dup = true;
                         foreach (CommandGroup group in _commandGroups)
                         {
@@ -381,6 +381,8 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             /// <param name="factory">function to create command instance</param>
             internal void AddCommands(Type type, Func<IServiceProvider, object> factory)
             {
+                factory ??= (services) => Utilities.CreateInstance(type, services);
+
                 for (Type baseType = type; baseType != null; baseType = baseType.BaseType)
                 {
                     if (baseType == typeof(CommandBase))
@@ -390,7 +392,6 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                     CommandAttribute[] commandAttributes = (CommandAttribute[])baseType.GetCustomAttributes(typeof(CommandAttribute), inherit: false);
                     foreach (CommandAttribute commandAttribute in commandAttributes)
                     {
-                        factory ??= (services) => Utilities.CreateInstance(type, services);
                         CreateCommand(baseType, commandAttribute, factory);
                     }
                 }
@@ -399,6 +400,12 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                 FlushParser();
             }
 
+            /// <summary>
+            /// Add the command and aliases attributes found in the type/command attribute.
+            /// </summary>
+            /// <param name="type">Command type to search</param>
+            /// <param name="commandAttribute">command attribute</param>
+            /// <param name="factory">function to create command instance</param>
             internal void CreateCommand(Type type, CommandAttribute commandAttribute, Func<IServiceProvider, object> factory)
             {
                 Command command = new(commandAttribute.Name, commandAttribute.Help);

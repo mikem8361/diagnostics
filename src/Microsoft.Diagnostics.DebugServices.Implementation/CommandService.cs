@@ -244,33 +244,27 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             {
                 factory ??= (services) => Utilities.CreateInstance(type, services);
 
-                for (Type baseType = type; baseType != null; baseType = baseType.BaseType)
+                // Only look at the actual type and not any the base types for command attributes
+                CommandAttribute[] commandAttributes = (CommandAttribute[])type.GetCustomAttributes(typeof(CommandAttribute), inherit: false);
+                foreach (CommandAttribute commandAttribute in commandAttributes)
                 {
-                    if (baseType == typeof(CommandBase))
+                    bool dup = true;
+                    foreach (CommandGroup group in _commandGroups)
                     {
-                        break;
+                        // If the group doesn't contain a duplicate command name, add it to that group
+                        if (!group.Contains(commandAttribute.Name))
+                        {
+                            group.CreateCommand(type, commandAttribute, factory);
+                            dup = false;
+                            break;
+                        }
                     }
-                    CommandAttribute[] commandAttributes = (CommandAttribute[])baseType.GetCustomAttributes(typeof(CommandAttribute), inherit: false);
-                    foreach (CommandAttribute commandAttribute in commandAttributes)
+                    // If this is a duplicate command, create a new group and add it to the beginning. The default group must be last.
+                    if (dup)
                     {
-                        bool dup = true;
-                        foreach (CommandGroup group in _commandGroups)
-                        {
-                            // If the group doesn't contain a duplicate command name, add it to that group
-                            if (!group.Contains(commandAttribute.Name))
-                            {
-                                group.CreateCommand(baseType, commandAttribute, factory);
-                                dup = false;
-                                break;
-                            }
-                        }
-                        // If this is a duplicate command, create a new group and add it to the beginning. The default group must be last.
-                        if (dup)
-                        {
-                            CommandGroup group = new(_commandPrompt);
-                            _commandGroups.Insert(0, group);
-                            group.CreateCommand(baseType, commandAttribute, factory);
-                        }
+                        CommandGroup group = new(_commandPrompt);
+                        _commandGroups.Insert(0, group);
+                        group.CreateCommand(type, commandAttribute, factory);
                     }
                 }
             }
@@ -372,32 +366,6 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             {
                 command = _rootBuilder.Command.Children.GetByAlias(commandName) as Command;
                 return command != null;
-            }
-
-            /// <summary>
-            /// Add the commands and aliases attributes found in the type.
-            /// </summary>
-            /// <param name="type">Command type to search</param>
-            /// <param name="factory">function to create command instance</param>
-            internal void AddCommands(Type type, Func<IServiceProvider, object> factory)
-            {
-                factory ??= (services) => Utilities.CreateInstance(type, services);
-
-                for (Type baseType = type; baseType != null; baseType = baseType.BaseType)
-                {
-                    if (baseType == typeof(CommandBase))
-                    {
-                        break;
-                    }
-                    CommandAttribute[] commandAttributes = (CommandAttribute[])baseType.GetCustomAttributes(typeof(CommandAttribute), inherit: false);
-                    foreach (CommandAttribute commandAttribute in commandAttributes)
-                    {
-                        CreateCommand(baseType, commandAttribute, factory);
-                    }
-                }
-
-                // Build or re-build parser instance after all these commands and aliases are added
-                FlushParser();
             }
 
             /// <summary>

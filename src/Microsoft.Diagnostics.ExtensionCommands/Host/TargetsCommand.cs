@@ -63,15 +63,18 @@ namespace Microsoft.Diagnostics.ExtensionCommands
         {
             if (!string.IsNullOrEmpty(DumpFile))
             {
-                if (DumpTargetFactory is null)
-                {
-                    throw new DiagnosticsException("Creating dump targets is not supported");
-                }
                 ITarget target = DumpTargetFactory.OpenDump(DumpFile);
                 ContextService.SetCurrentTarget(target.Id);
                 WriteLine($"Loaded core dump '{DumpFile}' target #{target.Id}");
             }
+            else
+            {
+                throw new DiagnosticsException("Dump file required");
+            }
         }
+
+        [FilterInvoke]
+        public static bool FilterInvoke([ServiceImport(Optional = true)] IDumpTargetFactory factory) => factory is not null;
     }
 
     [Command(Name = "attach", Help = "Non-invasive attach to process.")]
@@ -84,15 +87,18 @@ namespace Microsoft.Diagnostics.ExtensionCommands
         {
             if (ProcessId.HasValue)
             {
-                if (LiveTargetFactory is null)
-                {
-                    throw new DiagnosticsException("Attaching to live targets is not supported");
-                }
                 ITarget target = LiveTargetFactory.Attach(ProcessId.Value);
                 ContextService.SetCurrentTarget(target.Id);
                 WriteLine($"Attached to process {ProcessId.Value} target #{target.Id}");
             }
+            else
+            {
+                throw new DiagnosticsException("Process Id required");
+            }
         }
+
+        [FilterInvoke]
+        public static bool FilterInvoke([ServiceImport(Optional = true)] ILiveTargetFactory factory) => factory is not null;
     }
 
     public class TargetsCommandBase : CommandBase

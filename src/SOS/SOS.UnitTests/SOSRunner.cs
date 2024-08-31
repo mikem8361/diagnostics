@@ -1272,7 +1272,12 @@ public class SOSRunner : IDisposable
         switch (debugger)
         {
             case NativeDebugger.Cdb:
-                return config.CDBPath();
+                string cdbPath = Environment.GetEnvironmentVariable("DOTNET_SOS_CDB_PATH");
+                if (cdbPath is null or "")
+                {
+                    cdbPath = config.CDBPath();
+                }
+                return cdbPath;
 
             case NativeDebugger.Lldb:
                 return config.LLDBPath();

@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Diagnostics.DebugServices;
 using Microsoft.Diagnostics.Runtime;
+using Microsoft.Diagnostics.Runtime.Utilities;
 
 namespace Microsoft.Diagnostics.ExtensionCommands
 {
@@ -41,8 +42,8 @@ namespace Microsoft.Diagnostics.ExtensionCommands
             IntPtr buffer,
             UIntPtr size);
 
+        private static readonly IntPtr _readMemoryCallback = Marshal.GetFunctionPointerForDelegate<UnwindReadMemoryCallbackDelegate>(UnwindReadMemory);
         private static IMemoryService _memoryService;
-        private static IntPtr _readMemoryCallback = Marshal.GetFunctionPointerForDelegate<UnwindReadMemoryCallbackDelegate>(UnwindReadMemory);
         private IntPtr _dacHandle = IntPtr.Zero;
         private PAL_VirtualUnwindOutOfProcDelegate _virtualUnwindOutOfProc;
 
@@ -158,7 +159,8 @@ namespace Microsoft.Diagnostics.ExtensionCommands
             where T : Delegate
         {
             IntPtr functionAddress = DataTarget.PlatformFunctions.GetLibraryExport(library, functionName);
-            if (functionAddress == IntPtr.Zero) {
+            if (functionAddress == IntPtr.Zero)
+            {
                 return default;
             }
             return (T)Marshal.GetDelegateForFunctionPointer(functionAddress, typeof(T));
@@ -166,6 +168,10 @@ namespace Microsoft.Diagnostics.ExtensionCommands
 
         private static unsafe int UnwindReadMemory(UIntPtr address, IntPtr buffer, UIntPtr size)
         {
+            if (_memoryService is null)
+            {
+                return HResult.E_FAIL;
+            }
             Span<byte> data = new(buffer.ToPointer(), (int)size.ToUInt32());
             return _memoryService.ReadMemory(address.ToUInt64(), data, out _) ? 1 : 0;
         }

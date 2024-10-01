@@ -2652,34 +2652,6 @@ size_t FormatGeneratedException (DWORD_PTR dataPtr,
     return Length;
 }
 
-// ExtOut has an internal limit for the string size
-void SosExtOutLargeString(__inout_z __inout_ecount_opt(len) WCHAR * pwszLargeString, size_t len)
-{
-    const size_t chunkLen = 2048;
-
-    WCHAR *pwsz = pwszLargeString;  // beginning of a chunk
-    size_t count = len/chunkLen;
-    // write full chunks
-    for (size_t idx = 0; idx < count; ++idx)
-    {
-        WCHAR *pch = pwsz + chunkLen; // after the chunk
-        // zero terminate the chunk
-        WCHAR ch = *pch;
-        *pch = L'\0';
-
-        ExtOut("%S", pwsz);
-
-        // restore whacked char
-        *pch = ch;
-
-        // advance to next chunk
-        pwsz += chunkLen;
-    }
-
-    // last chunk
-    ExtOut("%S", pwsz);
-}
-
 DWORD_PTR GetFirstArrayElementPointer(TADDR taArray)
 {
 #ifdef _TARGET_WIN64_
@@ -2869,7 +2841,7 @@ HRESULT FormatException(CLRDATA_ADDRESS taObj, BOOL bLineNumbers = FALSE)
                     {
                         AddExceptionHeader(pwszBuffer, iHeaderLength + 1);
                         FormatGeneratedException(dataPtr, cbStackSize, pwszBuffer + iHeaderLength, iLength + 1, bAsync, FALSE, bLineNumbers);
-                        SosExtOutLargeString(pwszBuffer, iHeaderLength + iLength + 1);
+                        ExtOut("%S", pwszBuffer);
                         delete[] pwszBuffer;
                     }
                     ExtOut("\n");

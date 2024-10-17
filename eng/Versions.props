@@ -19,7 +19,7 @@
     <VSRedistCommonNetCoreSharedFrameworkx6490Version>9.0.0-rtm.24515.15</VSRedistCommonNetCoreSharedFrameworkx6490Version>
     <MicrosoftNETCoreAppRuntimewinx64Version>9.0.0-rtm.24515.15</MicrosoftNETCoreAppRuntimewinx64Version>
     <!-- Latest shared aspnetcore version updated by darc -->
-    <MicrosoftAspNetCoreAppRefInternalVersion>9.0.0-rtm.24515.19</MicrosoftAspNetCoreAppRefInternalVersion>
+    <MicrosoftAspNetCoreAppRefInternalVersion>9.0.0-rtm.24516.19</MicrosoftAspNetCoreAppRefInternalVersion>
     <MicrosoftAspNetCoreAppRefVersion>9.0.0</MicrosoftAspNetCoreAppRefVersion>
     <!-- dotnet/installer: Testing version of the SDK. Needed for the signed & entitled host. -->
     <MicrosoftDotnetSdkVersion>9.0.100-rc.1.24409.1</MicrosoftDotnetSdkVersion>
@@ -102,8 +102,7 @@
 
   -->
   <PropertyGroup>
-    <MicrosoftNETCoreApp90Version>
-    </MicrosoftNETCoreApp90Version>
+    <MicrosoftNETCoreApp90Version></MicrosoftNETCoreApp90Version>
     <MicrosoftNETCoreApp80Version>8.0.8</MicrosoftNETCoreApp80Version>
     <MicrosoftNETCoreApp60Version>6.0.33</MicrosoftNETCoreApp60Version>
   </PropertyGroup>
@@ -130,7 +129,7 @@
       <AspNet>$(MicrosoftNETCoreApp90Version)</AspNet>
       <TargetFramework>net9.0</TargetFramework>
     </RuntimeTestVersions>
--->
+    -->
     <RuntimeTestVersions Include="Servicing2">
       <RuntimeDownload>$(MicrosoftNETCoreApp80Version)</RuntimeDownload>
       <Runtime>$(MicrosoftNETCoreApp80Version)</Runtime>

@@ -3,6 +3,7 @@
 
 using System;
 using System.Linq;
+using System.Reflection;
 using Microsoft.Diagnostics.DebugServices;
 
 namespace Microsoft.Diagnostics.ExtensionCommands
@@ -13,6 +14,9 @@ namespace Microsoft.Diagnostics.ExtensionCommands
     {
         [ServiceImport]
         public IHost Host { get; set; }
+
+        [ServiceImport]
+        public IServiceManager ServiceManager { get; set; }
 
         [ServiceImport]
         public ISymbolService SymbolService { get; set; }
@@ -57,6 +61,12 @@ namespace Microsoft.Diagnostics.ExtensionCommands
                 }
                 this.DisplaySpecialInfo();
                 Write(SymbolService.ToString());
+
+                foreach (Assembly extensions in ServiceManager.ExtensionsLoaded)
+                {
+                    WriteLine($"{extensions.Location}");
+                }
+
                 long memoryUsage = GC.GetTotalMemory(forceFullCollection: true);
                 WriteLine($"GC memory usage for managed SOS components: {memoryUsage:##,#} bytes");
             }

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Diagnostics.DebugServices;
@@ -69,8 +70,9 @@ namespace Microsoft.Diagnostics.ExtensionCommands
                     WriteLine("Extensions loaded:");
                     foreach (Assembly extension in extensions)
                     {
-                        Version version = extension.GetName().Version;
-                        WriteLine($"-> {version} {extension.Location}");
+                        string path = extension.Location;
+                        FileVersionInfo versionInfo = FileVersionInfo.GetVersionInfo(path);
+                        WriteLine($"-> {versionInfo.ProductVersion} {path}");
                     }
                 }
 

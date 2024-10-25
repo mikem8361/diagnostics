@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using Microsoft.Diagnostics.DebugServices;
@@ -62,9 +63,15 @@ namespace Microsoft.Diagnostics.ExtensionCommands
                 this.DisplaySpecialInfo();
                 Write(SymbolService.ToString());
 
-                foreach (Assembly extensions in ServiceManager.ExtensionsLoaded)
+                IEnumerable<Assembly> extensions = ServiceManager.ExtensionsLoaded;
+                if (extensions.Any())
                 {
-                    WriteLine($"{extensions.Location}");
+                    WriteLine("Extensions loaded:");
+                    foreach (Assembly extension in extensions)
+                    {
+                        Version version = extension.GetName().Version;
+                        WriteLine($"-> {version} {extension.Location}");
+                    }
                 }
 
                 long memoryUsage = GC.GetTotalMemory(forceFullCollection: true);

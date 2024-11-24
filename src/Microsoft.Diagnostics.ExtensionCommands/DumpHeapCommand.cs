@@ -65,6 +65,9 @@ namespace Microsoft.Diagnostics.ExtensionCommands
         [Option(Name = "-ignoreGCState", Help = "Ignore the GC's marker that the heap is not walkable (will generate lots of false positive errors).")]
         public bool IgnoreGCState { get; set; }
 
+        [Option(Name = "--info", Aliases = new string[] { "-info" }, Help = "Print heap, segment and generation info")]
+        public bool Info { get; set; }
+
         [Argument(Help = "Optional memory ranges in the form of: [Start [End]]")]
         public string[] MemoryRange { get; set; }
 
@@ -72,6 +75,29 @@ namespace Microsoft.Diagnostics.ExtensionCommands
 
         public override void Invoke()
         {
+            if (Info)
+            {
+                ClrHeap gc = Runtime.Heap;
+                WriteLine($"IsServerGC {gc.IsServer} NumberOfGenerations 5 MinObjectSize 24");
+                foreach (ClrSubHeap heap in gc.SubHeaps)
+                {
+                    WriteLine($"Heap: {heap.Address:X16} regions {heap.HasRegions} allocated {heap.Allocated:X16} ephemeral {heap.EphemeralHeapSegment:X16} AllocPtr {heap.AllocationContext.Start:X16} AllocLimit {heap.AllocationContext.End:X16}");
+                    WriteLine("  Generations");
+                    int index = 0;
+                    foreach (ClrGenerationData generation in heap.GenerationTable)
+                    {
+                        WriteLine($"    {index} StartSegment {generation.StartSegment:X16} AllocPtr {generation.AllocationContextPointer:X16} AllocLimit {generation.AllocationContextLimit:X16} AllocationStart {generation.AllocationStart:X16}");
+                        index++;
+                    }
+                    WriteLine("  Segments");
+                    foreach (ClrSegment segment in heap.Segments)
+                    {
+                        WriteLine($"    {segment.Address:X16} {segment.Kind,-12} {((uint)segment.Flags):X8} range {segment.ObjectRange} committed {segment.CommittedMemory} reserved {segment.ReservedMemory} gen0 {segment.Generation0} gen1 {segment.Generation1} gen2 {segment.Generation2}");
+                    }
+                }
+                return;
+            }
+
             ParseArguments();
 
             IEnumerable<ClrObject> objectsToPrint = FilteredHeap.EnumerateFilteredObjects(Console.CancellationToken);

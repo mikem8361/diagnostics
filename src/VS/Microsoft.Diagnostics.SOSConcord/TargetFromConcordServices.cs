@@ -20,8 +20,8 @@ namespace Microsoft.Diagnostics.SOSConcord
         /// <summary>
         /// Create a target instance from a DkmProcess instance
         /// </summary>
-        internal TargetFromConcordServices(IHost host, int id, DkmProcess process)
-            : base(host, id, dumpPath: null)
+        internal TargetFromConcordServices(IHost host, DkmProcess process)
+            : base(host, dumpPath: null)
         {
             DkmProcess = process;
 
@@ -53,6 +53,12 @@ namespace Microsoft.Diagnostics.SOSConcord
                 }
                 return memoryService;
             });
+
+            // Add optional crash info service (currently only for Native AOT on Linux/MacOS).
+            _serviceContainerFactory.AddServiceFactory<ICrashInfoService>((services) => SpecialDiagInfo.CreateCrashInfoService(services));
+            OnFlushEvent.Register(() => FlushService<ICrashInfoService>());
+
+            Finished();
         }
     }
 }

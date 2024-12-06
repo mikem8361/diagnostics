@@ -14,11 +14,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="MessagePack" Version="2.5.192" />
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="$(MicrosoftVisualStudioSDK2022Version)" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.VisualStudio.Debugger.Engine" Version="$(MicrosoftVisualStudioDebuggerEngine2022Version)" PrivateAssets="all" />
     <!--Reference the VSDConfigTool package. This brings build tools used to compile the .vsdconfigxml file into a .vsdconfig file -->
     <PackageReference Include="Microsoft.VSSDK.Debugger.VSDConfigTool" Version="$(MicrosoftVSSDKDebuggerVSDConfigTool2022Version)" PrivateAssets="all" />
-
   </ItemGroup>
 
   <ItemGroup>

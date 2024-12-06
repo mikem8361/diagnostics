@@ -12,6 +12,7 @@ using Microsoft.Diagnostics.ExtensionCommands;
 using Microsoft.Diagnostics.Runtime.Utilities;
 using Microsoft.VisualStudio.Debugger;
 using Microsoft.VisualStudio.Debugger.ComponentInterfaces;
+using SOS.Hosting;
 
 namespace Microsoft.Diagnostics.SOSConcord
 {
@@ -66,13 +67,17 @@ namespace Microsoft.Diagnostics.SOSConcord
             DiagnosticLoggingService.Instance.SetConsole(_consoleService, fileLoggingConsoleService);
 
             // Register all the services and commands in the Microsoft.Diagnostics.DebugServices.Implementation assembly
-            _serviceManager.RegisterAssembly(typeof(Target).Assembly); // Register all the services and commands in the SOS.Hosting assembly _serviceManager.RegisterAssembly(typeof(SOSHost).Assembly);
+            _serviceManager.RegisterAssembly(typeof(Target).Assembly);
+
+            // Register all the services and commands in the SOS.Hosting assembly
+            _serviceManager.RegisterAssembly(typeof(SOSHost).Assembly);
 
             // Register all the services and commands in the Microsoft.Diagnostics.ExtensionCommands assembly
             _serviceManager.RegisterAssembly(typeof(ClrMDHelper).Assembly);
 
             // Display any extension assembly loads on console
             _serviceManager.NotifyExtensionLoad.Register((Assembly assembly) => fileLoggingConsoleService.WriteLine($"Loading extension {assembly.Location}"));
+            _serviceManager.NotifyExtensionLoadFailure.Register((Exception ex) => fileLoggingConsoleService.WriteLine(ex.Message));
 
             // Load any extra extensions
             _serviceManager.LoadExtensions();

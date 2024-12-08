@@ -1,4 +1,4 @@
-<!-- Copyright (c)  Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0. -->
+﻿<!-- Copyright (c)  Microsoft.  All Rights Reserved.  Licensed under the Apache License, Version 2.0. -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="MessagePack" Version="2.5.192" />
+    <PackageReference Include="MessagePack" Version="$(MessagePackVersion)" />
     <PackageReference Include="Microsoft.VisualStudio.SDK" Version="$(MicrosoftVisualStudioSDK2022Version)" ExcludeAssets="runtime" />
     <PackageReference Include="Microsoft.VisualStudio.Debugger.Engine" Version="$(MicrosoftVisualStudioDebuggerEngine2022Version)" PrivateAssets="all" />
     <!--Reference the VSDConfigTool package. This brings build tools used to compile the .vsdconfigxml file into a .vsdconfig file -->

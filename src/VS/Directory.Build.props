@@ -2,6 +2,7 @@
   <Import Project="$(MSBuildThisFileDirectory)..\Directory.Build.props"/>
   <PropertyGroup>
     <RepoRootDir>$(MSBuildThisFileDirectory)..\..</RepoRootDir>
+    <MessagePackVersion>2.5.192</MessagePackVersion>
     <MicrosoftVisualStudioSDK2022Version>17.12.40392</MicrosoftVisualStudioSDK2022Version>
     <MicrosoftVisualStudioShell150Version>17.12.40392</MicrosoftVisualStudioShell150Version>
     <MicrosoftVSSDKBuildTools2022Version>17.11.414</MicrosoftVSSDKBuildTools2022Version>

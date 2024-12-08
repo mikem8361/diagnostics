@@ -47,63 +47,71 @@ namespace Microsoft.Diagnostics.SOSConcord
         {
             // Enable the assembly resolver to get the right versions in the same directory as this assembly.
             AssemblyResolver.Enable();
-
-            // Enable logging
-            string logfile = null;
-            string assemblyPath = Assembly.GetExecutingAssembly().Location;
-            if (!string.IsNullOrEmpty(assemblyPath))
+            try
             {
-                logfile = Path.Combine(Path.GetDirectoryName(assemblyPath), "VSSOSLogging.txt");
+                // Enable logging
+                if (!DiagnosticLoggingService.Instance.IsEnabled)
+                {
+                    string logfile = null;
+                    string assemblyPath = Assembly.GetExecutingAssembly().Location;
+                    if (!string.IsNullOrEmpty(assemblyPath))
+                    {
+                        logfile = Path.Combine(Path.GetDirectoryName(assemblyPath), "VSSOSLogging.txt");
+                    }
+                    DiagnosticLoggingService.Initialize(logfile);
+                }
+                Trace.TraceInformation($"SOSConcordServices.SOSConcordServices START");
+                _serviceManager = new ServiceManager();
+                _commandService = new CommandService("sos");
+                _serviceManager.NotifyExtensionLoad.Register(_commandService.AddCommands);
+
+                _consoleService = new ConsoleServiceFromConcordServices();
+                FileLoggingConsoleService fileLoggingConsoleService = new(_consoleService);
+                DiagnosticLoggingService.Instance.SetConsole(_consoleService, fileLoggingConsoleService);
+
+                // Register all the services and commands in the Microsoft.Diagnostics.DebugServices.Implementation assembly
+                _serviceManager.RegisterAssembly(typeof(Target).Assembly);
+
+                // Register all the services and commands in the SOS.Hosting assembly
+                _serviceManager.RegisterAssembly(typeof(SOSHost).Assembly);
+
+                // Register all the services and commands in the Microsoft.Diagnostics.ExtensionCommands assembly
+                _serviceManager.RegisterAssembly(typeof(ClrMDHelper).Assembly);
+
+                // Display any extension assembly loads on console
+                _serviceManager.NotifyExtensionLoad.Register((Assembly assembly) => fileLoggingConsoleService.WriteLine($"Loading extension {assembly.Location}"));
+                _serviceManager.NotifyExtensionLoadFailure.Register((Exception ex) => fileLoggingConsoleService.WriteLine(ex.Message));
+
+                // Load any extra extensions
+                _serviceManager.LoadExtensions();
+
+                // Loading extensions or adding service factories not allowed after this point.
+                _serviceManager.FinalizeServices();
+
+                _serviceContainer = _serviceManager.CreateServiceContainer(ServiceScope.Global, parent: null);
+                _serviceContainer.AddService<IServiceManager>(_serviceManager);
+                _serviceContainer.AddService<IHost>(this);
+
+                _serviceContainer.AddService<IConsoleService>(fileLoggingConsoleService);
+                _serviceContainer.AddService<IConsoleFileLoggingService>(fileLoggingConsoleService);
+                _serviceContainer.AddService<IDiagnosticLoggingService>(DiagnosticLoggingService.Instance);
+                _serviceContainer.AddService<ICommandService>(_commandService);
+
+                _contextService = new ContextServiceFromConcordServices(this);
+                _serviceContainer.AddService<IContextService>(_contextService);
+
+                SymbolService symbolService = new(this);
+                _serviceContainer.AddService<ISymbolService>(symbolService);
+
+                // Automatically enable symbol server support and default cache
+                symbolService.AddSymbolServer(retryCount: 3);
+                symbolService.AddCachePath(symbolService.DefaultSymbolCache);
             }
-            DiagnosticLoggingService.Initialize(logfile);
-
-            Trace.TraceInformation($"SOSConcordServices.SOSConcordServices START");
-            _serviceManager = new ServiceManager();
-            _commandService = new CommandService("sos");
-            _serviceManager.NotifyExtensionLoad.Register(_commandService.AddCommands);
-
-            _consoleService = new ConsoleServiceFromConcordServices();
-            FileLoggingConsoleService fileLoggingConsoleService = new(_consoleService);
-            DiagnosticLoggingService.Instance.SetConsole(_consoleService, fileLoggingConsoleService);
-
-            // Register all the services and commands in the Microsoft.Diagnostics.DebugServices.Implementation assembly
-            _serviceManager.RegisterAssembly(typeof(Target).Assembly);
-
-            // Register all the services and commands in the SOS.Hosting assembly
-            _serviceManager.RegisterAssembly(typeof(SOSHost).Assembly);
-
-            // Register all the services and commands in the Microsoft.Diagnostics.ExtensionCommands assembly
-            _serviceManager.RegisterAssembly(typeof(ClrMDHelper).Assembly);
-
-            // Display any extension assembly loads on console
-            _serviceManager.NotifyExtensionLoad.Register((Assembly assembly) => fileLoggingConsoleService.WriteLine($"Loading extension {assembly.Location}"));
-            _serviceManager.NotifyExtensionLoadFailure.Register((Exception ex) => fileLoggingConsoleService.WriteLine(ex.Message));
-
-            // Load any extra extensions
-            _serviceManager.LoadExtensions();
-
-            // Loading extensions or adding service factories not allowed after this point.
-            _serviceManager.FinalizeServices();
-
-            _serviceContainer = _serviceManager.CreateServiceContainer(ServiceScope.Global, parent: null);
-            _serviceContainer.AddService<IServiceManager>(_serviceManager);
-            _serviceContainer.AddService<IHost>(this);
-
-            _serviceContainer.AddService<IConsoleService>(fileLoggingConsoleService);
-            _serviceContainer.AddService<IConsoleFileLoggingService>(fileLoggingConsoleService);
-            _serviceContainer.AddService<IDiagnosticLoggingService>(DiagnosticLoggingService.Instance);
-            _serviceContainer.AddService<ICommandService>(_commandService);
-
-            _contextService = new ContextServiceFromConcordServices(this);
-            _serviceContainer.AddService<IContextService>(_contextService);
-
-            SymbolService symbolService = new(this);
-            _serviceContainer.AddService<ISymbolService>(symbolService);
-
-            // Automatically enable symbol server support and default cache
-            symbolService.AddSymbolServer(retryCount: 3);
-            symbolService.AddCachePath(symbolService.DefaultSymbolCache);
-
+            catch (Exception ex)
+            {
+                Trace.TraceError(ex.ToString());
+                throw;
+            }
             Trace.TraceInformation($"SOSConcordServices.SOSConcordServices DONE");
         }
 

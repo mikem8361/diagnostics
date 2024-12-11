@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 
 namespace Microsoft.Internal.Common.Utils
 {
+#pragma warning disable SYSLIB1054 // Use 'LibraryImportAttribute' instead of 'DllImportAttribute' to generate P/Invoke marshalling code at compile time
     //This code was copied from:
     //https://github.com/projectkudu/kudu/blob/787c893a9336beb498252bb2f90a06a95763f9e9/Kudu.Core/Infrastructure/ProcessExtensions.cs
     internal static class ProcessNativeMethods
@@ -113,4 +114,5 @@ namespace Microsoft.Internal.Common.Utils
             int processInformationLength,
             ref int returnLength);
     }
+#pragma warning restore SYSLIB1054 // Use 'LibraryImportAttribute' instead of 'DllImportAttribute' to generate P/Invoke marshalling code at compile time
 }

@@ -386,7 +386,9 @@ namespace Microsoft.Diagnostics.TestHelpers
 
         public static string BaseDir { get; set; } = Path.GetFullPath(".");
 
+#pragma warning disable SYSLIB1045 // Convert to 'GeneratedRegexAttribute'.
         private static readonly Regex versionRegex = new(@"^(\d+\.\d+\.\d+)(-.*)?", RegexOptions.Compiled);
+#pragma warning restore SYSLIB1045 // Convert to 'GeneratedRegexAttribute'.
 
         private readonly ReadOnlyDictionary<string, string> _settings;
         private readonly string _configStringView;

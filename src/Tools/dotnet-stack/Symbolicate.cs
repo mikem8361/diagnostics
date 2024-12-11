@@ -18,7 +18,9 @@ namespace Microsoft.Diagnostics.Tools.Stack
 {
     internal static class SymbolicateHandler
     {
+#pragma warning disable SYSLIB1045 // Convert to 'GeneratedRegexAttribute'.
         private static readonly Regex s_regex = new(@" at (?<type>[\w+\.?]+)\.(?<method>\w+)\((?<params>.*)\) in (?<filename>[\w+\.?]+):token (?<token>0x\d+)\+(?<offset>0x\d+)", RegexOptions.Compiled);
+#pragma warning restore SYSLIB1045 // Convert to 'GeneratedRegexAttribute'.
         private static readonly Dictionary<string, string> s_assemblyFilePathDictionary = new();
         private static readonly Dictionary<string, MetadataReader> s_metadataReaderDictionary = new();
 

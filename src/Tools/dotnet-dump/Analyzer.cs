@@ -36,9 +36,12 @@ namespace Microsoft.Diagnostics.Tools.Dump
             ServiceManager.NotifyExtensionLoad.Register(_commandService.AddCommands);
         }
 
-        public Task<int> Analyze(FileInfo dump_path, string[] command)
+        public Task<int> Analyze(FileInfo dump_path, int processId, string[] command)
         {
-            _fileLoggingConsoleService.WriteLine($"Loading core dump: {dump_path} ...");
+            if (dump_path is not null)
+            {
+                _fileLoggingConsoleService.WriteLine($"Loading core dump: {dump_path} ...");
+            }
 
             // Attempt to load the persisted command history
             string historyFileName = null;
@@ -89,6 +92,9 @@ namespace Microsoft.Diagnostics.Tools.Dump
             DumpTargetFactory dumpTargetFactory = new(this);
             serviceContainer.AddService<IDumpTargetFactory>(dumpTargetFactory);
 
+            LiveTargetFactory liveTargetFactory = new(this);
+            serviceContainer.AddService<ILiveTargetFactory>(liveTargetFactory);
+
             SymbolService symbolService = new(this);
             serviceContainer.AddService<ISymbolService>(symbolService);
 
@@ -97,13 +103,25 @@ namespace Microsoft.Diagnostics.Tools.Dump
 
             try
             {
-                ITarget target = dumpTargetFactory.OpenDump(dump_path.FullName);
-                contextService.SetCurrentTarget(target);
-
                 // Automatically enable symbol server support, default cache and search for symbols in the dump directory
                 symbolService.AddSymbolServer(retryCount: 3);
                 symbolService.AddCachePath(symbolService.DefaultSymbolCache);
-                symbolService.AddDirectoryPath(Path.GetDirectoryName(dump_path.FullName));
+
+                ITarget target;
+                if (dump_path != null)
+                {
+                    target = dumpTargetFactory.OpenDump(dump_path.FullName);
+                    contextService.SetCurrentTarget(target);
+                    symbolService.AddDirectoryPath(Path.GetDirectoryName(dump_path.FullName));
+                }
+                else if (processId != 0)
+                {
+                    target = liveTargetFactory.Attach(processId);
+                    contextService.SetCurrentTarget(target);
+                }
+                else {
+                    throw new DiagnosticsException("Dump path or process id missing");
+                }
 
                 // Run the commands from the dotnet-dump command line. Any errors/exceptions from the
                 // command execution will be displayed and dotnet-dump exited.

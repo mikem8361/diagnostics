@@ -20,6 +20,7 @@ namespace Microsoft.Diagnostics.Tools.Dump
             Parser parser = new CommandLineBuilder()
                 .AddCommand(CollectCommand())
                 .AddCommand(AnalyzeCommand())
+                .AddCommand(AttachCommand())
                 .AddCommand(ProcessStatusCommandHandler.ProcessStatusCommand("Lists the dotnet processes that dumps can be collected from."))
                 .UseToolsDefaults()
                 .Build();
@@ -39,7 +40,7 @@ namespace Microsoft.Diagnostics.Tools.Dump
         private static Option ProcessIdOption() =>
             new(
                 aliases: new[] { "-p", "--process-id" },
-                description: "The process id to collect a memory dump.")
+                description: "The process id to collect a memory dump or to attach.")
             {
                 Argument = new Argument<int>(name: "pid")
             };
@@ -91,7 +92,7 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
                 description: "Starts an interactive shell with debugging commands to explore a dump")
             {
                 // Handler
-                CommandHandler.Create<FileInfo, string[]>(new Analyzer().Analyze),
+                CommandHandler.Create<FileInfo, string[]>((dump_path, commands) => new Analyzer().Analyze(dump_path, 0, commands)),
                 // Arguments and Options
                 DumpPath(),
                 RunCommand()
@@ -110,6 +111,18 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
                 description: "Runs the command on start. Multiple instances of this parameter can be used in an invocation to chain commands. Commands will get run in the order that they are provided on the command line. If you want dotnet dump to exit after the commands, your last command should be 'exit'.")
             {
                 Argument = new Argument<string[]>(name: "command", getDefaultValue: () => Array.Empty<string>()) { Arity = ArgumentArity.ZeroOrMore }
+            };
+
+        private static Command AttachCommand() =>
+            new(
+                name: "attach",
+                description: "Starts an interactive shell with debugging commands to explore a process")
+            {
+                // Handler
+                CommandHandler.Create<int, string[]>((processId, commands) => new Analyzer().Analyze(null, processId, commands)),
+                // Arguments and Options
+                ProcessIdOption(),
+                RunCommand()
             };
     }
 }

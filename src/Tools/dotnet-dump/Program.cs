@@ -18,6 +18,7 @@ namespace Microsoft.Diagnostics.Tools.Dump
             {
                 CollectCommand(),
                 AnalyzeCommand(),
+                AttachCommand(),
                 ProcessStatusCommandHandler.ProcessStatusCommand("Lists the dotnet processes that dumps can be collected from.")
             };
 
@@ -48,7 +49,7 @@ namespace Microsoft.Diagnostics.Tools.Dump
         private static readonly Option<int> ProcessIdOption =
             new("--process-id", "-p")
             {
-                Description = "The process id to collect a memory dump."
+                Description = "The process id to collect a memory dump or to attach."
             };
 
         private static readonly Option<string> ProcessNameOption =
@@ -101,6 +102,7 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
 
             command.SetAction((parseResult, ct) => new Analyzer().Analyze(
                 parseResult.GetValue(DumpPath),
+                0,
                 parseResult.GetValue(RunCommand) ?? Array.Empty<string>()));
 
             return command;
@@ -118,5 +120,23 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
                 Description = "Runs the command on start. Multiple instances of this parameter can be used in an invocation to chain commands. Commands will get run in the order that they are provided on the command line. If you want dotnet dump to exit after the commands, your last command should be 'exit'.",
                 Arity = ArgumentArity.ZeroOrMore
             };
+
+        private static Command AttachCommand()
+        {
+            Command command new(
+                name: "attach",
+                description: "Starts an interactive shell with debugging commands to explore a process")
+            {
+                ProcessIdOption(),
+                RunCommand()
+            };
+
+            command.SetAction((parseResult, ct) => new Analyzer().Analyze(
+                null,
+                parseResult.GetValue(ProcessIdOption),
+                parseResult.GetValue(RunCommand) ?? Array.Empty<string>()));
+
+            return command;
+        }
     }
 }

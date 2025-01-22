@@ -92,7 +92,7 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
                 description: "Starts an interactive shell with debugging commands to explore a dump")
             {
                 // Handler
-                CommandHandler.Create<FileInfo, string[]>((dump_path, commands) => new Analyzer().Analyze(dump_path, 0, commands)),
+                CommandHandler.Create<FileInfo, string[]>((dump_path, command) => new Analyzer().Analyze(dump_path, 0, command)),
                 // Arguments and Options
                 DumpPath(),
                 RunCommand()
@@ -119,7 +119,7 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
                 description: "Starts an interactive shell with debugging commands to explore a process")
             {
                 // Handler
-                CommandHandler.Create<int, string[]>((processId, commands) => new Analyzer().Analyze(null, processId, commands)),
+                CommandHandler.Create<int, string[]>((processId, command) => new Analyzer().Analyze(null, processId, command)),
                 // Arguments and Options
                 ProcessIdOption(),
                 RunCommand()

@@ -116,12 +116,12 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
 
         private static Command AttachCommand()
         {
-            Command command new(
+            Command command = new(
                 name: "attach",
                 description: "Starts an interactive shell with debugging commands to explore a process")
             {
-                ProcessIdOption(),
-                RunCommand()
+                ProcessIdOption,
+                RunCommand
             };
 
             command.SetAction((parseResult, ct) => new Analyzer().Analyze(

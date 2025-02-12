@@ -19,7 +19,7 @@ namespace Microsoft.Diagnostics.SOSConcord
     /// <summary>
     /// This implements the IDkmCustomMessageForwardReceiver and IHost interfaces which is how the SOS infrastructure is called and initialized.
     /// </summary>
-    public class SOSConcordService : IHost, IDkmCustomMessageForwardReceiver, IDkmProcessCreateNotification, IDkmProcessExitNotification, IDkmProcessContinueNotification
+    public class SOSConcordService : Host, IDkmCustomMessageForwardReceiver, IDkmProcessCreateNotification, IDkmProcessExitNotification, IDkmProcessContinueNotification
     {
         /// <summary>
         /// The guid of this concord component/extension
@@ -41,9 +41,9 @@ namespace Microsoft.Diagnostics.SOSConcord
         private readonly ConsoleServiceFromConcordServices _consoleService;
         private ServiceContainer _serviceContainer;
         private object _lock = new();
-        private int _targetIdFactory;
 
         public SOSConcordService()
+            : base(HostType.Vs)
         {
             // Enable the assembly resolver to get the right versions in the same directory as this assembly.
             AssemblyResolver.Enable();
@@ -202,25 +202,6 @@ namespace Microsoft.Diagnostics.SOSConcord
             {
                 Trace.TraceError(ex.ToString());
             }
-        }
-
-        #endregion
-
-        #region IHost
-
-        public IServiceEvent OnShutdownEvent { get; } = new ServiceEvent();
-
-        public IServiceEvent<ITarget> OnTargetCreate { get; } = new ServiceEvent<ITarget>();
-
-        public HostType HostType => HostType.Vs;
-
-        public IServiceProvider Services => _serviceContainer ?? throw new InvalidOperationException();
-
-        public IEnumerable<ITarget> EnumerateTargets() => Targets.Values;
-
-        public int AddTarget(ITarget target)
-        {
-            return _targetIdFactory++;
         }
 
         #endregion

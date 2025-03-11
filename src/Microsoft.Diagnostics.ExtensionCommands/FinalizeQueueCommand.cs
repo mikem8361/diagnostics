@@ -90,32 +90,34 @@ namespace Microsoft.Diagnostics.ExtensionCommands
 @"This command lists the objects registered for finalization. Here is output from
 a simple program:
 
-0:000> finalizequeue
-SyncBlocks to be cleaned up: 0
-MTA Interfaces to be released: 0
-STA Interfaces to be released: 1
-generation 0 has 4 finalizable objects (0015bc90->0015bca0)
-generation 1 has 0 finalizable objects (0015bc90->0015bc90)
-generation 2 has 0 finalizable objects (0015bc90->0015bc90)
-Ready for finalization 0 objects (0015bca0->0015bca0)
-Statistics:
-      MT    Count TotalSize Class Name
-5ba6cf78        1        24 Microsoft.Win32.SafeHandles.SafeFileHandle
-5ba5db04        1        68 System.Threading.Thread
-5ba73e28        2       112 System.IO.StreamWriter
-Total 4 objects
+    0:000> !finalizequeue
+    (lldb) finalizequeue
+
+    SyncBlocks to be cleaned up: 0
+    MTA Interfaces to be released: 0
+    STA Interfaces to be released: 1
+    generation 0 has 4 finalizable objects (0015bc90->0015bca0)
+    generation 1 has 0 finalizable objects (0015bc90->0015bc90)
+    generation 2 has 0 finalizable objects (0015bc90->0015bc90)
+    Ready for finalization 0 objects (0015bca0->0015bca0)
+    Statistics:
+          MT    Count TotalSize Class Name
+    5ba6cf78        1        24 Microsoft.Win32.SafeHandles.SafeFileHandle
+    5ba5db04        1        68 System.Threading.Thread
+    5ba73e28        2       112 System.IO.StreamWriter
+    Total 4 objects
 
 The GC heap is divided into generations, and objects are listed accordingly. We
 see that only generation 0 (the youngest generation) has any objects registered
 for finalization. The notation ""(0015bc90->0015bca0)"" means that if you look at
 memory in that range, you'll see the object pointers that are registered:
 
-0:000> dd 15bc90 15bca0-4
-0015bc90  00a743f4 00a79f00 00a7b3d8 00a7b47c
+    0:000> dd 15bc90 15bca0-4
+    0015bc90  00a743f4 00a79f00 00a7b3d8 00a7b47c
 
-You could run dumpobj on any of those pointers to learn more. In this example,
+You could run 'dumpobj' on any of those pointers to learn more. In this example,
 there are no objects ready for finalization, presumably because they still have
-roots (You can use gcroot to find out). The statistics section provides a 
+roots (You can use 'gcroot' to find out). The statistics section provides a 
 higher-level summary of the objects registered for finalization. Note that 
 objects ready for finalization are also included in the statistics (if any).
 

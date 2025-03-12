@@ -91,6 +91,7 @@ namespace Microsoft.Diagnostics.ExtensionCommands
 a simple program:
 
     0:000> !finalizequeue
+      or
     (lldb) finalizequeue
 
     SyncBlocks to be cleaned up: 0

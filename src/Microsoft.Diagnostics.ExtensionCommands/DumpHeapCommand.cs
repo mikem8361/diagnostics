@@ -179,6 +179,9 @@ When called without options, the output is first a list of objects in the heap,
 followed by a report listing all the types found, their size and number:
 
     0:000> !dumpheap
+      or
+    (lldb) dumpheap
+
      Address       MT     Size
     00a71000 0015cde8       12 Free
     00a7100c 0015cde8       12 Free
@@ -259,6 +262,9 @@ The start/end parameters can be obtained from the output of 'eeheap -gc'. For
 example, if you only want to list objects in the large heap segment:
 
     0:000> !eeheap -gc
+      or
+    (lldb) eeheap -gc
+
     Number of GC Heaps: 1
     generation 0 starts at 0x00c32754
     generation 1 starts at 0x00c32748
@@ -273,6 +279,9 @@ example, if you only want to list objects in the large heap segment:
     GC Heap Size  0x5d73a8(6124456)
 
     0:000> !dumpheap 1a71000 1a75000
+      or 
+    (lldb) dumpheap 1a71000 1a75000
+
      Address       MT     Size
     01a71000 5ba88bd8     2064
     01a71810 0019fe48     2032 Free
@@ -289,6 +298,9 @@ example, if you only want to list objects in the large heap segment:
 Finally, if GC heap corruption is present, you may see an error like this:
 
     0:000> !dumpheap -stat
+      or
+    (lldb) dumpheap -stat
+
     object 00a73d24: does not have valid MT
     curr_object : 00a73d24
     Last good object: 00a73d14

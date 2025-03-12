@@ -103,6 +103,9 @@ The other cases should be fairly obvious from the call stack.
 Sample output:
 
     0:011> !analyzeoom
+      or
+    (lldb) analyzeoom
+
     ---------Heap 2 ---------
     Managed OOM occurred after GC #28 (Requested to allocate 1234 bytes)
     Reason: Didn't have enough memory to commit

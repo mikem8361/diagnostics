@@ -334,7 +334,7 @@ namespace SOS.Hosting
         private IntPtr CreateCorDebugProcess()
         {
             string dbiFilePath = _runtime.GetDbiFilePath();
-            string dacFilePath = _runtime.GetDacFilePath();
+            string dacFilePath = _runtime.GetDacFilePath(out bool verifySignature);
             if (dbiFilePath == null || dacFilePath == null)
             {
                 Trace.TraceError($"Could not find matching DBI {dbiFilePath ?? ""} or DAC {dacFilePath ?? ""} for this runtime: {_runtime.RuntimeModule.FileName}");
@@ -465,17 +465,16 @@ namespace SOS.Hosting
         {
             if (_dacHandle == IntPtr.Zero)
             {
-                string dacFilePath = _runtime.GetDacFilePath();
+                string dacFilePath = _runtime.GetDacFilePath(out bool verifySignature);
                 if (dacFilePath == null)
                 {
                     Trace.TraceError($"Could not find matching DAC {dacFilePath ?? ""} for this runtime: {_runtime.RuntimeModule.FileName}");
                     return IntPtr.Zero;
                 }
-                ISettingsService settingsService = _services.GetService<ISettingsService>();
                 IDisposable fileLock = null;
                 try
                 {
-                    if (settingsService is null || settingsService.DacSignatureVerificationEnabled)
+                    if (verifySignature)
                     {
                         Trace.TraceInformation($"Verifying DAC signing and cert {dacFilePath}");
 

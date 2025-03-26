@@ -34,8 +34,8 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             Target = services.GetService<ITarget>() ?? throw new DiagnosticsException("Dump or live session target required");
             Id = id;
             _clrInfo = clrInfo ?? throw new ArgumentNullException(nameof(clrInfo));
-            _settingsService = services.GetService<ISettingsService>();
-            _symbolService = services.GetService<ISymbolService>();
+            _settingsService = services.GetService<ISettingsService>() ?? throw new ArgumentException("ISettingsService required");
+            _symbolService = services.GetService<ISymbolService>() ?? throw new ArgumentException("ISymbolService required");
 
             RuntimeType = RuntimeType.Unknown;
             if (clrInfo.Flavor == ClrFlavor.Core)
@@ -98,15 +98,23 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             }
         }
 
-        public string GetDacFilePath()
+        public string GetDacFilePath(out bool verifySignature)
         {
+            verifySignature = false;
             if (_dacFilePath is null)
             {
                 if (_settingsService.UseContractReader)
                 {
                     _dacFilePath = GetLibraryPath(DebugLibraryKind.CDac);
                 }
-                _dacFilePath ??= GetLibraryPath(DebugLibraryKind.Dac);
+                if (_dacFilePath is null)
+                {
+                    _dacFilePath = GetLibraryPath(DebugLibraryKind.Dac);
+                    if (_dacFilePath is not null)
+                    {
+                        verifySignature = _settingsService.DacSignatureVerificationEnabled;
+                    }
+                }
             }
             return _dacFilePath;
         }
@@ -124,7 +132,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// </summary>
         private ClrRuntime CreateRuntime()
         {
-            string dacFilePath = GetDacFilePath();
+            string dacFilePath = GetDacFilePath(out bool _);
             if (dacFilePath is not null)
             {
                 Trace.TraceInformation($"Creating ClrRuntime #{Id} {dacFilePath}");

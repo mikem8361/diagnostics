@@ -62,7 +62,8 @@ namespace Microsoft.Diagnostics.DebugServices
         /// <summary>
         /// Returns the DAC file path
         /// </summary>
-        string GetDacFilePath();
+        /// <param name="verifySignature">returns if the DAC signature should be verified</param>
+        string GetDacFilePath(out bool verifySignature);
 
         /// <summary>
         /// Returns the DBI file path

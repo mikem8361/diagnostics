@@ -58,6 +58,8 @@ namespace Microsoft.Diagnostics.TestHelpers
 
         public bool DacSignatureVerificationEnabled { get; set; }
 
+        public bool UseContractReader { get; set; }
+
         #endregion
     }
 }

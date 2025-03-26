@@ -20,6 +20,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
     public class Runtime : IRuntime, IDisposable
     {
         private readonly ClrInfo _clrInfo;
+        private readonly ISettingsService _settingsService;
         private readonly ISymbolService _symbolService;
         private Version _runtimeVersion;
         private ClrRuntime _clrRuntime;
@@ -33,6 +34,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             Target = services.GetService<ITarget>() ?? throw new DiagnosticsException("Dump or live session target required");
             Id = id;
             _clrInfo = clrInfo ?? throw new ArgumentNullException(nameof(clrInfo));
+            _settingsService = services.GetService<ISettingsService>();
             _symbolService = services.GetService<ISymbolService>();
 
             RuntimeType = RuntimeType.Unknown;
@@ -98,7 +100,14 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
 
         public string GetDacFilePath()
         {
-            _dacFilePath ??= GetLibraryPath(DebugLibraryKind.Dac);
+            if (_dacFilePath is null)
+            {
+                if (_settingsService.UseContractReader)
+                {
+                    _dacFilePath = GetLibraryPath(DebugLibraryKind.CDac);
+                }
+                _dacFilePath ??= GetLibraryPath(DebugLibraryKind.Dac);
+            }
             return _dacFilePath;
         }
 
@@ -151,15 +160,18 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             {
                 if (libraryInfo.Kind == kind && RuntimeInformation.IsOSPlatform(libraryInfo.Platform) && libraryInfo.TargetArchitecture == currentArch)
                 {
-                    libraryPath = GetLocalPath(libraryInfo.FileName);
+                    libraryPath = GetLocalPath(libraryInfo);
                     if (libraryPath is not null)
                     {
                         break;
                     }
-                    libraryPath = DownloadFile(libraryInfo);
-                    if (libraryPath is not null)
+                    if (libraryInfo.ArchivedUnder != SymbolProperties.None)
                     {
-                        break;
+                        libraryPath = DownloadFile(libraryInfo);
+                        if (libraryPath is not null)
+                        {
+                            break;
+                        }
                     }
                 }
             }
@@ -167,16 +179,23 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             return libraryPath;
         }
 
-        private string GetLocalPath(string fileName)
+        private string GetLocalPath(DebugLibraryInfo libraryInfo)
         {
             string localFilePath;
-            if (!string.IsNullOrEmpty(RuntimeModuleDirectory))
+            if (libraryInfo.Kind == DebugLibraryKind.CDac)
             {
-                localFilePath = Path.Combine(RuntimeModuleDirectory, Path.GetFileName(fileName));
+                localFilePath = libraryInfo.FileName;
             }
             else
             {
-                localFilePath = Path.Combine(Path.GetDirectoryName(RuntimeModule.FileName), Path.GetFileName(fileName));
+                if (!string.IsNullOrEmpty(RuntimeModuleDirectory))
+                {
+                    localFilePath = Path.Combine(RuntimeModuleDirectory, Path.GetFileName(libraryInfo.FileName));
+                }
+                else
+                {
+                    localFilePath = Path.Combine(Path.GetDirectoryName(RuntimeModule.FileName), Path.GetFileName(libraryInfo.FileName));
+                }
             }
             if (!File.Exists(localFilePath))
             {

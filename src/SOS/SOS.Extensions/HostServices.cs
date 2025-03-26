@@ -434,6 +434,8 @@ namespace SOS.Extensions
             }
         }
 
+        public bool UseContractReader { get; set; }
+
         #endregion
 
         #region SOSLibrary.ISOSModule

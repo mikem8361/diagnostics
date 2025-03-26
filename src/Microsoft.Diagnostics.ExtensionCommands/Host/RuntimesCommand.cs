@@ -36,6 +36,9 @@ namespace Microsoft.Diagnostics.ExtensionCommands
         [Option(Name = "--all", Aliases = new string[] { "-a" }, Help = "Forces all runtimes to be enumerated.")]
         public bool All { get; set; }
 
+        [Option(Name = "--usecdac", Aliases = new string[] { "-uc" }, Help = "Use the CDAC if available (true/false).")]
+        public bool? UseContractReader { get; set; }
+
         [Option(Name = "--DacSignatureVerification", Aliases = new string[] { "-v" }, Help = "Enforce the proper DAC certificate signing when loaded (true/false).")]
         public bool? DacSignatureVerification { get; set; }
 
@@ -46,6 +49,17 @@ namespace Microsoft.Diagnostics.ExtensionCommands
                 throw new DiagnosticsException("Cannot specify both -netfx and -netcore options");
             }
 
+            bool flush = false;
+            if (UseContractReader.HasValue)
+            {
+                if (SettingsService is null)
+                {
+                    throw new DiagnosticsException("Changing CDAC setting not supported");
+                }
+                SettingsService.UseContractReader = UseContractReader.Value;
+                flush = true;
+            }
+
             if (DacSignatureVerification.HasValue)
             {
                 if (SettingsService is null)
@@ -53,7 +67,7 @@ namespace Microsoft.Diagnostics.ExtensionCommands
                     throw new DiagnosticsException("Changing the DAC signature verification setting not supported");
                 }
                 SettingsService.DacSignatureVerificationEnabled = DacSignatureVerification.Value;
-                Target.Flush();
+                flush = true;
             }
 
             RuntimeEnumerationFlags flags = RuntimeEnumerationFlags.Default;
@@ -61,6 +75,11 @@ namespace Microsoft.Diagnostics.ExtensionCommands
             {
                 // Force all runtimes to be enumerated. This requires a target flush.
                 flags = RuntimeEnumerationFlags.All;
+                flush = true;
+            }
+
+            if (flush)
+            {
                 Target.Flush();
             }
 
@@ -107,6 +126,7 @@ namespace Microsoft.Diagnostics.ExtensionCommands
                     }
                     this.DisplayResources(runtime.RuntimeModule, all: false, indent: "    ");
                     this.DisplayRuntimeExports(runtime.RuntimeModule, error: true, indent: "    ");
+                    WriteLine($"Use CDAC contract reader: {SettingsService.UseContractReader}");
                     WriteLine($"DAC signature verification check enabled: {SettingsService.DacSignatureVerificationEnabled}");
                 }
             }

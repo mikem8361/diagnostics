@@ -180,6 +180,8 @@ namespace Microsoft.Diagnostics.Tools.Dump
 
         public bool DacSignatureVerificationEnabled { get; set; } = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? true : false;
 
+        public bool UseContractReader { get; set; }
+
         #endregion
     }
 }

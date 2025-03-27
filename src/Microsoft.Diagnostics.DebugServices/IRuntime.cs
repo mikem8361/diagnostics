@@ -66,6 +66,11 @@ namespace Microsoft.Diagnostics.DebugServices
         string GetDacFilePath(out bool verifySignature);
 
         /// <summary>
+        /// Returns the CDac file path if enabled by global settings
+        /// </summary>
+        string GetCDacFilePath();
+
+        /// <summary>
         /// Returns the DBI file path
         /// </summary>
         string GetDbiFilePath();

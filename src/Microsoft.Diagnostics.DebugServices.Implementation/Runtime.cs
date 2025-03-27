@@ -25,6 +25,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         private Version _runtimeVersion;
         private ClrRuntime _clrRuntime;
         private string _dacFilePath;
+        private string _cdacFilePath;
         private string _dbiFilePath;
 
         protected readonly ServiceContainer _serviceContainer;
@@ -98,16 +99,23 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             }
         }
 
+        public string GetCDacFilePath()
+        {
+            if (_cdacFilePath is null)
+            {
+                if (_settingsService.UseContractReader)
+                {
+                    _cdacFilePath = GetLibraryPath(DebugLibraryKind.CDac);
+                }
+            }
+            return _cdacFilePath;
+        }
+
         public string GetDacFilePath(out bool verifySignature)
         {
             verifySignature = false;
             if (_dacFilePath is null)
             {
-                if (_settingsService.UseContractReader)
-                {
-                    // Don't verify the cdac signature; it is included as a part of SOS
-                    _dacFilePath = GetLibraryPath(DebugLibraryKind.CDac);
-                }
                 if (_dacFilePath is null)
                 {
                     _dacFilePath = GetLibraryPath(DebugLibraryKind.Dac);

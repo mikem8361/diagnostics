@@ -105,6 +105,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             {
                 if (_settingsService.UseContractReader)
                 {
+                    // Don't verify the cdac signature; it is included as a part of SOS
                     _dacFilePath = GetLibraryPath(DebugLibraryKind.CDac);
                 }
                 if (_dacFilePath is null)
@@ -132,7 +133,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         /// </summary>
         private ClrRuntime CreateRuntime()
         {
-            string dacFilePath = GetDacFilePath(out bool _);
+            string dacFilePath = GetDacFilePath(out bool verifySignature);
             if (dacFilePath is not null)
             {
                 Trace.TraceInformation($"Creating ClrRuntime #{Id} {dacFilePath}");
@@ -140,7 +141,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                 {
                     // Ignore the DAC version mismatch that can happen because the clrmd ELF dump reader
                     // returns 0.0.0.0 for the runtime module that the DAC is matched against.
-                    return _clrRuntime = _clrInfo.CreateRuntime(dacFilePath, ignoreMismatch: true);
+                    return _clrRuntime = _clrInfo.CreateRuntime(dacFilePath, ignoreMismatch: true, verifySignature);
                 }
                 catch (Exception ex) when
                    (ex is DllNotFoundException or

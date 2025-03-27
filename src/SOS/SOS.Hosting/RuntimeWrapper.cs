@@ -28,6 +28,22 @@ namespace SOS.Hosting
             Unknown = 4
         }
 
+        /// <summary>
+        /// Flags to GetClrDataProcess when creating the DAC instance
+        /// </summary>
+        private enum ClrDataProcessFlags
+        {
+            /// <summary>
+            /// No flags
+            /// </summary>
+            None,
+
+            /// <summary>
+            /// Use the cdac if available and enabled by global setting
+            /// </summary>
+            UseCDac
+        }
+
         public static Guid IID_IXCLRDataProcess = new("5c552ab6-fc09-4cb3-8e36-22fa03c798b7");
         public static Guid IID_ICorDebugProcess = new("3d6f5f64-7538-11d3-8d5b-00104b35e7ef");
         private static readonly Guid IID_IRuntime = new("A5F152B9-BA78-4512-9228-5091A4CB7E35");
@@ -200,6 +216,7 @@ namespace SOS.Hosting
 
         private int GetClrDataProcess(
             IntPtr self,
+            ClrDataProcessFlags flags,
             IntPtr* ppClrDataProcess)
         {
             if (ppClrDataProcess == null)
@@ -210,7 +227,7 @@ namespace SOS.Hosting
             {
                 try
                 {
-                    _clrDataProcess = CreateClrDataProcess();
+                    _clrDataProcess = CreateClrDataProcess(flags);
                 }
                 catch (Exception ex)
                 {
@@ -301,9 +318,9 @@ namespace SOS.Hosting
 
         #endregion
 
-        private IntPtr CreateClrDataProcess()
+        private IntPtr CreateClrDataProcess(ClrDataProcessFlags flags)
         {
-            IntPtr dacHandle = GetDacHandle();
+            IntPtr dacHandle = GetDacHandle(flags);
             if (dacHandle == IntPtr.Zero)
             {
                 return IntPtr.Zero;
@@ -387,7 +404,7 @@ namespace SOS.Hosting
                     return corDebugProcess;
                 }
 
-                IntPtr dacHandle = GetDacHandle();
+                IntPtr dacHandle = GetDacHandle(ClrDataProcessFlags.None);
                 if (dacHandle == IntPtr.Zero)
                 {
                     return IntPtr.Zero;
@@ -461,7 +478,7 @@ namespace SOS.Hosting
             }
         }
 
-        private IntPtr GetDacHandle()
+        private IntPtr GetDacHandle(ClrDataProcessFlags flags)
         {
             if (_dacHandle == IntPtr.Zero)
             {
@@ -536,6 +553,7 @@ namespace SOS.Hosting
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]
         private delegate int GetClrDataProcessDelegate(
             [In] IntPtr self,
+            [In] ClrDataProcessFlags flags,
             [Out] IntPtr* ppClrDataProcess);
 
         [UnmanagedFunctionPointer(CallingConvention.Winapi)]

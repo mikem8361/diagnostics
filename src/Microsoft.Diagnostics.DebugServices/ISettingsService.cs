@@ -20,5 +20,10 @@ namespace Microsoft.Diagnostics.DebugServices
         /// If true, uses the CDAC contract reader if available.
         /// </summary>
         bool UseContractReader { get; set; }
+
+        /// <summary>
+        /// If true, always use the CDAC contract reader even when not requested
+        /// </summary>
+        bool ForceUseContractReader { get; set; }
     }
 }

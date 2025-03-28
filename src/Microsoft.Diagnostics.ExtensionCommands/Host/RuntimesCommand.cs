@@ -39,7 +39,7 @@ namespace Microsoft.Diagnostics.ExtensionCommands
         [Option(Name = "--usecdac", Help = "Use the CDAC if available and requested (true/false).")]
         public bool? UseContractReader { get; set; }
 
-        [Option(Name = "--forceusecdac", Help = "Force to always use the CDAC (true/false).")]
+        [Option(Name = "--forceusecdac", Help = "Always use the CDAC (true/false).")]
         public bool? ForceUseContractReader { get; set; }
 
         [Option(Name = "--DacSignatureVerification", Aliases = new string[] { "-v" }, Help = "Enforce the proper DAC certificate signing when loaded (true/false).")]
@@ -61,6 +61,7 @@ namespace Microsoft.Diagnostics.ExtensionCommands
 
             if (ForceUseContractReader.HasValue)
             {
+                SettingsService.UseContractReader = ForceUseContractReader.Value;
                 SettingsService.ForceUseContractReader = ForceUseContractReader.Value;
                 flush = true;
             }

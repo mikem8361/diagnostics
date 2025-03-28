@@ -103,7 +103,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         {
             if (_cdacFilePath is null)
             {
-                if (_settingsService.UseContractReader)
+                if (_settingsService.UseContractReader || _settingsService.ForceUseContractReader)
                 {
                     _cdacFilePath = GetLibraryPath(DebugLibraryKind.CDac);
                 }
@@ -114,6 +114,10 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         public string GetDacFilePath(out bool verifySignature)
         {
             verifySignature = false;
+            if (_settingsService.ForceUseContractReader)
+            {
+                return GetCDacFilePath();
+            }
             if (_dacFilePath is null)
             {
                 if (_dacFilePath is null)
@@ -339,6 +343,11 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             {
                 sb.AppendLine();
                 sb.Append($"    DAC: {_dacFilePath}");
+            }
+            if (_cdacFilePath is not null)
+            {
+                sb.AppendLine();
+                sb.Append($"    CDAC: {_cdacFilePath}");
             }
             if (_dbiFilePath is not null)
             {

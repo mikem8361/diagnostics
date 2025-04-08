@@ -5,8 +5,10 @@ using System;
 using System.CommandLine;
 using System.IO;
 using System.Threading.Tasks;
+#if !BUILD_NATIVEAOT
 using Microsoft.Internal.Common;
 using Microsoft.Internal.Common.Commands;
+#endif
 
 namespace Microsoft.Diagnostics.Tools.Dump
 {
@@ -16,14 +18,18 @@ namespace Microsoft.Diagnostics.Tools.Dump
         {
             RootCommand rootCommand = new()
             {
+                AnalyzeCommand()
+#if !BUILD_NATIVEAOT
                 CollectCommand(),
                 AnalyzeCommand(),
                 ProcessStatusCommandHandler.ProcessStatusCommand("Lists the dotnet processes that dumps can be collected from.")
+#endif
             };
 
             return rootCommand.Parse(args).InvokeAsync();
         }
 
+#if !BUILD_NATIVEAOT
         private static Command CollectCommand()
         {
             Command command = new(name: "collect", description: "Capture dumps from a process")
@@ -88,6 +94,7 @@ on Linux where YYYYMMDD is Year/Month/Day and HHMMSS is Hour/Minute/Second. Othe
             {
                 Description = "The path to a diagnostic port to be used. Must be a runtime connect port."
             };
+#endif
 
         private static Command AnalyzeCommand()
         {

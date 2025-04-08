@@ -9,8 +9,8 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Diagnostics.DebugServices;
-#if !BUILD_NATIVEAOT
 using Microsoft.Diagnostics.DebugServices.Implementation;
+#if !BUILD_NATIVEAOT
 using Microsoft.Diagnostics.ExtensionCommands;
 #endif
 using Microsoft.Diagnostics.Repl;
@@ -21,39 +21,26 @@ using SOS.Hosting;
 
 namespace Microsoft.Diagnostics.Tools.Dump
 {
-#if !BUILD_NATIVEAOT
     public class Analyzer : Host
-#else
-    public class Analyzer
-#endif
     {
         private readonly ConsoleService _consoleService;
-#if !BUILD_NATIVEAOT
         private readonly FileLoggingConsoleService _fileLoggingConsoleService;
         private readonly CommandService _commandService;
-#endif
+
         public Analyzer()
-#if !BUILD_NATIVEAOT
             : base(HostType.DotnetDump)
-#endif
         {
-#if !BUILD_NATIVEAOT
             DiagnosticLoggingService.Initialize();
-            DacSignatureVerificationEnabled  = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? true : false;
-#endif
+            DacSignatureVerificationEnabled = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? true : false;
             _consoleService = new ConsoleService();
-#if !BUILD_NATIVEAOT
             _fileLoggingConsoleService = new FileLoggingConsoleService(_consoleService);
             DiagnosticLoggingService.Instance.SetConsole(_fileLoggingConsoleService, _fileLoggingConsoleService);
-
             _commandService = new CommandService();
             ServiceManager.NotifyExtensionLoad.Register(_commandService.AddCommands);
-#endif
         }
 
         public Task<int> Analyze(FileInfo dump_path, string[] command)
         {
-#if !BUILD_NATIVEAOT
             _fileLoggingConsoleService.WriteLine($"Loading core dump: {dump_path} ...");
 
             // Attempt to load the persisted command history
@@ -76,21 +63,25 @@ namespace Microsoft.Diagnostics.Tools.Dump
             // Register all the services and commands in the dotnet-dump (this) assembly
             ServiceManager.RegisterAssembly(typeof(Analyzer).Assembly);
 
+#if !BUILD_NATIVEAOT
             // Register all the services and commands in the SOS.Hosting assembly
             ServiceManager.RegisterAssembly(typeof(SOSHost).Assembly);
 
             // Register all the services and commands in the Microsoft.Diagnostics.ExtensionCommands assembly
             ServiceManager.RegisterAssembly(typeof(ClrMDHelper).Assembly);
+#endif
 
             // Add the specially handled exit command
             _commandService.AddCommands(typeof(ExitCommand), (services) => new ExitCommand(_consoleService.Stop));
 
+#if !BUILD_NATIVEAOT
             // Display any extension assembly loads on console
             ServiceManager.NotifyExtensionLoad.Register((Assembly assembly) => _fileLoggingConsoleService.WriteLine($"Loading extension {assembly.Location}"));
             ServiceManager.NotifyExtensionLoadFailure.Register((Exception ex) => _fileLoggingConsoleService.WriteLine(ex.Message));
 
             // Load any extra extensions
             ServiceManager.LoadExtensions();
+#endif
 
             // Loading extensions or adding service factories not allowed after this point.
             ServiceContainer serviceContainer = CreateServiceContainer();
@@ -110,11 +101,9 @@ namespace Microsoft.Diagnostics.Tools.Dump
 
             ContextService contextService = new(this);
             serviceContainer.AddService<IContextService>(contextService);
-#endif
 
             try
             {
-#if !BUILD_NATIVEAOT
                 ITarget target = dumpTargetFactory.OpenDump(dump_path.FullName);
                 contextService.SetCurrentTarget(target);
 
@@ -136,26 +125,21 @@ namespace Microsoft.Diagnostics.Tools.Dump
                         }
                     }
                 }
-#endif
 
                 // Now start the REPL command loop if the console isn't redirected
                 if (!_consoleService.Shutdown && (!Console.IsOutputRedirected || Console.IsInputRedirected))
                 {
-#if !BUILD_NATIVEAOT
                     // Start interactive command line processing
                     _fileLoggingConsoleService.WriteLine("Ready to process analysis commands. Type 'help' to list available commands or 'help [command]' to get detailed help on a command.");
                     _fileLoggingConsoleService.WriteLine("Type 'quit' or 'exit' to exit the session.");
-#endif
                     _consoleService.Start((string prompt, string commandLine, CancellationToken cancellation) => {
                         _consoleService.WriteLine("{0}{1}", prompt, commandLine);
                         if (commandLine == "q")
                         {
                             _consoleService.Stop();
                         }
-#if !BUILD_NATIVEAOT
                         _fileLoggingConsoleService.WriteLine("{0}{1}", prompt, commandLine);
                         _commandService.Execute(commandLine, contextService.Services);
-#endif
                     });
                 }
             }
@@ -170,14 +154,11 @@ namespace Microsoft.Diagnostics.Tools.Dump
                  or InvalidOperationException
                  or NotSupportedException)
             {
-#if !BUILD_NATIVEAOT
                 _fileLoggingConsoleService.WriteLineError($"{ex.Message}");
-#endif
                 return Task.FromResult(1);
             }
             finally
             {
-#if !BUILD_NATIVEAOT
                 DestoryTargets();
 
                 // Persist the current command history
@@ -201,7 +182,6 @@ namespace Microsoft.Diagnostics.Tools.Dump
 
                 // Dispose of the global services
                 serviceContainer.DisposeServices();
-#endif
             }
             return Task.FromResult(0);
         }

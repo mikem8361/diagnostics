@@ -7,7 +7,7 @@ using System.IO;
 using System.Security;
 using Microsoft.Diagnostics.DebugServices;
 
-namespace Microsoft.Diagnostics.ExtensionCommands
+namespace Microsoft.Diagnostics.DebugServices.Implementation
 {
     public class DiagnosticLoggingService : IDiagnosticLoggingService
     {

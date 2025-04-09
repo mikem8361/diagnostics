@@ -16,6 +16,7 @@
   <PropertyGroup>
     <DefineConstants>BUILD_NATIVEAOT</DefineConstants>
     <PublishAot>true</PublishAot>
+    <TrimMode>partial</TrimMode>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <IsPackable>false</IsPackable>
     <PackAsTool>false</PackAsTool>
@@ -52,10 +53,10 @@
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.DebugServices\Microsoft.Diagnostics.DebugServices.csproj" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.DebugServices.Implementation\Microsoft.Diagnostics.DebugServices.Implementation.csproj" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.SymbolStore\Microsoft.SymbolStore.csproj" />
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.ExtensionCommands\Microsoft.Diagnostics.ExtensionCommands.csproj" />
 <!--
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.NETCore.Client\Microsoft.Diagnostics.NETCore.Client.csproj" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\SOS\SOS.Hosting\SOS.Hosting.csproj" />
-    <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.Diagnostics.ExtensionCommands\Microsoft.Diagnostics.ExtensionCommands.csproj" />
 -->
   </ItemGroup>
 <!--

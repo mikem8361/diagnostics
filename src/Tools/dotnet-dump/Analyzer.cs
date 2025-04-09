@@ -10,9 +10,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Diagnostics.DebugServices;
 using Microsoft.Diagnostics.DebugServices.Implementation;
-#if !BUILD_NATIVEAOT
 using Microsoft.Diagnostics.ExtensionCommands;
-#endif
 using Microsoft.Diagnostics.Repl;
 using Microsoft.Diagnostics.Runtime;
 #if !BUILD_NATIVEAOT
@@ -66,10 +64,10 @@ namespace Microsoft.Diagnostics.Tools.Dump
 #if !BUILD_NATIVEAOT
             // Register all the services and commands in the SOS.Hosting assembly
             ServiceManager.RegisterAssembly(typeof(SOSHost).Assembly);
+#endif
 
             // Register all the services and commands in the Microsoft.Diagnostics.ExtensionCommands assembly
             ServiceManager.RegisterAssembly(typeof(ClrMDHelper).Assembly);
-#endif
 
             // Add the specially handled exit command
             _commandService.AddCommands(typeof(ExitCommand), (services) => new ExitCommand(_consoleService.Stop));

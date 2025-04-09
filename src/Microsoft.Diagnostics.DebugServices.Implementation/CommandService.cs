@@ -276,6 +276,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
         {
             private Command _rootCommand;
             private readonly Dictionary<string, CommandHandler> _commandHandlers = new();
+            private readonly ParseResult _emptyParseResult;
 
             /// <summary>
             /// Create an instance of the command processor;
@@ -284,6 +285,10 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
             public CommandGroup(string commandPrompt = null)
             {
                 _rootCommand = new Command(commandPrompt);
+
+                // The actual ParseResult.Empty() has a bug in it where it tries to get the executable name
+                // and nothing is returned under lldb on Linux causing an index out of range exception.
+                _emptyParseResult = _rootCommand.Parse(Array.Empty<string>());
             }
 
             /// <summary>
@@ -369,6 +374,19 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                 return command != null;
             }
 
+            private sealed class CommandArgument : Argument<object>
+            {
+                private readonly Type _argumentType;
+
+                public CommandArgument(string name, Type argumentType)
+                    : base(name)
+                {
+                    _argumentType = argumentType;
+                }
+
+                public override Type ValueType => _argumentType;
+            }
+
             /// <summary>
             /// Add the command and aliases attributes found in the type/command attribute.
             /// </summary>
@@ -392,13 +410,15 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                     if (argumentAttribute != null)
                     {
                         ArgumentArity arity = property.PropertyType.IsArray ? ArgumentArity.ZeroOrMore : ArgumentArity.ZeroOrOne;
+                        Argument argument = new CommandArgument(argumentAttribute.Name ?? property.Name.ToLowerInvariant(), property.PropertyType)
+                        {
+                            Description = argumentAttribute.Help,
+                            Arity = arity
+                        };
 
-                        Argument argument = (Argument)typeof(Argument<>).MakeGenericType(property.PropertyType)
-                            .GetConstructor([typeof(string)])
-                            .Invoke([argumentAttribute.Name ?? property.Name.ToLowerInvariant()]);
-
-                        argument.Description = argumentAttribute.Help;
-                        argument.Arity = arity;
+                        //Argument argument = (Argument)typeof(Argument<>).MakeGenericType(property.PropertyType)
+                        //    .GetConstructor([typeof(string)])
+                        //    .Invoke([argumentAttribute.Name ?? property.Name.ToLowerInvariant()]);
 
                         command.Arguments.Add(argument);
                         arguments.Add((property, argument));
@@ -434,7 +454,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
 
                 // Get the command help
                 HelpBuilder helpBuilder = new(maxWidth: windowWidth);
-                HelpContext helpContext = new(helpBuilder, command, console);
+                HelpContext helpContext = new(helpBuilder, command, console, _emptyParseResult);
                 helpBuilder.Write(helpContext);
 
                 // Get the detailed help if any
@@ -608,7 +628,16 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                 // requesting help (either the help command or some other command using
                 // --help) won't work for the command instance that implements it's own
                 // help (SOS command).
-                return (string)Invoke(_methodInfoHelp, context: null, parser, services);
+                string help = (string)Invoke(_methodInfoHelp, context: null, parser, services);
+
+                // Replace "{prompt}" with the host debugger's prompt
+                string prompt = services.GetService<IHost>().HostType switch
+                {
+                    HostType.Lldb => "(lldb) ",
+                    HostType.DbgEng => "0:000> !",
+                    _ => "> "
+                };
+                return help.Replace("{prompt}", prompt);
             }
 
             private object Invoke(MethodInfo methodInfo, ParseResult context, Command parser, IServiceProvider services)

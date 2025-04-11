@@ -374,7 +374,7 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                 return command != null;
             }
 
-            private sealed class CommandArgument : Argument<object>
+            private sealed class CommandArgument : Argument
             {
                 private readonly Type _argumentType;
 
@@ -385,6 +385,24 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                 }
 
                 public override Type ValueType => _argumentType;
+
+                public override bool HasDefaultValue => true;
+
+                public override object GetDefaultValue(ArgumentResult argumentResult) => null;
+            }
+
+            private sealed class CommandOption : Option
+            {
+                private readonly Argument _argument;
+                public CommandOption(string name, string[] aliases, Type argumentType)
+                    : base(name, aliases)
+                {
+                    _argument = new CommandArgument(name, argumentType);
+                }
+
+                public override Argument Argument => _argument;
+
+                public override Type ValueType => _argument.ValueType;
             }
 
             /// <summary>
@@ -415,11 +433,6 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                             Description = argumentAttribute.Help,
                             Arity = arity
                         };
-
-                        //Argument argument = (Argument)typeof(Argument<>).MakeGenericType(property.PropertyType)
-                        //    .GetConstructor([typeof(string)])
-                        //    .Invoke([argumentAttribute.Name ?? property.Name.ToLowerInvariant()]);
-
                         command.Arguments.Add(argument);
                         arguments.Add((property, argument));
                     }
@@ -428,12 +441,10 @@ namespace Microsoft.Diagnostics.DebugServices.Implementation
                         OptionAttribute optionAttribute = (OptionAttribute)property.GetCustomAttributes(typeof(OptionAttribute), inherit: false).SingleOrDefault();
                         if (optionAttribute != null)
                         {
-                            Option option = (Option)typeof(Option<>).MakeGenericType(property.PropertyType)
-                                .GetConstructor([typeof(string), typeof(string[])])
-                                .Invoke([optionAttribute.Name ?? BuildOptionAlias(property.Name), optionAttribute.Aliases]);
-
-                            option.Description = optionAttribute.Help;
-
+                            Option option = new CommandOption(optionAttribute.Name ?? BuildOptionAlias(property.Name), optionAttribute.Aliases, property.PropertyType)
+                            {
+                                Description = optionAttribute.Help
+                            };
                             command.Options.Add(option);
                             options.Add((property, option));
                         }

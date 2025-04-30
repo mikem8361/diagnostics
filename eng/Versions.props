@@ -25,6 +25,14 @@
     <MicrosoftNETSdkVersion>10.0.100-preview.5.25229.109</MicrosoftNETSdkVersion>
   </PropertyGroup>
   <PropertyGroup>
+    <runtimewinx64MicrosoftDotNetCdacTransport>10.0.0-preview.5.25228.104</runtimewinx64MicrosoftDotNetCdacTransport>
+    <runtimewinarm64MicrosoftDotNetCdacTransport>10.0.0-preview.5.25228.104</runtimewinarm64MicrosoftDotNetCdacTransport>
+    <runtimelinuxx64MicrosoftDotNetCdacTransport>10.0.0-preview.5.25228.104</runtimelinuxx64MicrosoftDotNetCdacTransport>
+    <runtimelinuxarm64MicrosoftDotNetCdacTransport>10.0.0-preview.5.25228.104</runtimelinuxarm64MicrosoftDotNetCdacTransport>
+    <runtimeosxx64MicrosoftDotNetCdacTransport>10.0.0-preview.5.25228.104</runtimeosxx64MicrosoftDotNetCdacTransport>
+    <runtimeosxarm64MicrosoftDotNetCdacTransport>10.0.0-preview.5.25228.104</runtimeosxarm64MicrosoftDotNetCdacTransport>
+  </PropertyGroup>
+  <PropertyGroup>
     <!-- Opt-in/out repo features -->
     <UsingToolXliff>false</UsingToolXliff>
     <AzureIdentityVersion>1.12.0</AzureIdentityVersion>

@@ -257,9 +257,9 @@ extends:
         - template: /eng/pipelines/build.yml
           parameters:
             jobTemplate: ${{ variables.jobTemplate }}
-            name: Debian_Bullseye
+            name: Debian_13
             osGroup: Linux
-            container: test_debian_11_amd64
+            container: test_debian_13_amd64
             dependsOn: Linux
             testOnly: true
             buildConfigs:

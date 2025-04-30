@@ -20,7 +20,6 @@
     $(ArtifactsBinDir) - artifacts\bin directory
     $(NuGetPackageRoot) - nuget packages root directory
     $(TargetRid) - win-x64, win-x86, linux-x64, linux-arm64, etc.
-    $(VersionsPropsPath) - path of Versions.props
   -->
 
   <PropertyGroup>
@@ -31,7 +30,7 @@
     <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">linux</BuildOS>
     <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">osx</BuildOS>
 
-    <ArtifactsBinNativeDir>$(ArtifactsBinDir)\$(BuildOS).$(BuildArch).$(Configuration)</ArtifactsBinNativeDir>
+    <ArtifactsBinNativeDir>$(ArtifactsBinDir)$(BuildOS).$(BuildArch).$(Configuration)</ArtifactsBinNativeDir>
   </PropertyGroup>
 
   <ItemGroup>
@@ -45,29 +44,23 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageSourcePaths Condition="'$(OS)' == 'Windows_NT'">$(NuGetPackageRoot)microsoft.diasymreader.native\$(MicrosoftDiaSymReaderNativeVersion)\runtimes\$(TargetRid)\native</PackageSourcePaths>
-    <PackageSourcePaths Condition="'$(TargetRid)' == 'win-x64'">$(NuGetPackageRoot)runtime.win-x64.microsoft.dotnet.cdac.transport\$(runtimewinx64MicrosoftDotNetCdacTransport)\runtimes\win-x64\native</PackageSourcePaths>
-    <PackageSourcePaths Condition="'$(TargetRid)' == 'win-arm64'">$(NuGetPackageRoot)runtime.win-arm64.microsoft.dotnet.cdac.transport\$(runtimewinarm64MicrosoftDotNetCdacTransport)\runtimes\win-arm64\native</PackageSourcePaths>
-    <PackageSourcePaths Condition="'$(TargetRid)' == 'linux-x64'">$(NuGetPackageRoot)runtime.linux-x64.microsoft.dotnet.cdac.transport\$(runtimelinuxx64MicrosoftDotNetCdacTransport)\runtimes\linux-x64\native</PackageSourcePaths>
-    <PackageSourcePaths Condition="'$(TargetRid)' == 'linux-arm64'">$(NuGetPackageRoot)runtime.linux-arm64.microsoft.dotnet.cdac.transport\$(runtimelinuxarm64MicrosoftDotNetCdacTransport)\runtimes\linux-arm64\native</PackageSourcePaths>
-    <PackageSourcePaths Condition="'$(TargetRid)' == 'osx-x64'">$(NuGetPackageRoot)runtime.osx-x64.microsoft.dotnet.cdac.transport\$(runtimeosxx64MicrosoftDotNetCdacTransport)\runtimes\osx-x64\native</PackageSourcePaths>
-    <PackageSourcePaths Condition="'$(TargetRid)' == 'osx-arm64'">$(NuGetPackageRoot)runtime.osx-arm64.microsoft.dotnet.cdac.transport\$(runtimeosxarm64MicrosoftDotNetCdacTransport)\runtimes\osx-arm64\native</PackageSourcePaths>
+    <PackageSourcePaths Include="$(NuGetPackageRoot)microsoft.diasymreader.native\$(MicrosoftDiaSymReaderNativeVersion)\runtimes\$(TargetRid)\native" Condition="'$(OS)' == 'Windows_NT'" />
+    <PackageSourcePaths Include="$(NuGetPackageRoot)runtime.win-x64.microsoft.dotnet.cdac.transport\$(runtimewinx64MicrosoftDotNetCdacTransport)\runtimes\win-x64\native" Condition="'$(TargetRid)' == 'win-x64'" />
+    <PackageSourcePaths Include="$(NuGetPackageRoot)runtime.win-arm64.microsoft.dotnet.cdac.transport\$(runtimewinarm64MicrosoftDotNetCdacTransport)\runtimes\win-arm64\native" Condition="'$(TargetRid)' == 'win-arm64'" />
+    <PackageSourcePaths Include="$(NuGetPackageRoot)runtime.linux-x64.microsoft.dotnet.cdac.transport\$(runtimelinuxx64MicrosoftDotNetCdacTransport)\runtimes\linux-x64\native" Condition="'$(TargetRid)' == 'linux-x64'" />
+    <PackageSourcePaths Include="$(NuGetPackageRoot)runtime.linux-arm64.microsoft.dotnet.cdac.transport\$(runtimelinuxarm64MicrosoftDotNetCdacTransport)\runtimes\linux-arm64\native" Condition="'$(TargetRid)' == 'linux-arm64'" />
+    <PackageSourcePaths Include="$(NuGetPackageRoot)runtime.osx-x64.microsoft.dotnet.cdac.transport\$(runtimeosxx64MicrosoftDotNetCdacTransport)\runtimes\osx-x64\native" Condition="'$(TargetRid)' == 'osx-x64'" />
+    <PackageSourcePaths Include="$(NuGetPackageRoot)runtime.osx-arm64.microsoft.dotnet.cdac.transport\$(runtimeosxarm64MicrosoftDotNetCdacTransport)\runtimes\osx-arm64\native" Condition="'$(TargetRid)' == 'osx-arm64'" />
   </ItemGroup>
 
 <!--
     Installs the above packages into the $(ArtifactsBinNativeDir) directory. 
 -->
 
-  <Target Name="InstallPackages" 
-          Inputs="$(VersionsPropsPath)">
+  <Target Name="InstallPackages">
+    <Message Importance="High" Text="Installing @(PackageSourcesPaths) packages to $(ArtifactsBinNativeDir)..." />
 
-    <PropertyGroup>
-      <SourceFiles>@(PackageSourcesPaths -> %(Identity)\*)</SourceFiles>
-    </PropertyGroup>
-
-    <Message Text="Installing @(SourceFiles) packages to $(ArtifactsBinNativeDir)..." />
-
-    <Copy SourceFiles="@(SourceFiles)"
+    <Copy SourceFiles="@(PackageSourcesPaths)"
           DestinationFolder="$(ArtifactsBinNativeDir)"
           SkipUnchangedFiles="false" />
   </Target>

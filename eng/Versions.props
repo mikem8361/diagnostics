@@ -25,12 +25,12 @@
     <MicrosoftNETSdkVersion>10.0.100-preview.5.25229.109</MicrosoftNETSdkVersion>
   </PropertyGroup>
   <PropertyGroup>
-    <runtimewinx64MicrosoftDotNetCdacTransport>10.0.0-preview.5.25228.104</runtimewinx64MicrosoftDotNetCdacTransport>
-    <runtimewinarm64MicrosoftDotNetCdacTransport>10.0.0-preview.5.25228.104</runtimewinarm64MicrosoftDotNetCdacTransport>
-    <runtimelinuxx64MicrosoftDotNetCdacTransport>10.0.0-preview.5.25228.104</runtimelinuxx64MicrosoftDotNetCdacTransport>
-    <runtimelinuxarm64MicrosoftDotNetCdacTransport>10.0.0-preview.5.25228.104</runtimelinuxarm64MicrosoftDotNetCdacTransport>
-    <runtimeosxx64MicrosoftDotNetCdacTransport>10.0.0-preview.5.25228.104</runtimeosxx64MicrosoftDotNetCdacTransport>
-    <runtimeosxarm64MicrosoftDotNetCdacTransport>10.0.0-preview.5.25228.104</runtimeosxarm64MicrosoftDotNetCdacTransport>
+    <runtimewinx64MicrosoftDotNetCdacTransportVersion>10.0.0-preview.5.25230.101</runtimewinx64MicrosoftDotNetCdacTransportVersion>
+    <runtimewinarm64MicrosoftDotNetCdacTransportVersion>10.0.0-preview.5.25230.101</runtimewinarm64MicrosoftDotNetCdacTransportVersion>
+    <runtimelinuxx64MicrosoftDotNetCdacTransportVersion>10.0.0-preview.5.25230.101</runtimelinuxx64MicrosoftDotNetCdacTransportVersion>
+    <runtimelinuxarm64MicrosoftDotNetCdacTransportVersion>10.0.0-preview.5.25230.101</runtimelinuxarm64MicrosoftDotNetCdacTransportVersion>
+    <runtimeosxx64MicrosoftDotNetCdacTransportVersion>10.0.0-preview.5.25230.101</runtimeosxx64MicrosoftDotNetCdacTransportVersion>
+    <runtimeosxarm64MicrosoftDotNetCdacTransportVersion>10.0.0-preview.5.25230.101</runtimeosxarm64MicrosoftDotNetCdacTransportVersion>
   </PropertyGroup>
   <PropertyGroup>
     <!-- Opt-in/out repo features -->

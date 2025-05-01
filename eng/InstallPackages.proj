@@ -1,5 +1,5 @@
 <!-- All Rights Reserved. Licensed to the .NET Foundation under one or more agreements. The .NET Foundation licenses this file to you under the MIT license. See the LICENSE file in the project root for more information. -->
-<Project Sdk="Microsoft.Build.NoTargets">
+<Project Sdk="Microsoft.NET.Sdk">
   <!--
     $(BuildArch) - architecture to test (x64, x86, arm, arm64). Defaults to x64.
     $(Configuration) - configuration to test (Debug, Release). Defaults to Debug.
@@ -35,13 +35,13 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageDownload Include="Microsoft.DiaSymReader.Native" Version="$(MicrosoftDiaSymReaderNativeVersion)" Condition="'$(OS)' == 'Windows_NT'" />
-      <PackageDownload Include="runtime.win-x64.Microsoft.DotNet.Cdac.Transport" Version="$(runtimewinx64MicrosoftDotNetCdacTransportVersion)" Condition="'$(TargetRid)' == 'win-x64'"/>
-      <PackageDownload Include="runtime.win-arm64.Microsoft.DotNet.Cdac.Transport" Version="$(runtimewinarm64MicrosoftDotNetCdacTransportVersion)" Condition="'$(TargetRid)' == 'win-arm64'"/>
-      <PackageDownload Include="runtime.linux-x64.Microsoft.DotNet.Cdac.Transport" Version="$(runtimelinuxx64MicrosoftDotNetCdacTransportVersion)" Condition="'$(TargetRid)' == 'linux-x64'"/>
-      <PackageDownload Include="runtime.linux-arm64.Microsoft.DotNet.Cdac.Transport" Version="$(runtimelinuxarm64MicrosoftDotNetCdacTransportVersion)" Condition="'$(TargetRid)' == 'linux-arm64'"/>
-      <PackageDownload Include="runtime.osx-x64.Microsoft.DotNet.Cdac.Transport" Version="$(runtimeosxx64MicrosoftDotNetCdacTransportVersion)" Condition="'$(TargetRid)' == 'osx-x64'"/>
-      <PackageDownload Include="runtime.osx-arm64.Microsoft.DotNet.Cdac.Transport" Version="$(runtimeosxarm64MicrosoftDotNetCdacTransportVersion)" Condition="'$(TargetRid)' == 'osx-arm64'"/>
+      <PackageDownload Include="Microsoft.DiaSymReader.Native" Version="[$(MicrosoftDiaSymReaderNativeVersion)]" Condition="'$(OS)' == 'Windows_NT'" />
+      <PackageDownload Include="runtime.win-x64.Microsoft.DotNet.Cdac.Transport" Version="[$(runtimewinx64MicrosoftDotNetCdacTransportVersion)]" Condition="'$(TargetRid)' == 'win-x64'"/>
+      <PackageDownload Include="runtime.win-arm64.Microsoft.DotNet.Cdac.Transport" Version="[$(runtimewinarm64MicrosoftDotNetCdacTransportVersion)]" Condition="'$(TargetRid)' == 'win-arm64'"/>
+      <PackageDownload Include="runtime.linux-x64.Microsoft.DotNet.Cdac.Transport" Version="[$(runtimelinuxx64MicrosoftDotNetCdacTransportVersion)]" Condition="'$(TargetRid)' == 'linux-x64'"/>
+      <PackageDownload Include="runtime.linux-arm64.Microsoft.DotNet.Cdac.Transport" Version="[$(runtimelinuxarm64MicrosoftDotNetCdacTransportVersion)]" Condition="'$(TargetRid)' == 'linux-arm64'"/>
+      <PackageDownload Include="runtime.osx-x64.Microsoft.DotNet.Cdac.Transport" Version="[$(runtimeosxx64MicrosoftDotNetCdacTransportVersion)]" Condition="'$(TargetRid)' == 'osx-x64'"/>
+      <PackageDownload Include="runtime.osx-arm64.Microsoft.DotNet.Cdac.Transport" Version="[$(runtimeosxarm64MicrosoftDotNetCdacTransportVersion)]" Condition="'$(TargetRid)' == 'osx-arm64'"/>
     </ItemGroup>
 
     <ItemGroup>

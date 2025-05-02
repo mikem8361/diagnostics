@@ -19,7 +19,6 @@
 
     $(ArtifactsBinDir) - artifacts\bin directory
     $(NuGetPackageRoot) - nuget packages root directory
-    $(TargetRid) - win-x64, win-x86, linux-x64, linux-arm64, etc.
   -->
 
   <PropertyGroup>
@@ -33,11 +32,13 @@
       <BuildArch Condition="'$(BuildArch)' == ''">$(Platform)</BuildArch>
       <BuildArch Condition="'$(BuildArch)' == 'AnyCpu'">$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant)</BuildArch>
 
-      <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">Windows_NT</BuildOS>
+      <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">win</BuildOS>
       <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">linux</BuildOS>
       <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">osx</BuildOS>
 
-      <ArtifactsBinNativeDir>$(ArtifactsBinDir)$(BuildOS).$(BuildArch).$(Configuration)</ArtifactsBinNativeDir>
+      <ArtifactsBinNativeDir Condition="'$(OS)' == 'Windows_NT'">$(ArtifactsBinDir)Windows_NT.$(BuildArch).$(Configuration)</ArtifactsBinNativeDir>
+      <ArtifactsBinNativeDir Condition="'$(OS)' != 'Windows_NT'">$(ArtifactsBinDir)$(BuildOS).$(BuildArch).$(Configuration)</ArtifactsBinNativeDir>
+      <TargetRid>$(BuildOS)-$(BuildArch)</TargetRid>
     </PropertyGroup>
 
     <ItemGroup>
@@ -64,10 +65,13 @@
     Installs the above packages into the $(ArtifactsBinNativeDir) directory. 
 -->
 
+    <Message Importance="High" Text="TargetRid $(TargetRid) OS $(OS) BuildArch $(BuildArch)" />
     <Message Importance="High" Text="Installing @(PackageSourceFiles) packages to $(ArtifactsBinNativeDir)..." />
 
+<!--
     <Copy SourceFiles="@(PackageSourceFiles)"
           DestinationFolder="$(ArtifactsBinNativeDir)"
           SkipUnchangedFiles="false" />
+-->
   </Target>
 </Project>

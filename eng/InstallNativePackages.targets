@@ -1,8 +1,8 @@
 <!-- All Rights Reserved. Licensed to the .NET Foundation under one or more agreements. The .NET Foundation licenses this file to you under the MIT license. See the LICENSE file in the project root for more information. -->
 <Project>
   <!--
-    $(BuildArch) - architecture to test (x64, x86, arm, arm64). Defaults to x64.
-    $(Configuration) - configuration to test (Debug, Release). Defaults to Debug.
+    $(ArtifactsBinNativeDir) - Native artifacts directory (e.g. artifacts\bin\Windows_NT.x64.Debug).
+    $(TargetRid) - Target runtime identifier (e.g. win-x64, linux-x64, osx-x64).
 
     From Versions.props:
 
@@ -17,22 +17,8 @@
 
     From Arcade:
 
-    $(ArtifactsBinDir) - artifacts\bin directory
     $(NuGetPackageRoot) - nuget packages root directory
   -->
-
-  <PropertyGroup>
-    <BuildArch Condition="'$(BuildArch)' == ''">$(Platform)</BuildArch>
-    <BuildArch Condition="'$(BuildArch)' == 'AnyCpu'">$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant)</BuildArch>
-
-    <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">win</BuildOS>
-    <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">linux</BuildOS>
-    <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">osx</BuildOS>
-
-    <ArtifactsBinNativeDir Condition="'$(OS)' == 'Windows_NT'">$(ArtifactsBinDir)Windows_NT.$(BuildArch).$(Configuration)</ArtifactsBinNativeDir>
-    <ArtifactsBinNativeDir Condition="'$(OS)' != 'Windows_NT'">$(ArtifactsBinDir)$(BuildOS).$(BuildArch).$(Configuration)</ArtifactsBinNativeDir>
-    <TargetRid>$(BuildOS)-$(BuildArch)</TargetRid>
-  </PropertyGroup>
 
   <ItemGroup>
     <PackageDownload Include="Microsoft.DiaSymReader.Native" Version="[$(MicrosoftDiaSymReaderNativeVersion)]" Condition="'$(OS)' == 'Windows_NT'" />
@@ -58,13 +44,13 @@
     Installs the above packages into the $(ArtifactsBinNativeDir) directory. 
 -->
 
-  <Target Name="InstallPackages" AfterTargets="Build">
+  <Target Name="InstallNativePackages" AfterTargets="Build">
     <Message Importance="High" Text="Installing packages to $(ArtifactsBinNativeDir)..." />
 
     <Copy SourceFiles="@(PackageSourceFiles)" DestinationFolder="$(ArtifactsBinNativeDir)" SkipUnchangedFiles="false">
-      <Output TaskParameter="CopiedFiles" ItemName="CopiedFiles" />
+      <Output TaskParameter="CopiedFiles" ItemName="CopiedPackageFiles" />
     </Copy>
 
-    <Message Importance="High" Text="Installed packages: @(CopiedFiles)" />
+    <Message Importance="High" Text="Installed packages: @(CopiedPackageFiles)" />
   </Target>
 </Project>

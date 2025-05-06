@@ -20,6 +20,27 @@
     <GitHubRepositoryName>diagnostics</GitHubRepositoryName>
   </PropertyGroup>
 
+  <Import Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" />
+
+  <!--
+    $(BuildArch) - architecture to test (x64, x86, arm, arm64). Defaults to x64.
+    $(Configuration) - configuration to test (Debug, Release). Defaults to Debug.
+    $(ArtifactsBinDir) - artifacts\bin directory
+  -->
+
+  <PropertyGroup>
+    <BuildArch Condition="'$(BuildArch)' == ''">$(Platform)</BuildArch>
+    <BuildArch Condition="'$(BuildArch)' == 'AnyCpu'">$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant)</BuildArch>
+
+    <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">win</BuildOS>
+    <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">linux</BuildOS>
+    <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">osx</BuildOS>
+
+    <ArtifactsBinNativeDir Condition="'$(OS)' == 'Windows_NT'">$(ArtifactsBinDir)Windows_NT.$(BuildArch).$(Configuration)</ArtifactsBinNativeDir>
+    <ArtifactsBinNativeDir Condition="'$(OS)' != 'Windows_NT'">$(ArtifactsBinDir)$(BuildOS).$(BuildArch).$(Configuration)</ArtifactsBinNativeDir>
+    <TargetRid>$(BuildOS)-$(BuildArch)</TargetRid>
+  </PropertyGroup>
+
   <PropertyGroup>
     <DesktopTargetFramework>net462</DesktopTargetFramework>
     <!-- 
@@ -36,4 +57,5 @@
     <!-- This is the list of TFMs we build our unit tests as. -->
     <SupportedXUnitTestTargetFrameworks>net8.0</SupportedXUnitTestTargetFrameworks>
   </PropertyGroup>
+
 </Project>

@@ -23,5 +23,18 @@
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\SOS.Hosting\SOS.Hosting.csproj" />
   </ItemGroup>
 
-  <Import Project="$(RepositoryEngineeringDir)InstallPackages.proj" />
+  <Target Name="InstallProjectBinaries" AfterTargets="Build">
+    <ItemGroup>
+      <ProjectBinaries Include="$(OutputPath)\*.dll" />
+      <ProjectBinaries Include="$(OutputPath)\*.pdb" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(ProjectBinaries)" DestinationFolder="$(ArtifactsBinNativeDir)" SkipUnchangedFiles="false">
+      <Output TaskParameter="CopiedFiles" ItemName="CopiedProjectFiles" />
+    </Copy>
+
+    <Message Importance="High" Text="Installed binaries: @(CopiedProjectFiles)" />
+  </Target>
+
+  <Import Project="$(RepositoryEngineeringDir)InstallNativePackages.targets" />
 </Project>

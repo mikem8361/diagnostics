@@ -1,5 +1,5 @@
 <!-- All Rights Reserved. Licensed to the .NET Foundation under one or more agreements. The .NET Foundation licenses this file to you under the MIT license. See the LICENSE file in the project root for more information. -->
-<Project Sdk="Microsoft.NET.Sdk">
+<Project>
   <!--
     $(BuildArch) - architecture to test (x64, x86, arm, arm64). Defaults to x64.
     $(Configuration) - configuration to test (Debug, Release). Defaults to Debug.
@@ -20,12 +20,6 @@
     $(ArtifactsBinDir) - artifacts\bin directory
     $(NuGetPackageRoot) - nuget packages root directory
   -->
-
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
-    <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-    <SkipGetTargetFrameworkProperties>false</SkipGetTargetFrameworkProperties>
-  </PropertyGroup>  
 
   <PropertyGroup>
     <BuildArch Condition="'$(BuildArch)' == ''">$(Platform)</BuildArch>
@@ -64,12 +58,10 @@
     Installs the above packages into the $(ArtifactsBinNativeDir) directory. 
 -->
 
-  <Target Name="InstallPackages">
+  <Target Name="InstallPackages" AfterTargets="Build">
     <Message Importance="High" Text="Installing packages to $(ArtifactsBinNativeDir)..." />
 
-    <Copy SourceFiles="@(PackageSourceFiles)"
-          DestinationFolder="$(ArtifactsBinNativeDir)"
-          SkipUnchangedFiles="false">
+    <Copy SourceFiles="@(PackageSourceFiles)" DestinationFolder="$(ArtifactsBinNativeDir)" SkipUnchangedFiles="false">
       <Output TaskParameter="CopiedFiles" ItemName="CopiedFiles" />
     </Copy>
 

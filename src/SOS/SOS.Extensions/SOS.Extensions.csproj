@@ -12,7 +12,6 @@
   
   <ItemGroup>
     <PackageReference Include="Microsoft.Diagnostics.Runtime" Version="$(MicrosoftDiagnosticsRuntimeVersion)" />
-    <PackageReference Include="Microsoft.DiaSymReader.Native" Version="$(MicrosoftDiaSymReaderNativeVersion)" Condition="'$(OS)' == 'Windows_NT'" />
     <PackageReference Include="System.Memory" Version="$(SystemMemoryVersion)" />
   </ItemGroup>
     
@@ -23,4 +22,6 @@
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\..\Microsoft.SymbolStore\Microsoft.SymbolStore.csproj" />
     <ProjectReference Include="$(MSBuildThisFileDirectory)..\SOS.Hosting\SOS.Hosting.csproj" />
   </ItemGroup>
+
+  <Import Project="$(RepositoryEngineeringDir)InstallPackages.proj" />
 </Project>

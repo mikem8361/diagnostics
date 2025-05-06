@@ -10,6 +10,7 @@
   <ItemGroup>
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\Windows_NT.x64.$(Configuration)\sos.dll" TargetRid="win-x64" />
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\Windows_NT.x64.$(Configuration)\Microsoft.DiaSymReader.Native.amd64.dll" TargetRid="win-x64" />
+    <SosRequiredBinaries Include="$(ArtifactsBinDir)\Windows_NT.x64.$(Configuration)\mscordaccore_universal.dll" TargetRid="win-x64" />
   </ItemGroup>
       
   <ItemGroup Condition="'$(BuildX64Package)' != 'true'">
@@ -18,9 +19,11 @@
       
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\Windows_NT.arm64.$(Configuration)\sos.dll" TargetRid="win-arm64" />
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\Windows_NT.arm64.$(Configuration)\Microsoft.DiaSymReader.Native.arm64.dll" TargetRid="win-arm64" />
+    <SosRequiredBinaries Include="$(ArtifactsBinDir)\Windows_NT.arm64.$(Configuration)\mscordaccore_universal.dll" TargetRid="win-arm64" />
 
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\Linux.x64.$(Configuration)\libsosplugin.so" TargetRid="linux-x64" />
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\Linux.x64.$(Configuration)\libsos.so" TargetRid="linux-x64" />
+    <SosRequiredBinaries Include="$(ArtifactsBinDir)\Linux.x64.$(Configuration)\libmscordaccore_universal.so" TargetRid="linux-x64" />
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\Linux.x64.$(Configuration)\sosdocsunix.txt" TargetRid="linux-x64" />
 
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\Linux-musl.x64.$(Configuration)\libsosplugin.so" TargetRid="linux-musl-x64" />
@@ -33,6 +36,7 @@
 
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\Linux.arm64.$(Configuration)\libsosplugin.so" TargetRid="linux-arm64" />
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\Linux.arm64.$(Configuration)\libsos.so" TargetRid="linux-arm64" />
+    <SosRequiredBinaries Include="$(ArtifactsBinDir)\Linux.arm64.$(Configuration)\libmscordaccore_universal.so" TargetRid="linux-arm64" />
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\Linux.arm64.$(Configuration)\sosdocsunix.txt" TargetRid="linux-arm64" />
     
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\Linux-musl.arm64.$(Configuration)\libsosplugin.so" TargetRid="linux-musl-arm64" />
@@ -45,10 +49,12 @@
 
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\OSX.x64.$(Configuration)\libsosplugin.dylib" TargetRid="osx-x64" />
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\OSX.x64.$(Configuration)\libsos.dylib" TargetRid="osx-x64" />
+    <SosRequiredBinaries Include="$(ArtifactsBinDir)\OSX.x64.$(Configuration)\libmscordaccore_universal.dylib" TargetRid="osx-x64" />
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\OSX.x64.$(Configuration)\sosdocsunix.txt" TargetRid="osx-x64" />
 
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\OSX.arm64.$(Configuration)\libsosplugin.dylib" TargetRid="osx-arm64" />
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\OSX.arm64.$(Configuration)\libsos.dylib" TargetRid="osx-arm64" />
+    <SosRequiredBinaries Include="$(ArtifactsBinDir)\OSX.arm64.$(Configuration)\libmscordaccore_universal.dylib" TargetRid="osx-arm64" />
     <SosRequiredBinaries Include="$(ArtifactsBinDir)\OSX.arm64.$(Configuration)\sosdocsunix.txt" TargetRid="osx-arm64" />
   </ItemGroup>
 

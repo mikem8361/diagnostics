@@ -39,7 +39,7 @@ set __TargetOS=Windows_NT
 set __BuildNative=1
 set __CI=0
 set __Verbosity=minimal
-set __Ninja=0
+set __Ninja=1
 
 :: Set the various build properties here so that CMake and MSBuild can pick them up
 set "__ProjectDir=%~dp0"
@@ -205,9 +205,16 @@ if %__BuildNative% EQU 1 (
         goto ExitWithError
     )
     set __BuildLog="%__LogDir%\Native.Build.binlog"
+    set __CmakeBuildToolArgs=
+    if %__Ninja% EQU 1 (
+        set __CmakeBuildToolArgs=
+    ) else (
+        REM We pass the /m flag directly to MSBuild so that we can get both MSBuild and CL parallelism, which is fastest for our builds.
+        set __CmakeBuildToolArgs=/bl:!__BuildLog! !__CommonBuildArgs!
+    )
 
-    echo running "%CMakePath%" --build %__IntermediatesDir% --target install --config %__BuildType% -- /bl:!__BuildLog! !__CommonBuildArgs!
-    "%CMakePath%" --build %__IntermediatesDir% --target install --config %__BuildType% -- /bl:!__BuildLog! !__CommonBuildArgs!
+    echo running "%CMakePath%" --build %__IntermediatesDir% --target install --config %__BuildType% -- !__CmakeBuildToolArgs!
+    "%CMakePath%" --build %__IntermediatesDir% --target install --config %__BuildType% -- !__CmakeBuildToolArgs!
 
     if not !ERRORLEVEL! == 0 (
         echo %__MsgPrefix%Error: native component build failed. Refer to the build log files for details:

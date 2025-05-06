@@ -143,41 +143,9 @@ __ExtraCmakeArgs="$__CMakeArgs $__ExtraCmakeArgs -DCLR_MANAGED_BINARY_DIR=$__Roo
 # This is where all built native libraries will copied to.
 export __CMakeBinDir="$__BinDir"
 
-
 if [[ "$__TargetArch" == "armel" ]]; then
     # Armel cross build is Tizen specific and does not support Portable RID build
     __PortableBuild=0
-fi
-
-#
-# Managed build
-#
-
-if [[ "$__ManagedBuild" == 1 ]]; then
-
-    echo "Commencing managed build for $__BuildType in $__RootBinDir/bin"
-    "$__RepoRootDir/eng/common/build.sh" --configuration "$__BuildType" $__CommonMSBuildArgs $__ManagedBuildArgs $__UnprocessedBuildArgs
-
-    if [ "$?" != 0 ]; then
-        exit 1
-    fi
-
-    echo "Generating Version Source File"
-    __GenerateVersionLog="$__LogsDir/GenerateVersion.binlog"
-
-    "$__RepoRootDir/eng/common/msbuild.sh" \
-        $__RepoRootDir/eng/native-prereqs.proj \
-        /bl:$__GenerateVersionLog \
-        /t:BuildPrereqs \
-        /restore \
-        /p:Configuration="$__BuildType" \
-        /p:Platform="$__TargetArch" \
-        $__UnprocessedBuildArgs
-
-    if [ $? != 0 ]; then
-        echo "Generating Version Source File FAILED"
-        exit 1
-    fi
 fi
 
 #
@@ -219,6 +187,37 @@ if [[ "$__NativeBuild" == 1 ]]; then
 
     if [ "$?" != 0 ]; then
         echo "Native build FAILED"
+        exit 1
+    fi
+fi
+
+#
+# Managed build
+#
+
+if [[ "$__ManagedBuild" == 1 ]]; then
+
+    echo "Commencing managed build for $__BuildType in $__RootBinDir/bin"
+    "$__RepoRootDir/eng/common/build.sh" --configuration "$__BuildType" $__CommonMSBuildArgs $__ManagedBuildArgs $__UnprocessedBuildArgs
+
+    if [ "$?" != 0 ]; then
+        exit 1
+    fi
+
+    echo "Generating Version Source File"
+    __GenerateVersionLog="$__LogsDir/GenerateVersion.binlog"
+
+    "$__RepoRootDir/eng/common/msbuild.sh" \
+        $__RepoRootDir/eng/native-prereqs.proj \
+        /bl:$__GenerateVersionLog \
+        /t:BuildPrereqs \
+        /restore \
+        /p:Configuration="$__BuildType" \
+        /p:Platform="$__TargetArch" \
+        $__UnprocessedBuildArgs
+
+    if [ $? != 0 ]; then
+        echo "Generating Version Source File FAILED"
         exit 1
     fi
 fi

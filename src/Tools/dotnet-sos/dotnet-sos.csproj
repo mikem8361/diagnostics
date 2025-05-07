@@ -33,12 +33,16 @@
   <!--
     Copies all the native binaries to a rid-specific directory under the output and publish paths.
   -->
-  <ItemGroup>
-    <NativeBinaries Include="@(SosRequiredBinaries->WithMetadataValue('TargetRid', '$(TargetRid)'))" />
-  </ItemGroup>
-
-  <Target Name="InstallNativeFiles" AfterTargets="Build">
+  <Target Name="InstallNativeFiles" DependsOnTargets="InstallNativePackages">
+    <ItemGroup>
+      <NativeBinaries Include="@(SosRequiredBinaries->WithMetadataValue('TargetRid', '$(TargetRid)'))" />
+    </ItemGroup>
     <Copy SourceFiles="@(NativeBinaries)" DestinationFolder="$(OutputPath)$(TargetRid)" SkipUnchangedFiles="false" />
     <Copy SourceFiles="@(NativeBinaries)" DestinationFolder="$(OutputPath)publish\$(TargetRid)" SkipUnchangedFiles="false" />
   </Target>
+
+  <!--
+     This installs the native packages like diasymreader and cdac into the native artifact directory
+   -->
+  <Import Project="$(RepositoryEngineeringDir)InstallNativePackages.targets" />
 </Project>

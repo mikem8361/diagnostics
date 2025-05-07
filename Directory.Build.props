@@ -36,8 +36,8 @@
     <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">linux</BuildOS>
     <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">osx</BuildOS>
 
-    <ArtifactsBinNativeDir Condition="'$(OS)' == 'Windows_NT'">$(ArtifactsBinDir)Windows_NT.$(BuildArch).$(Configuration)</ArtifactsBinNativeDir>
-    <ArtifactsBinNativeDir Condition="'$(OS)' != 'Windows_NT'">$(ArtifactsBinDir)$(BuildOS).$(BuildArch).$(Configuration)</ArtifactsBinNativeDir>
+    <ArtifactsBinNativeDir Condition="'$(OS)' == 'Windows_NT'">$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'Windows_NT.$(BuildArch).$(Configuration)'))</ArtifactsBinNativeDir>
+    <ArtifactsBinNativeDir Condition="'$(OS)' != 'Windows_NT'">$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', '$(BuildOS).$(BuildArch).$(Configuration)'))</ArtifactsBinNativeDir>
     <TargetRid>$(BuildOS)-$(BuildArch)</TargetRid>
   </PropertyGroup>
 

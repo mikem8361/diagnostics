@@ -30,3 +30,5 @@ set(DESKTOPCLRHOST_LIBRARY
 add_library_clr(DesktopClrHost SHARED ${DESKTOPCLRHOST_SOURCES})
 
 target_link_libraries(DesktopClrHost ${DESKTOPCLRHOST_LIBRARY})
+
+install_clr(TARGETS DesktopClrHost DESTINATIONS .)

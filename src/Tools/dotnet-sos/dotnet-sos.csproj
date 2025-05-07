@@ -33,7 +33,7 @@
   <!--
     Copies all the native binaries to a rid-specific directory under the output and publish paths.
   -->
-  <Target Name="InstallNativeFiles" DependsOnTargets="InstallNativePackages">
+  <Target Name="InstallNativeFiles" DependsOnTargets="InstallNativePackages" AfterTargets="Build">
     <ItemGroup>
       <NativeBinaries Include="@(SosRequiredBinaries->WithMetadataValue('TargetRid', '$(TargetRid)'))" />
     </ItemGroup>

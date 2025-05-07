@@ -37,6 +37,9 @@
 
   <Import Project="$(MSBuildThisFileDirectory)..\..\sos-packaging.props" />
 
+  <!--
+    Copies all the native binaries to a rid-specific directory under the output and publish paths.
+  -->
   <ItemGroup>
     <NativeBinaries Include="@(SosRequiredBinaries->WithMetadataValue('TargetRid', '$(TargetRid)'))" />
   </ItemGroup>

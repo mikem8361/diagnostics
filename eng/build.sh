@@ -223,25 +223,6 @@ if [[ "$__ManagedBuild" == 1 ]]; then
 fi
 
 #
-# Copy the native SOS binaries to where these tools expect for testing
-#
-
-if [[ "$__NativeBuild" == 1 || "$__Test" == 1 ]]; then
-    __targetRid=net8.0
-    __dotnet_sos=$__RootBinDir/bin/dotnet-sos/$__BuildType/$__targetRid/publish/$__OutputRid
-    __dotnet_dump=$__RootBinDir/bin/dotnet-dump/$__BuildType/$__targetRid/publish/$__OutputRid
-
-    mkdir -p "$__dotnet_sos"
-    mkdir -p "$__dotnet_dump"
-
-    cp "$__BinDir"/* "$__dotnet_sos"
-    echo "Copied SOS to $__dotnet_sos"
-
-    cp "$__BinDir"/* "$__dotnet_dump"
-    echo "Copied SOS to $__dotnet_dump"
-fi
-
-#
 # Install test runtimes and set up for private runtime build
 #
 

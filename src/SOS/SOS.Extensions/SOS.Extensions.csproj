@@ -31,12 +31,7 @@
       <ProjectBinaries Include="$(OutputPath)\publish\*.dll" />
       <ProjectBinaries Include="$(OutputPath)\publish\*.pdb" />
     </ItemGroup>
-
-    <Copy SourceFiles="@(ProjectBinaries)" DestinationFolder="$(ArtifactsBinNativeDir)" SkipUnchangedFiles="false">
-      <Output TaskParameter="CopiedFiles" ItemName="CopiedProjectFiles" />
-    </Copy>
-
-    <Message Importance="High" Text="Installed binaries: @(CopiedProjectFiles)" />
+    <Copy SourceFiles="@(ProjectBinaries)" DestinationFolder="$(ArtifactsBinNativeDir)" SkipUnchangedFiles="false" />
   </Target>
 
   <!--

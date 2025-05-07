@@ -13,11 +13,6 @@
       <NativeBinaries Include="$(ArtifactsBinNativeDir)DesktopClrHost.dll" />
       <NativeBinaries Include="$(ArtifactsBinNativeDir)PDB\DesktopClrHost.pdb" />
     </ItemGroup>
-
-    <Copy SourceFiles="@(NativeBinaries)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="false">
-      <Output TaskParameter="CopiedFiles" ItemName="CopiedNativeFiles" />
-    </Copy>
-
-    <Message Importance="High" Text="Installed binaries: @(CopiedNativeFiles)" />
+    <Copy SourceFiles="@(NativeBinaries)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="false" />
   </Target>
 </Project>

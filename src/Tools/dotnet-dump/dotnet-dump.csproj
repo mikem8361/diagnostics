@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>$(NetCoreAppMinTargetFramework)</TargetFramework>
@@ -36,4 +36,14 @@
   </ItemGroup>
 
   <Import Project="$(MSBuildThisFileDirectory)..\..\sos-packaging.props" />
+
+  <ItemGroup>
+    <NativeBinaries Include="@(SosRequiredBinaries->WithMetadataValue('TargetRid', '$(TargetRid)'))" />
+  </ItemGroup>
+
+  <Target Name="InstallNativeFiles" AfterTargets="Build">
+    <Copy SourceFiles="@(NativeBinaries)" DestinationFolder="$(OutputPath)$(TargetRid)" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(NativeBinaries)" DestinationFolder="$(OutputPath)publish\$(TargetRid)" SkipUnchangedFiles="false" />
+  </Target>
+
 </Project>

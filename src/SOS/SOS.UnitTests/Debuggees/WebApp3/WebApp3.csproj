@@ -10,8 +10,8 @@
    -->
   <Target Name="InstallDesktopClrHost" AfterTargets="Build" Condition="'$(OS)' == 'Windows_NT'">
     <ItemGroup>
-      <NativeBinaries Include="$(ArtifactsBinNativeDir)DesktopClrHost.dll" />
-      <NativeBinaries Include="$(ArtifactsBinNativeDir)PDB\DesktopClrHost.pdb" />
+      <NativeBinaries Include="$(ArtifactsBinNativeDir)DesktopClrHost.dll" Condition="Exists('$(ArtifactsBinNativeDir)DesktopClrHost.dll')" />
+      <NativeBinaries Include="$(ArtifactsBinNativeDir)PDB\DesktopClrHost.pdb" Condition="Exists('$(ArtifactsBinNativeDir)PDB\DesktopClrHost.pdb')" />
     </ItemGroup>
     <Copy SourceFiles="@(NativeBinaries)" DestinationFolder="$(OutputPath)" SkipUnchangedFiles="false" />
   </Target>

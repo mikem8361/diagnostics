@@ -122,6 +122,8 @@ handle_arguments() {
 
 source "$__RepoRootDir"/eng/native/build-commons.sh
 
+echo "BUILD: __TargetOS: $__TargetOS __TargetArch: %__TargetArch __OutputRid: %__OutputRid __CommonMSBuildArgs: '$__CommonMSBuildArgs'"
+
 __LogsDir="$__RootBinDir/log/$__BuildType"
 __ConfigTriplet="$__TargetOS.$__TargetArch.$__BuildType"
 __BinDir="$__RootBinDir/bin/$__ConfigTriplet"
@@ -192,6 +194,8 @@ if [[ "$__NativeBuild" == 1 ]]; then
         /t:BuildPrereqs \
         /restore \
         /p:Configuration="$__BuildType" \
+        /p:TargetOS="$__TargetOS" \
+        /p:TargetArch="$__TargetArch" \
         /p:Platform="$__TargetArch" \
         $__UnprocessedBuildArgs
 
@@ -214,8 +218,14 @@ fi
 
 if [[ "$__ManagedBuild" == 1 ]]; then
 
+    # __CommonMSBuildArgs contains TargetOS property
     echo "Commencing managed build for $__BuildType in $__RootBinDir/bin"
-    "$__RepoRootDir/eng/common/build.sh" --configuration "$__BuildType" $__CommonMSBuildArgs $__ManagedBuildArgs $__UnprocessedBuildArgs
+    "$__RepoRootDir/eng/common/build.sh" \
+        --configuration "$__BuildType" \
+        /p:TargetArch="$__TargetArch" \
+        $__CommonMSBuildArgs \
+        $__ManagedBuildArgs \
+        $__UnprocessedBuildArgs
 
     if [ "$?" != 0 ]; then
         exit 1
@@ -237,6 +247,7 @@ if [[ "$__InstallRuntimes" == 1 || "$__PrivateBuild" == 1 ]]; then
         /t:InstallTestRuntimes \
         /bl:"$__LogsDir/InstallRuntimes.binlog" \
         /p:PrivateBuildTesting="$__privateBuildTesting" \
+        /p:TargetOS="$__TargetOS" \
         /p:TargetArch="$__TargetArch" \
         /p:TestArchitectures="$__TargetArch" \
         /p:LiveRuntimeDir="$__LiveRuntimeDir" 
@@ -290,6 +301,7 @@ if [[ "$__Test" == 1 ]]; then
           export SOS_TEST_CDAC="true"
       fi
 
+      # __CommonMSBuildArgs contains TargetOS property
       "$__RepoRootDir/eng/common/build.sh" \
         --test \
         --configuration "$__BuildType" \

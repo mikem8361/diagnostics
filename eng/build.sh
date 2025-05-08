@@ -237,7 +237,7 @@ if [[ "$__InstallRuntimes" == 1 || "$__PrivateBuild" == 1 ]]; then
         /t:InstallTestRuntimes \
         /bl:"$__LogsDir/InstallRuntimes.binlog" \
         /p:PrivateBuildTesting="$__privateBuildTesting" \
-        /p:BuildArch="$__TargetArch" \
+        /p:TargetArch="$__TargetArch" \
         /p:TestArchitectures="$__TargetArch" \
         /p:LiveRuntimeDir="$__LiveRuntimeDir" 
 fi
@@ -294,7 +294,7 @@ if [[ "$__Test" == 1 ]]; then
         --test \
         --configuration "$__BuildType" \
         /bl:"$__LogsDir"/Test.binlog \
-        /p:BuildArch="$__TargetArch" \
+        /p:TargetArch="$__TargetArch" \
         /p:DotnetRuntimeVersion="$__DotnetRuntimeVersion" \
         /p:DotnetRuntimeDownloadVersion="$__DotnetRuntimeDownloadVersion" \
         /p:RuntimeSourceFeed="$__RuntimeSourceFeed" \

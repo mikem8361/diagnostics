@@ -23,22 +23,23 @@
   <Import Project="Sdk.props" Sdk="Microsoft.DotNet.Arcade.Sdk" />
 
   <!--
-    $(BuildArch) - architecture to test (x64, x86, arm, arm64). Defaults to x64.
+    $(TargetArch) - architecture to test (x64, x86, arm, arm64). Defaults to x64.
     $(Configuration) - configuration to test (Debug, Release). Defaults to Debug.
     $(ArtifactsBinDir) - artifacts\bin directory
   -->
 
   <PropertyGroup>
-    <BuildArch Condition="'$(BuildArch)' == ''">$(Platform)</BuildArch>
-    <BuildArch Condition="'$(BuildArch)' == 'AnyCpu'">$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant)</BuildArch>
+    <TargetArch Condition="'$(TargetArch)' == ''">$(Platform)</TargetArch>
+    <TargetArch Condition="'$(TargetArch)' == 'AnyCpu'">$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant)</TargetArch>
 
-    <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">win</BuildOS>
-    <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">linux</BuildOS>
-    <BuildOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">osx</BuildOS>
+    <TargetOS>linux</TargetOS>
+    <TargetOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'">win</TargetOS>
+    <TargetOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'">linux</TargetOS>
+    <TargetOS Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'">osx</TargetOS>
 
-    <ArtifactsBinNativeDir Condition="'$(OS)' == 'Windows_NT'">$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'Windows_NT.$(BuildArch).$(Configuration)'))</ArtifactsBinNativeDir>
-    <ArtifactsBinNativeDir Condition="'$(OS)' != 'Windows_NT'">$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', '$(BuildOS).$(BuildArch).$(Configuration)'))</ArtifactsBinNativeDir>
-    <TargetRid>$(BuildOS)-$(BuildArch)</TargetRid>
+    <ArtifactsBinNativeDir Condition="'$(OS)' == 'Windows_NT'">$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', 'Windows_NT.$(TargetArch).$(Configuration)'))</ArtifactsBinNativeDir>
+    <ArtifactsBinNativeDir Condition="'$(OS)' != 'Windows_NT'">$([MSBuild]::NormalizeDirectory('$(ArtifactsBinDir)', '$(TargetOS).$(TargetArch).$(Configuration)'))</ArtifactsBinNativeDir>
+    <TargetRid>$(TargetOS)-$(TargetArch)</TargetRid>
   </PropertyGroup>
 
   <PropertyGroup>

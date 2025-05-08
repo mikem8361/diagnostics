@@ -63,7 +63,7 @@ if (-not $skipnative) {
 
 # Install sdk for building, restore and build managed components.
 if (-not $skipmanaged) {
-    Invoke-Expression "& `"$engroot\common\build.ps1`" -configuration $configuration -verbosity $verbosity /p:BuildArch=$architecture /p:TestArchitectures=$architecture $remainingargs"
+    Invoke-Expression "& `"$engroot\common\build.ps1`" -configuration $configuration -verbosity $verbosity /p:TargetArch=$architecture /p:TestArchitectures=$architecture $remainingargs"
     if ($lastExitCode -ne 0) {
         exit $lastExitCode
     }
@@ -81,7 +81,7 @@ if ($installruntimes -or $privatebuild) {
       /t:InstallTestRuntimes `
       /bl:$logdir\InstallRuntimes.binlog `
       /p:PrivateBuildTesting=$privatebuildtesting `
-      /p:BuildArch=$architecture `
+      /p:TargetArch=$architecture `
       /p:TestArchitectures=$architecture `
       /p:LiveRuntimeDir="$liveRuntimeDir"
 }
@@ -99,7 +99,7 @@ if ($test) {
           -verbosity $verbosity `
           -ci:$ci `
           /bl:$logdir\Test.binlog `
-          /p:BuildArch=$architecture `
+          /p:TargetArch=$architecture `
           /p:TestArchitectures=$architecture `
           /p:DotnetRuntimeVersion="$dotnetruntimeversion" `
           /p:DotnetRuntimeDownloadVersion="$dotnetruntimedownloadversion" `

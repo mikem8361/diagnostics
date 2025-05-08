@@ -64,6 +64,8 @@ if /i "%1" == "--help" goto Usage
 if /i "%1" == "-configuration"       (set __BuildType=%2&set processedArgs=!processedArgs! %1 %2&shift&shift&goto Arg_Loop)
 if /i "%1" == "-architecture"        (set __TargetArch=%2&set processedArgs=!processedArgs! %1 %2&shift&shift&goto Arg_Loop)
 if /i "%1" == "-verbosity"           (set __Verbosity=%2&set processedArgs=!processedArgs! %1 %2&shift&shift&goto Arg_Loop)
+if /i "%1" == "-msbuild"             (set ___Ninja=0&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
+if /i "%1" == "-ninja"               (set ___Ninja=1&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 if /i "%1" == "-ci"                  (set __CI=1&set processedArgs=!processedArgs! %1&shift&goto Arg_Loop)
 
 :: These options are ignored for a native build
@@ -173,10 +175,6 @@ if %__BuildNative% EQU 1 (
         goto ExitWithError
     )
 
-    if %__Ninja% EQU 1 (
-        set __ExtraCmakeArgs="-DCMAKE_BUILD_TYPE=!__BuildType!"
-    )
-
     echo Generating Version Header
     set __GenerateVersionLog="%__LogDir%\GenerateVersion.binlog"
     powershell -NoProfile -ExecutionPolicy ByPass -NoLogo -File "%__ProjectDir%\eng\common\msbuild.ps1" "%__ProjectDir%\eng\native-prereqs.proj" /bl:!__GenerateVersionLog! /t:BuildPrereqs /restore %__CommonBuildArgs%
@@ -188,8 +186,10 @@ if %__BuildNative% EQU 1 (
 
     echo %__MsgPrefix%Regenerating the Visual Studio solution
 
-    set "__ManagedBinaryDir=%__RootBinDir%\bin"
-    set "__ManagedBinaryDir=!__ManagedBinaryDir:\=/!"
+    if %__Ninja% EQU 1 (
+        set __ExtraCmakeArgs="-DCMAKE_BUILD_TYPE=!__BuildType!"
+    )
+
     set __ExtraCmakeArgs=!__ExtraCmakeArgs! "-DCMAKE_SYSTEM_VERSION=10.0" "-DCLR_BUILD_TYPE=%__BuildType%" "-DCLR_CMAKE_TARGET_ARCH=%__TargetArch%"
 
     pushd "%__IntermediatesDir%"

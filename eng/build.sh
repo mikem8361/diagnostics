@@ -183,6 +183,23 @@ fi
 # Build native components
 #
 if [[ "$__NativeBuild" == 1 ]]; then
+    echo "Generating Version Source File"
+    __GenerateVersionLog="$__LogsDir/GenerateVersion.binlog"
+
+    "$__RepoRootDir/eng/common/msbuild.sh" \
+        $__RepoRootDir/eng/native-prereqs.proj \
+        /bl:$__GenerateVersionLog \
+        /t:BuildPrereqs \
+        /restore \
+        /p:Configuration="$__BuildType" \
+        /p:Platform="$__TargetArch" \
+        $__UnprocessedBuildArgs
+
+    if [ $? != 0 ]; then
+        echo "Generating Version Source File FAILED"
+        exit 1
+    fi
+
     build_native "$__TargetOS" "$__TargetArch" "$__RepoRootDir" "$__IntermediatesDir" "install" "$__ExtraCmakeArgs" "diagnostic component" | tee "$__LogsDir"/make.log
 
     if [ "$?" != 0 ]; then
@@ -201,23 +218,6 @@ if [[ "$__ManagedBuild" == 1 ]]; then
     "$__RepoRootDir/eng/common/build.sh" --configuration "$__BuildType" $__CommonMSBuildArgs $__ManagedBuildArgs $__UnprocessedBuildArgs
 
     if [ "$?" != 0 ]; then
-        exit 1
-    fi
-
-    echo "Generating Version Source File"
-    __GenerateVersionLog="$__LogsDir/GenerateVersion.binlog"
-
-    "$__RepoRootDir/eng/common/msbuild.sh" \
-        $__RepoRootDir/eng/native-prereqs.proj \
-        /bl:$__GenerateVersionLog \
-        /t:BuildPrereqs \
-        /restore \
-        /p:Configuration="$__BuildType" \
-        /p:Platform="$__TargetArch" \
-        $__UnprocessedBuildArgs
-
-    if [ $? != 0 ]; then
-        echo "Generating Version Source File FAILED"
         exit 1
     fi
 fi

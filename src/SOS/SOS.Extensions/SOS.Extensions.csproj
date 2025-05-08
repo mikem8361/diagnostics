@@ -33,9 +33,4 @@
     </ItemGroup>
     <Copy SourceFiles="@(ProjectBinaries)" DestinationFolder="$(ArtifactsBinNativeDir)" SkipUnchangedFiles="false" />
   </Target>
-
-  <!--
-     This installs the native packages like diasymreader and cdac into the native artifact directory
-   -->
-  <Import Project="$(RepositoryEngineeringDir)InstallNativePackages.targets" />
 </Project>

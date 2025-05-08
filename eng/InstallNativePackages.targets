@@ -43,8 +43,7 @@
 <!--
     Installs the above packages into the $(ArtifactsBinNativeDir) directory. 
 -->
-
-  <Target Name="InstallNativePackages" AfterTargets="Build">
+  <Target Name="InstallNativePackages">
     <Message Importance="High" Text="Installing packages to $(ArtifactsBinNativeDir)..." />
 
     <Copy SourceFiles="@(PackageSourceFiles)" DestinationFolder="$(ArtifactsBinNativeDir)" SkipUnchangedFiles="false">

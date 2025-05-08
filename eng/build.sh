@@ -122,7 +122,7 @@ handle_arguments() {
 
 source "$__RepoRootDir"/eng/native/build-commons.sh
 
-echo "BUILD: __TargetOS: $__TargetOS __TargetArch: %__TargetArch __OutputRid: %__OutputRid __CommonMSBuildArgs: '$__CommonMSBuildArgs'"
+echo "BUILD: __TargetOS: $__TargetOS __TargetArch: $__TargetArch __OutputRid: $__OutputRid __CommonMSBuildArgs: '$__CommonMSBuildArgs'"
 
 __LogsDir="$__RootBinDir/log/$__BuildType"
 __ConfigTriplet="$__TargetOS.$__TargetArch.$__BuildType"

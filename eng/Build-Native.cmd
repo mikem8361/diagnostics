@@ -118,7 +118,7 @@ set "__CMakeBinDir=%__BinDir%"
 set "__CMakeBinDir=%__CMakeBinDir:\=/%"
 
 :: Common msbuild arguments
-set "__CommonBuildArgs=/v:!__Verbosity! /p:Configuration=%__BuildType% /p:BuildArch=%__TargetArch% %__UnprocessedBuildArgs%"
+set "__CommonBuildArgs=/v:!__Verbosity! /p:Configuration=%__BuildType% /p:TargetOS=%__TargetOS% /p:TargetArch=%__TargetArch% %__UnprocessedBuildArgs%"
 
 if not exist "%__BinDir%"           md "%__BinDir%"
 if not exist "%__IntermediatesDir%" md "%__IntermediatesDir%"
